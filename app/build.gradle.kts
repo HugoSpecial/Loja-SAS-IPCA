@@ -53,6 +53,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.animation.core.lint)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -62,6 +64,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     //MVVM
+    // ViewModel
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6")
+    // ViewModel utilities for Compose
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
 
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
