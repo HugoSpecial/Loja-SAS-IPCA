@@ -71,7 +71,8 @@ fun LoginView(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.Top,
+                verticalArrangement = Arrangement.SpaceBetween
+
             ) {
 
                 Spacer(modifier = Modifier.height(40.dp))
@@ -119,7 +120,6 @@ fun LoginView(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = uiState.password ?: "",
@@ -173,7 +173,6 @@ fun LoginView(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
 
                 // Forgot Password Button
                 TextButton(
@@ -190,14 +189,12 @@ fun LoginView(
                 }
 
 
-                Spacer(modifier = Modifier.height(32.dp))
 
                 // Login Button
                 Button(
                     onClick = {
-                        viewModel.login {
-                            // Navigation callback on success
-                            navController.navigate("home") {
+                        viewModel.login { route ->
+                            navController.navigate(route) {
                                 popUpTo("login") { inclusive = true }
                             }
                         }

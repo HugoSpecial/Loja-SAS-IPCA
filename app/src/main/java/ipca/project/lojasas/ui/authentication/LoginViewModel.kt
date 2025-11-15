@@ -4,12 +4,16 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import ipca.project.lojasas.TAG
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 data class LoginState (
     var email : String? = null,
@@ -31,45 +35,47 @@ class LoginViewModel : ViewModel() {
         uiState.value = uiState.value.copy(password = password)
     }
 
-    fun login(onLoginSuccess: () -> Unit) {
+    suspend fun isBeneficiario(uid: String): Boolean? {
+        val doc = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(uid)
+            .get()
+            .await()
+
+        return doc.getBoolean("isBeneficiary")
+    }
+
+    fun login(onNavigate: (String) -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
 
-        if (uiState.value.email.isNullOrEmpty()) {
-            uiState.value = uiState.value.copy(
-                isLoading = false,
-                error = "Email is required"
-            )
-            return
-        }
+        val email = uiState.value.email ?: ""
+        val password = uiState.value.password ?: ""
 
-        if (uiState.value.password.isNullOrEmpty()) {
-            uiState.value = uiState.value.copy(
-                isLoading = false,
-                error = "Password is required"
-            )
-            return
-        }
+        val auth = Firebase.auth
 
-        var auth: FirebaseAuth
-        auth = Firebase.auth
-        auth.signInWithEmailAndPassword(
-            uiState.value.email!!,
-            uiState.value.password!!
-        )
+        auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Sign in success, update UI with the signed-in user's information
-                    Log.d(TAG, "signInWithEmail:success")
-                    val user = auth.currentUser
-                    //updateUI(user)
-                    uiState.value = uiState.value.copy(
-                        isLoading = false,
-                        error = null
-                    )
-                    onLoginSuccess()
+
+                    val uid = auth.currentUser?.uid ?: return@addOnCompleteListener
+
+                    // 🔥 Verificar beneficiario dentro de coroutine
+                    viewModelScope.launch {
+                        val benef = isBeneficiario(uid)
+
+                        uiState.value = uiState.value.copy(
+                            isLoading = false,
+                            error = null
+                        )
+
+                        if (benef == true) {
+                            onNavigate("home") // Beneficiário
+                        } else {
+                            onNavigate("candidature") // Não-beneficiário
+                        }
+                    }
+
                 } else {
-                    // If sign in fails, display a message to the user.
-                    Log.w(TAG, "signInWithEmail:failure", task.exception)
                     uiState.value = uiState.value.copy(
                         isLoading = false,
                         error = "Wrong password or no internet connection"
@@ -78,47 +84,18 @@ class LoginViewModel : ViewModel() {
             }
     }
 
-    fun forgotPassword(onForgotPasswordResult: (Boolean) -> Unit) {
-        uiState.value = uiState.value.copy(isLoading = true)
-
-        if (uiState.value.email.isNullOrEmpty()) {
+    fun logout(onLogoutSuccess: () -> Unit) {
+        try {
+            Firebase.auth.signOut()
+            Log.d(TAG, "User logged out successfully")
+            // Limpa o estado
+            uiState.value = LoginState()
+            onLogoutSuccess()
+        } catch (e: Exception) {
+            Log.e(TAG, "Logout failed", e)
             uiState.value = uiState.value.copy(
-                isLoading = false,
-                error = "Email is required"
+                error = e.message ?: "Erro ao fazer logout"
             )
-            onForgotPasswordResult(false)
-            return
         }
-
-        val auth = Firebase.auth
-        auth.sendPasswordResetEmail(uiState.value.email!!)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d(TAG, "sendPasswordResetEmail:success")
-                    uiState.value = uiState.value.copy(
-                        isLoading = false,
-                        error = "Password reset email sent successfully!" // ← Mensagem de sucesso no error
-                    )
-                    onForgotPasswordResult(true)
-                } else {
-                    Log.w(TAG, "sendPasswordResetEmail:failure", task.exception)
-
-                    // Mensagem de erro mais apropriada
-                    val errorMessage = when {
-                        task.exception is FirebaseAuthInvalidUserException ->
-                            "No account found with this email"
-                        task.exception is FirebaseAuthInvalidCredentialsException ->
-                            "Invalid email format"
-                        else ->
-                            "Failed to send reset email. Please check your connection and try again."
-                    }
-
-                    uiState.value = uiState.value.copy(
-                        isLoading = false,
-                        error = errorMessage
-                    )
-                    onForgotPasswordResult(false)
-                }
-            }
     }
 }

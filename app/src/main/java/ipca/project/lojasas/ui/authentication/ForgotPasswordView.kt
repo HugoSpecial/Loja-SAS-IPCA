@@ -44,8 +44,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ForgotPasswordView(
-    navController: NavController = rememberNavController(),
     modifier: Modifier = Modifier,
+    navController: NavController = rememberNavController(),
     viewModel: ForgotPasswordViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState
