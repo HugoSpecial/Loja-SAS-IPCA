@@ -173,23 +173,6 @@ fun LoginView(
                     }
                 )
 
-
-                // Forgot Password Button
-                TextButton(
-                    onClick = {
-                        navController.navigate("forgot-password")
-                    },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text(
-                        text = "Alterar Password",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-
-
                 // Login Button
                 Button(
                     onClick = {

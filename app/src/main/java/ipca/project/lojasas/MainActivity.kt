@@ -18,7 +18,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import ipca.project.lojasas.ui.authentication.ForgotPasswordView
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.candidature.CandidatureView
@@ -67,13 +66,6 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable("login") {
                             LoginView(navController = navController)
-                            LaunchedEffect(Unit) {
-                                shouldShowBottomBar.value = false
-                            }
-                        }
-
-                        composable("forgot-password") {
-                            ForgotPasswordView(navController = navController)
                             LaunchedEffect(Unit) {
                                 shouldShowBottomBar.value = false
                             }
