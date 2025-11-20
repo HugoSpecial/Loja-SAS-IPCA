@@ -98,4 +98,8 @@ class LoginViewModel : ViewModel() {
             )
         }
     }
+
+    fun clearError() {
+        uiState.value = uiState.value.copy(error = null)
+    }
 }

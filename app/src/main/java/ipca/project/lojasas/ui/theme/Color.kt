@@ -11,3 +11,5 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 val GreenPrimary = Color(0xFF00864F)
+
+val MyBackColor = Color(0xFFF5F5F5)

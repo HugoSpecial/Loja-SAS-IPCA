@@ -1,28 +1,35 @@
 package ipca.project.lojasas.ui.components
 
+import ipca.project.lojasas.R
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,13 +45,11 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import ipca.project.lojasas.ui.theme.LojaSASTheme
 
-sealed class BottomBarItem(
-    val title: String,
-    val icon: ImageVector,
-    val route: String
-) {
-    object Home : BottomBarItem("Início", Icons.Default.Home, "home")
-    object Profile : BottomBarItem("Perfil", Icons.Default.Person, "profile")
+sealed class BottomBarItem(val title: String, val route: String) {
+    object Home : BottomBarItem("Início", "home")
+    object Notification : BottomBarItem("Notificações", "notification")
+    object History : BottomBarItem("Histórico ", "history")
+    object Profile : BottomBarItem("Perfil", "profile")
 }
 
 @Composable
@@ -54,129 +60,131 @@ fun MyBottomBar(
 ) {
     val items = listOf(
         BottomBarItem.Home,
+        BottomBarItem.Notification,
+        BottomBarItem.History,
         BottomBarItem.Profile
     )
 
-    // MUDAR AQUI: usar remember em vez de rememberSaveable
     var selectedItem by remember { mutableStateOf(items[0]) }
 
-    // Atualiza o item selecionado baseado na rota atual
     if (currentRoute != null) {
         items.find { it.route == currentRoute }?.let {
-            if (it != selectedItem) {
-                selectedItem = it
-            }
+            if (it != selectedItem) selectedItem = it
         }
     }
 
+    // Container principal - Altura suficiente para o botão flutuar
     Box(
         modifier = Modifier
-            .height(90.dp)
+            .fillMaxWidth()
+            .height(100.dp), // Altura total (Barra + Espaço para o botão sair)
+        contentAlignment = Alignment.BottomCenter
     ) {
-        // Navigation Bar - colocada na parte de baixo da Box
+
+        // 1. A BARRA BRANCA (Fica no fundo)
         NavigationBar(
             modifier = Modifier
-                .height(70.dp)
-                .align(Alignment.BottomCenter)
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp
+                .height(150.dp) // A barra em si tem 80dp
+                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)), // Cantos arredondados
+            containerColor = Color.White, // Fundo branco como na imagem
+            tonalElevation = 10.dp
         ) {
-            // Item da esquerda - Home
+
+            // --- ESQUERDA ---
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Home,
                 onClick = {
                     selectedItem = BottomBarItem.Home
-                    navController.navigate(BottomBarItem.Home.route) {
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+                    navController.navigate(BottomBarItem.Home.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    Icon(
-                        imageVector = BottomBarItem.Home.icon,
-                        contentDescription = BottomBarItem.Home.title,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(painter = painterResource(id = R.drawable.icon_home), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
-                label = {
-                    Text(
-                        text = BottomBarItem.Home.title,
-                        fontSize = 12.sp
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
-                ),
+                label = { Text(text = BottomBarItem.Home.title, fontSize = 11.sp) },
+                colors = navItemColors(),
                 modifier = Modifier.weight(1f)
             )
 
-            // Espaço vazio no centro para o botão flutuante
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(70.dp)
+            NavigationBarItem(
+                selected = selectedItem == BottomBarItem.Notification,
+                onClick = {
+                    selectedItem = BottomBarItem.Notification
+                    navController.navigate(BottomBarItem.Notification.route) { launchSingleTop = true; restoreState = true }
+                },
+                icon = {
+                    Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
+                },
+                label = { Text(text = BottomBarItem.Notification.title, fontSize = 11.sp) },
+                colors = navItemColors(),
+                modifier = Modifier.weight(1f)
             )
 
-            // Item da direita - Profile
+            // --- ESPAÇO VAZIO (BURACO) NO MEIO ---
+            Box(modifier = Modifier.weight(1f))
+
+            // --- DIREITA ---
+            NavigationBarItem(
+                selected = selectedItem == BottomBarItem.History,
+                onClick = {
+                    selectedItem = BottomBarItem.History
+                    navController.navigate(BottomBarItem.History.route) { launchSingleTop = true; restoreState = true }
+                },
+                icon = {
+                    // Tenta usar o outline_watch, senão usa um ícone default
+                    Icon(painter = painterResource(id = R.drawable.outline_watch), contentDescription = null, modifier = Modifier.size(28.dp))
+                },
+                label = { Text(text = BottomBarItem.History.title, fontSize = 11.sp) },
+                colors = navItemColors(),
+                modifier = Modifier.weight(1f)
+            )
+
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Profile,
                 onClick = {
                     selectedItem = BottomBarItem.Profile
-                    navController.navigate(BottomBarItem.Profile.route) {
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+                    navController.navigate(BottomBarItem.Profile.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    Icon(
-                        imageVector = BottomBarItem.Profile.icon,
-                        contentDescription = BottomBarItem.Profile.title,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    // Tenta usar o outline_watch, senão usa um ícone default
+                    Icon(painter = painterResource(id = R.drawable.outline_user), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
-                label = {
-                    Text(
-                        text = BottomBarItem.Profile.title,
-                        fontSize = 12.sp
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
-                ),
+                label = { Text(text = BottomBarItem.Profile.title, fontSize = 11.sp) },
+                colors = navItemColors(),
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Botão flutuante central - posicionado acima da NavigationBar
-        FloatingActionButton(
+        // 2. O BOTÃO FLUTUANTE (CARRINHO)
+        // Usamos Surface para conseguir colocar a borda branca facilmente
+        Surface(
             onClick = onAddClick,
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            border = BorderStroke(4.dp, Color.White),
             modifier = Modifier
-                .size(60.dp)
                 .align(Alignment.TopCenter)
-                .shadow(
-                    elevation = 12.dp,
-                    shape = CircleShape,
-                    clip = false
-                ),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White,
-            shape = CircleShape
+                .size(70.dp)
+                .offset(y = (-15).dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Adicionar",
-                modifier = Modifier.size(30.dp)
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(id = R.drawable.shopping_cart),
+                    contentDescription = "Carrinho",
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
         }
     }
 }
+
+// Cores ajustadas para parecerem com a imagem (Verde quando selecionado, Cinza escuro quando não)
+@Composable
+fun navItemColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = MaterialTheme.colorScheme.primary, // Ícone fica verde
+    selectedTextColor = MaterialTheme.colorScheme.primary, // Texto fica verde
+    unselectedIconColor = Color(0xFF4A4A4A), // Cinza escuro
+    unselectedTextColor = Color(0xFF4A4A4A), // Cinza escuro
+    indicatorColor = Color.Transparent // Remove a "bolha" de fundo ao selecionar
+)
 
