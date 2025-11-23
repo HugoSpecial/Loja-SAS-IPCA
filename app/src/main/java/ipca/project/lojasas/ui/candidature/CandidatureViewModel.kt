@@ -4,11 +4,12 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import ipca.example.lojasas.models.Candidatura
+import ipca.example.lojasas.models.DocumentoAnexo
 import ipca.example.lojasas.models.EstadoCandidatura
-import ipca.example.lojasas.models.TipoCurso
-import ipca.project.lojasas.TAG
+import ipca.example.lojasas.models.Tipo
 import java.util.Date
 
 data class CandidatureState (
@@ -23,16 +24,19 @@ class CandidatureViewModel : ViewModel() {
     var uiState = mutableStateOf(CandidatureState())
         private set
 
-    // Identificação do candidato
-    fun updateAnoLetivo(anoLetivo: String) {
+    // --- DADOS PESSOAIS ---
+
+    fun updateAnoLetivo(input: String) {
+        val digits = input.filter { it.isDigit() }.take(8)
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(anoLetivo = anoLetivo)
+            candidatura = uiState.value.candidatura.copy(anoLetivo = digits)
         )
     }
 
-    fun updateDataNascimento(dataNascimento: String) {
+    fun updateDataNascimento(input: String) {
+        val digits = input.filter { it.isDigit() }.take(8)
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(dataNascimento = dataNascimento)
+            candidatura = uiState.value.candidatura.copy(dataNascimento = digits)
         )
     }
 
@@ -48,16 +52,12 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // Dados académicos
-    fun updateTipoCurso(tipoCurso: String) {
-        val tipo = when (tipoCurso) {
-            "Licenciatura" -> TipoCurso.LICENCIATURA
-            "Mestrado" -> TipoCurso.MESTRADO
-            "CTeSP" -> TipoCurso.CTESP
-            else -> null
-        }
+    // --- DADOS ACADÉMICOS ---
+    fun updateTipo(novoTipo: Tipo) {
+        // Se mudar o tipo, convém limpar o erro se existir
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(tipoCurso = tipo)
+            candidatura = uiState.value.candidatura.copy(tipo = novoTipo),
+            error = null
         )
     }
 
@@ -67,67 +67,87 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    fun updateNumeroEstudante(numeroEstudante: String) {
+    fun updateNumeroCartao(numero: String) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(numeroEstudante = numeroEstudante)
+            candidatura = uiState.value.candidatura.copy(numeroCartao = numero)
         )
     }
 
-    // Tipologia do pedido
-    fun updateProdutosAlimentares(produtosAlimentares: Boolean) {
+    // --- PRODUTOS ---
+    fun updateProdutosAlimentares(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(produtosAlimentares = produtosAlimentares)
+            candidatura = uiState.value.candidatura.copy(produtosAlimentares = valor)
         )
     }
 
-    fun updateProdutosHigiene(produtosHigiene: Boolean) {
+    fun updateProdutosHigiene(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(produtosHigiene = produtosHigiene)
+            candidatura = uiState.value.candidatura.copy(produtosHigiene = valor)
         )
     }
 
-    fun updateProdutosLimpeza(produtosLimpeza: Boolean) {
+    fun updateProdutosLimpeza(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(produtosLimpeza = produtosLimpeza)
+            candidatura = uiState.value.candidatura.copy(produtosLimpeza = valor)
         )
     }
 
-    // Outros apoios
-    fun updateFaesApoiado(faesApoiado: Boolean) {
+    // --- APOIOS ---
+    fun updateFaesApoiado(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(faesApoiado = faesApoiado)
+            candidatura = uiState.value.candidatura.copy(faesApoiado = valor)
         )
     }
 
-    fun updateBolsaApoio(bolsaApoio: Boolean) {
+    fun updateBolsaApoio(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(bolsaApoio = bolsaApoio)
+            candidatura = uiState.value.candidatura.copy(bolsaApoio = valor)
         )
     }
 
-    fun updateDetalhesBolsa(detalhesBolsa: String) {
+    fun updateDetalhesBolsa(texto: String) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(detalhesBolsa = detalhesBolsa)
+            candidatura = uiState.value.candidatura.copy(detalhesBolsa = texto)
         )
     }
 
-    // Declarações
-    fun updateDeclaracaoVeracidade(declaracaoVeracidade: Boolean) {
+    // --- FICHEIROS ---
+    fun addAnexo(nomeFicheiro: String, base64: String) {
+        val listaAtual = uiState.value.candidatura.anexos.toMutableList()
+        listaAtual.add(DocumentoAnexo(nomeFicheiro, base64))
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(declaracaoVeracidade = declaracaoVeracidade)
+            candidatura = uiState.value.candidatura.copy(anexos = listaAtual)
         )
     }
 
-    fun updateAutorizacaoDados(autorizacaoDados: Boolean) {
+    fun removeAnexo(index: Int) {
+        val listaAtual = uiState.value.candidatura.anexos.toMutableList()
+        if (index >= 0 && index < listaAtual.size) {
+            listaAtual.removeAt(index)
+            uiState.value = uiState.value.copy(
+                candidatura = uiState.value.candidatura.copy(anexos = listaAtual)
+            )
+        }
+    }
+
+    // --- DECLARAÇÕES ---
+    fun updateDeclaracaoVeracidade(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(autorizacaoDados = autorizacaoDados)
+            candidatura = uiState.value.candidatura.copy(declaracaoVeracidade = valor)
         )
     }
 
-    // Data e assinatura
-    fun updateDataAssinatura(dataAssinatura: String) {
+    fun updateAutorizacaoDados(valor: Boolean) {
         uiState.value = uiState.value.copy(
-            candidatura = uiState.value.candidatura.copy(dataAssinatura = dataAssinatura)
+            candidatura = uiState.value.candidatura.copy(autorizacaoDados = valor)
+        )
+    }
+
+    // --- DATA ASSINATURA ---
+    fun updateDataAssinatura(input: String) {
+        val digits = input.filter { it.isDigit() }.take(8)
+        uiState.value = uiState.value.copy(
+            candidatura = uiState.value.candidatura.copy(dataAssinatura = digits)
         )
     }
 
@@ -137,77 +157,105 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // Validação do formulário
+    // --- VALIDAÇÃO ---
     private fun isFormValid(): Boolean {
-        val candidatura = uiState.value.candidatura
-        return candidatura.anoLetivo.isNotBlank() &&
-                candidatura.dataNascimento.isNotBlank() &&
-                candidatura.telemovel.isNotBlank() &&
-                candidatura.email.isNotBlank() &&
-                candidatura.tipoCurso != null &&
-                candidatura.curso.isNotBlank() &&
-                candidatura.numeroEstudante.isNotBlank() &&
-                (candidatura.produtosAlimentares || candidatura.produtosHigiene || candidatura.produtosLimpeza) &&
-                candidatura.faesApoiado != null &&
-                candidatura.bolsaApoio != null &&
-                candidatura.declaracaoVeracidade &&
-                candidatura.autorizacaoDados &&
-                candidatura.dataAssinatura.isNotBlank() &&
-                candidatura.assinatura.isNotBlank()
+        val c = uiState.value.candidatura
+
+        val isAnoLetivoOk = c.anoLetivo.length == 8
+        val isDataNascOk = c.dataNascimento.length == 8
+        val isDataAssinaturaOk = c.dataAssinatura.length == 8
+
+        // Verifica se a lista de produtos tem pelo menos um selecionado
+        val algumProduto = c.produtosAlimentares || c.produtosHigiene || c.produtosLimpeza
+
+        // Se NÃO for funcionário, o curso é obrigatório
+        val cursoValido = if (c.tipo == Tipo.FUNCIONARIO) true else !c.curso.isNullOrBlank()
+
+        return isAnoLetivoOk &&
+                isDataNascOk &&
+                c.telemovel.isNotBlank() &&
+                c.email.isNotBlank() &&
+                c.tipo != null &&
+                cursoValido &&
+                c.numeroCartao.isNotBlank() &&
+                algumProduto &&
+                c.faesApoiado != null &&
+                c.bolsaApoio != null &&
+                c.declaracaoVeracidade &&
+                c.autorizacaoDados &&
+                isDataAssinaturaOk &&
+                c.assinatura.isNotBlank()
     }
 
-    // Submissão da candidatura
+    // --- SUBMISSÃO ---
+    // --- SUBMISSÃO ---
     fun submitCandidatura(onSubmitResult: (Boolean) -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
 
+        // 1. Validação
         if (!isFormValid()) {
             uiState.value = uiState.value.copy(
                 isLoading = false,
-                error = "Por favor, preencha todos os campos obrigatórios"
+                error = "Por favor, preenche todos os campos obrigatórios."
             )
             onSubmitResult(false)
             return
         }
 
-        // Preparar dados para Firebase
-        val candidatura = uiState.value.candidatura.copy(
+        // 2. Obter o Utilizador Atual
+        val user = Firebase.auth.currentUser
+        if (user == null) {
+            uiState.value = uiState.value.copy(
+                isLoading = false,
+                error = "Sessão inválida. Por favor, faz login novamente."
+            )
+            onSubmitResult(false)
+            return
+        }
+        val uid = user.uid
+
+        // 3. Preparar o Firestore e o Batch
+        val db = Firebase.firestore
+        val batch = db.batch()
+
+        // 4. Gerar o ID da nova candidatura (sem gravar ainda)
+        val novaCandidaturaRef = db.collection("candidatures").document()
+        val idGerado = novaCandidaturaRef.id
+
+        // 5. Preparar o Objeto Candidatura
+        val c = uiState.value.candidatura
+        fun formatData(s: String) = if(s.length == 8) "${s.substring(0,2)}/${s.substring(2,4)}/${s.substring(4,8)}" else s
+        fun formatAno(s: String) = if(s.length == 8) "${s.substring(0,4)}/${s.substring(4,8)}" else s
+
+        val candidaturaParaEnvio = c.copy(
+            docId = idGerado,          // Define o ID no objeto Candidatura
+            userId = uid,              // Define o ID do User na Candidatura (Ligação User -> Cand)
+            anoLetivo = formatAno(c.anoLetivo),
+            dataNascimento = formatData(c.dataNascimento),
+            dataAssinatura = formatData(c.dataAssinatura),
             dataCriacao = Date(),
             dataAtualizacao = Date(),
             estado = EstadoCandidatura.PENDENTE
-            // userId será definido quando tiver autenticação
         )
 
-        val db = Firebase.firestore
+        // 6. ADICIONAR AO BATCH: Gravar a Candidatura
+        batch.set(novaCandidaturaRef, candidaturaParaEnvio)
 
-        db.collection("candidaturas")
-            .add(candidatura)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "Candidatura submetida com ID: ${documentReference.id}")
-                uiState.value = uiState.value.copy(
-                    isLoading = false,
-                    isSubmitted = true,
-                    error = null
-                )
+        // 7. ADICIONAR AO BATCH: Atualizar o User com o ID da Candidatura
+        val userRef = db.collection("users").document(uid)
+
+        // Aqui atualizamos o campo 'candidature' do User com o 'docId' da Candidatura
+        batch.update(userRef, "candidature", idGerado)
+
+        // 8. Executar tudo atomicamente
+        batch.commit()
+            .addOnSuccessListener {
+                uiState.value = uiState.value.copy(isLoading = false, isSubmitted = true, error = null)
                 onSubmitResult(true)
             }
             .addOnFailureListener { e ->
-                Log.w(TAG, "Erro ao submeter candidatura", e)
-                uiState.value = uiState.value.copy(
-                    isLoading = false,
-                    error = "Erro ao submeter candidatura. Tente novamente."
-                )
+                uiState.value = uiState.value.copy(isLoading = false, error = "Erro ao submeter: ${e.message}")
                 onSubmitResult(false)
             }
-    }
-
-
-
-    // Limpar estado
-    fun clearError() {
-        uiState.value = uiState.value.copy(error = null)
-    }
-
-    fun resetState() {
-        uiState.value = CandidatureState()
     }
 }

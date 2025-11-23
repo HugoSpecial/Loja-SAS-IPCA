@@ -20,6 +20,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
+import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
 import ipca.project.lojasas.ui.candidature.CandidatureView
 import ipca.project.lojasas.ui.components.MyBottomBar
 import ipca.project.lojasas.ui.history.HistoryView
@@ -81,6 +82,10 @@ class MainActivity : ComponentActivity() {
 
                         composable("candidature") {
                             CandidatureView(navController = navController)
+                        }
+
+                        composable("await-candidature") {
+                            AwaitCandidatureView(navController = navController)
                         }
 
                         composable("home") {

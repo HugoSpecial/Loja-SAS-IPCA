@@ -65,7 +65,7 @@ fun LoginView(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            color = Color(0xFFF5F5F5) // Fundo Cinza Claro para destacar os inputs brancos
+            color = Color(0xFFF5F5F5)
         ) {
             Column(
                 modifier = Modifier
