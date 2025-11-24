@@ -157,7 +157,7 @@ fun MyBottomBar(
         // 2. O BOTÃO FLUTUANTE (CARRINHO)
         // Usamos Surface para conseguir colocar a borda branca facilmente
         Surface(
-            onClick = onAddClick,
+            onClick = { navController.navigate("newbasket") },
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
             border = BorderStroke(4.dp, Color.White),

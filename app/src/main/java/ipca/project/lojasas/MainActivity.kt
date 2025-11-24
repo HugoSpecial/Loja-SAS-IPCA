@@ -18,10 +18,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-// --- IMPORTS NOVOS NECESSÁRIOS ---
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-// ---------------------------------
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
