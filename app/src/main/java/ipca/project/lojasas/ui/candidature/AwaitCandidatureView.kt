@@ -20,13 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import ipca.example.lojasas.models.EstadoCandidatura
+import ipca.example.lojasas.models.CandidatureState // Enum em Inglês
 import ipca.project.lojasas.R
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import java.text.SimpleDateFormat
@@ -39,32 +37,30 @@ fun AwaitCandidatureView(
     viewModelData: AwaitCandidatureViewModel = viewModel()
 ) {
     val uiState = viewModelData.uiState.value
-    val candidatura = uiState.candidatura
+    val candidature = uiState.candidature // Alterado de 'candidatura' para 'candidature'
     val isLoading = uiState.isLoading
     val errorMessage = uiState.error
 
     // --- VARIÁVEIS DE UI ---
-    val estadoAtual = candidatura?.estado ?: EstadoCandidatura.PENDENTE
-    val motivoRejeicao = candidatura?.motivoAlteracaoEstado ?: "Sem motivo registado."
+    val currentState = candidature?.state ?: CandidatureState.PENDENTE
+    val rejectionReason = candidature?.statusChangeReason ?: "Sem motivo registado."
 
-    val dataSubmissao = try {
+    val submissionDate = try {
         val sdf = SimpleDateFormat("dd MMM, yyyy", Locale.getDefault())
-        candidatura?.dataCriacao?.let { sdf.format(it) } ?: "Data N/D"
+        candidature?.creationDate?.let { sdf.format(it) } ?: "Data N/D"
     } catch (e: Exception) { "Data N/D" }
 
     // --- CORES E TEXTOS ---
-    val (statusColor, statusBg, statusText, statusHeadline) = when (estadoAtual) {
-        EstadoCandidatura.PENDENTE -> Quadruple(Color(0xFFFFA000), Color(0xFFFFF8E1), "PENDENTE", "A aguardar validação")
-        EstadoCandidatura.EM_ANALISE -> Quadruple(Color(0xFF2196F3), Color(0xFFE3F2FD), "EM ANÁLISE", "Em análise técnica")
-        EstadoCandidatura.ACEITE -> Quadruple(Color(0xFF4CAF50), Color(0xFFE8F5E9), "ACEITE", "Candidatura Aceite")
-        EstadoCandidatura.REJEITADA -> Quadruple(Color(0xFFF44336), Color(0xFFFFEBEE), "RECUSADA", "Candidatura Rejeitada")
+    val (statusColor, statusBg, statusText, statusHeadline) = when (currentState) {
+        CandidatureState.PENDENTE -> Quadruple(Color(0xFFFFA000), Color(0xFFFFF8E1), "PENDENTE", "A aguardar validação")
+        CandidatureState.ACEITE -> Quadruple(Color(0xFF4CAF50), Color(0xFFE8F5E9), "ACEITE", "Candidatura Aceite")
+        CandidatureState.REJEITADA -> Quadruple(Color(0xFFF44336), Color(0xFFFFEBEE), "RECUSADA", "Candidatura Rejeitada")
     }
 
-    val mensagemAmigavel = when (estadoAtual) {
-        EstadoCandidatura.PENDENTE -> "Recebemos o seu pedido. Aguarde a validação dos serviços."
-        EstadoCandidatura.EM_ANALISE -> "A nossa equipa técnica está a analisar o seu processo."
-        EstadoCandidatura.ACEITE -> "Parabéns! O seu pedido foi aceite. Já pode usufruir dos apoios."
-        EstadoCandidatura.REJEITADA -> "Infelizmente o pedido não reuniu as condições necessárias."
+    val friendlyMessage = when (currentState) {
+        CandidatureState.PENDENTE -> "Recebemos o seu pedido. Aguarde a validação dos serviços."
+        CandidatureState.ACEITE -> "Parabéns! O seu pedido foi aceite. Já pode usufruir dos apoios."
+        CandidatureState.REJEITADA -> "Infelizmente o pedido não reuniu as condições necessárias."
     }
 
     Scaffold(
@@ -105,14 +101,13 @@ fun AwaitCandidatureView(
                     verticalArrangement = if (isCompactScreen) Arrangement.Top else Arrangement.SpaceBetween
                 ) {
 
-                    // 1. CABEÇALHO CORRIGIDO
+                    // 1. CABEÇALHO
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Spacer(modifier = Modifier.height(if (isCompactScreen) 10.dp else 40.dp))
 
-                        // LOGO (Mantém-se centrado)
                         Image(
                             painter = painterResource(id = R.drawable.logo_sas),
                             contentDescription = "Logo IPCA",
@@ -124,17 +119,14 @@ fun AwaitCandidatureView(
 
                         Spacer(modifier = Modifier.height(if (isCompactScreen) 32.dp else 40.dp))
 
-                        // TÍTULO (Agora alinhado à esquerda e maior)
                         Text(
                             text = "Estado da Candidatura",
-                            style = MaterialTheme.typography.headlineMedium, // Mudado para headlineMedium como no login
+                            style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
-                            // Aumentámos o tamanho para bater certo com o Login (32sp),
-                            // mas reduzimos um pouco em ecrãs pequenos para não quebrar linha
                             fontSize = if (isCompactScreen) 26.sp else 32.sp,
-                            textAlign = TextAlign.Start, // Força alinhamento à esquerda
-                            modifier = Modifier.fillMaxWidth() // Ocupa a largura toda para poder alinhar à esquerda
+                            textAlign = TextAlign.Start,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
@@ -184,14 +176,14 @@ fun AwaitCandidatureView(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = mensagemAmigavel,
+                                text = friendlyMessage,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color.DarkGray,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Submetido em $dataSubmissao",
+                                text = "Submetido em $submissionDate",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.Gray
                             )
@@ -199,15 +191,14 @@ fun AwaitCandidatureView(
                             Spacer(modifier = Modifier.height(if (isCompactScreen) 20.dp else 32.dp))
 
                             // Timeline
-                            val stepAtual = when(estadoAtual) {
-                                EstadoCandidatura.PENDENTE -> 1
-                                EstadoCandidatura.EM_ANALISE -> 2
-                                else -> 3
+                            val currentStep = when(currentState) {
+                                CandidatureState.PENDENTE -> 1
+                                else -> 2
                             }
-                            MinimalHorizontalTimeline(activeColor = statusColor, currentStep = stepAtual)
+                            MinimalHorizontalTimeline(activeColor = statusColor, currentStep = currentStep)
 
                             // BOTÃO: SE REJEITADA
-                            if (estadoAtual == EstadoCandidatura.REJEITADA) {
+                            if (currentState == CandidatureState.REJEITADA) {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -221,7 +212,7 @@ fun AwaitCandidatureView(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Motivo:", color = statusColor, fontWeight = FontWeight.Bold)
                                     }
-                                    Text(motivoRejeicao, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                                    Text(rejectionReason, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
@@ -237,15 +228,12 @@ fun AwaitCandidatureView(
                             }
 
                             // BOTÃO: SE ACEITE
-                            if (estadoAtual == EstadoCandidatura.ACEITE) {
+                            if (currentState == CandidatureState.ACEITE) {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Button(
                                     onClick = {
-                                        // CHAMA A NOVA FUNÇÃO DO VIEWMODEL
-                                        viewModelData.ativarBeneficiario {
-                                            // Só navega se a atualização no Firebase for bem sucedida
+                                        viewModelData.activateBeneficiary {
                                             navController.navigate("home") {
-                                                // Limpa a stack para o utilizador não voltar a este ecrã com o botão "Voltar"
                                                 popUpTo(0)
                                             }
                                         }
@@ -254,7 +242,7 @@ fun AwaitCandidatureView(
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Text("Comecar Agora")
+                                    Text("Começar Agora")
                                 }
                             }
                         }
@@ -296,15 +284,11 @@ data class Quadruple<A, B, C, D>(
     val fourth: D
 )
 
-/**
- * Componente visual que desenha a linha do tempo (timeline).
- */
 @Composable
 fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
     val steps = 3
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 1. Bolinhas e Linhas
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -312,7 +296,6 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
             for (i in 1..steps) {
                 val isActive = i <= currentStep
 
-                // Bolinha
                 Box(
                     modifier = Modifier
                         .size(if (isActive) 14.dp else 10.dp)
@@ -327,7 +310,6 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
                         )
                 )
 
-                // Linha de conexão (menos no último passo)
                 if (i < steps) {
                     Box(
                         modifier = Modifier
@@ -345,7 +327,6 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 2. Textos abaixo das bolinhas
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween

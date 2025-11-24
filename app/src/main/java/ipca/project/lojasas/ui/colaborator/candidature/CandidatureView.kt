@@ -12,11 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.example.lojasas.models.Candidatura
-import ipca.example.lojasas.models.EstadoCandidatura
+import ipca.example.lojasas.models.Candidature
+import ipca.example.lojasas.models.CandidatureState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -60,29 +59,18 @@ fun CandidatureListView(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
             else if (state.error != null) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Ocorreu um erro:",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.Red
-                    )
-                    Text(text = state.error ?: "Erro desconhecido")
-                }
+                Text(
+                    text = state.error ?: "Erro",
+                    color = Color.Red,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
             else if (state.candidaturas.isEmpty()) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Não existem candidaturas.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
-                }
+                Text(
+                    text = "Não existem candidaturas.",
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
             else {
                 LazyColumn(
@@ -108,7 +96,7 @@ fun CandidatureListView(
 
 @Composable
 fun CandidatureCard(
-    candidatura: Candidatura, // O NOME DO PARÂMETRO É 'candidatura'
+    candidatura: Candidature,
     onClick: () -> Unit
 ) {
     Card(
@@ -123,27 +111,24 @@ fun CandidatureCard(
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
-            // LINHA 1: TIPO e ESTADO
+            // TIPO e ESTADO
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // CORREÇÃO AQUI: Usar 'candidatura' e não 'candidature'
                 Text(
-                    text = candidatura.tipo?.name ?: "GERAL",
+                    text = candidatura.type?.name ?: "GERAL",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-
-                // CORREÇÃO AQUI: Usar 'candidatura'
-                StatusBadge(estado = candidatura.estado)
+                StatusBadge(estado = candidatura.state)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // LINHA 2: IDENTIFICAÇÃO (EMAIL)
+            // EMAIL
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Candidato: ",
@@ -156,10 +141,10 @@ fun CandidatureCard(
                 )
             }
 
-            // LINHA 3: CURSO (Se existir)
-            if (!candidatura.curso.isNullOrEmpty()) {
+            // CURSO
+            if (!candidatura.course.isNullOrEmpty()) {
                 Text(
-                    text = "Curso: ${candidatura.curso}",
+                    text = "Curso: ${candidatura.course}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
@@ -169,10 +154,9 @@ fun CandidatureCard(
             HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // LINHA 4: DATA RODAPÉ
+            // DATA
             val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-            // CORREÇÃO AQUI: Usar 'candidatura'
-            val dataStr = candidatura.dataCriacao?.let { dateFormat.format(it) } ?: "Data desconhecida"
+            val dataStr = candidatura.creationDate?.let { dateFormat.format(it) } ?: "Data desconhecida"
 
             Text(
                 text = "Submetido a: $dataStr",
@@ -185,12 +169,11 @@ fun CandidatureCard(
 }
 
 @Composable
-fun StatusBadge(estado: EstadoCandidatura) {
+fun StatusBadge(estado: CandidatureState) {
     val (backgroundColor, contentColor) = when (estado) {
-        EstadoCandidatura.PENDENTE -> Pair(Color(0xFFFFF3E0), Color(0xFFEF6C00))
-        EstadoCandidatura.EM_ANALISE -> Pair(Color(0xFFE3F2FD), Color(0xFF1565C0))
-        EstadoCandidatura.ACEITE -> Pair(Color(0xFFE8F5E9), Color(0xFF2E7D32))
-        EstadoCandidatura.REJEITADA -> Pair(Color(0xFFFFEBEE), Color(0xFFC62828))
+        CandidatureState.PENDENTE -> Pair(Color(0xFFFFF3E0), Color(0xFFEF6C00))
+        CandidatureState.ACEITE -> Pair(Color(0xFFE8F5E9), Color(0xFF2E7D32))
+        CandidatureState.REJEITADA -> Pair(Color(0xFFFFEBEE), Color(0xFFC62828))
     }
 
     Surface(

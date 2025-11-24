@@ -12,11 +12,11 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import ipca.example.lojasas.models.Candidatura
+import ipca.example.lojasas.models.Candidature
 
 // Estado da UI
 data class AwaitCandidatureState(
-    val candidatura: Candidatura? = null,
+    val candidature: Candidature? = null,
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -45,36 +45,33 @@ class AwaitCandidatureViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // 1. Buscar o ID da candidatura no User (Isto pode ser uma leitura única)
+                // 1. Buscar o ID da candidatura no User
                 val userDoc = db.collection("users").document(uid).get().await()
                 val candId = userDoc.getString("candidatureId")
 
                 if (!candId.isNullOrEmpty()) {
 
                     // 2. LIGAR O MODO TEMPO REAL NA CANDIDATURA
-                    // Se já houver um listener ativo, removemos para não duplicar
                     listenerRegistration?.remove()
 
                     listenerRegistration = db.collection("candidatures")
                         .document(candId)
                         .addSnapshotListener { snapshot, e ->
 
-                            // Se der erro na conexão
                             if (e != null) {
                                 Log.e("AwaitCandVM", "Erro no realtime", e)
                                 uiState.value = uiState.value.copy(error = e.message, isLoading = false)
                                 return@addSnapshotListener
                             }
 
-                            // Se recebermos dados
                             if (snapshot != null && snapshot.exists()) {
-                                val candObj = snapshot.toObject(Candidatura::class.java)
+                                // Mapeia automaticamente para a classe Candidature (em Inglês)
+                                val candObj = snapshot.toObject(Candidature::class.java)
                                 candObj?.docId = snapshot.id
 
-                                // ATUALIZA O ESTADO AUTOMATICAMENTE
                                 uiState.value = uiState.value.copy(
                                     isLoading = false,
-                                    candidatura = candObj,
+                                    candidature = candObj,
                                     error = null
                                 )
                             } else {
@@ -98,10 +95,8 @@ class AwaitCandidatureViewModel : ViewModel() {
         }
     }
 
-
-
     // Função para ativar o aluno como beneficiário
-    fun ativarBeneficiario(onSuccess: () -> Unit) {
+    fun activateBeneficiary(onSuccess: () -> Unit) {
         val user = Firebase.auth.currentUser
         if (user == null) return
 
@@ -111,16 +106,13 @@ class AwaitCandidatureViewModel : ViewModel() {
         db.collection("users").document(user.uid)
             .update("isBeneficiary", true)
             .addOnSuccessListener {
-                onSuccess() // Chama o callback para navegar
+                onSuccess()
             }
             .addOnFailureListener { e ->
-                // Opcional: Tratar erro
                 uiState.value = uiState.value.copy(error = "Erro ao ativar conta: ${e.message}")
             }
     }
 
-
-    // Importante: Quando o utilizador sai deste ecrã, paramos de escutar o Firebase
     override fun onCleared() {
         super.onCleared()
         listenerRegistration?.remove()

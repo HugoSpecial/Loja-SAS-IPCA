@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
-import ipca.project.lojasas.models.Utilizador
+import ipca.project.lojasas.models.User
 import ipca.project.lojasas.TAG
 
 data class ProfileState(
@@ -102,7 +102,7 @@ class ProfileViewModel : ViewModel() {
 
         db.collection("users").document(uid).get()
             .addOnSuccessListener { document ->
-                val user = document.toObject(Utilizador::class.java)
+                val user = document.toObject(User::class.java)
 
                 if (user != null) {
                     uiState.value = uiState.value.copy(

@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import ipca.example.lojasas.models.Tipo
+import ipca.example.lojasas.models.Type // Atualizado de Tipo para Type
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -71,15 +71,16 @@ fun CandidatureView(
                             }
                         } else {
                             val base64String = Base64.encodeToString(bytes, Base64.DEFAULT)
-                            var nomeReal = "anexo_${System.currentTimeMillis()}"
+                            var realName = "attachment_${System.currentTimeMillis()}"
                             val cursor = context.contentResolver.query(it, null, null, null, null)
                             cursor?.use { c ->
                                 if (c.moveToFirst()) {
                                     val indexNome = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                                    if (indexNome != -1) nomeReal = c.getString(indexNome)
+                                    if (indexNome != -1) realName = c.getString(indexNome)
                                 }
                             }
-                            withContext(Dispatchers.Main) { viewModel.addAnexo(nomeReal, base64String) }
+                            // addAnexo -> addAttachment
+                            withContext(Dispatchers.Main) { viewModel.addAttachment(realName, base64String) }
                         }
                     }
                 } catch (e: Exception) {
@@ -123,7 +124,7 @@ fun CandidatureView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Candidatura",
+                        text = "candidature",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
@@ -169,10 +170,10 @@ fun CandidatureView(
 
                 SectionHeader("Identificação")
 
-                // ANO LETIVO
+                // ANO LETIVO -> ACADEMIC YEAR
                 AppTextField(
-                    value = uiState.candidatura.anoLetivo,
-                    onValueChange = { viewModel.updateAnoLetivo(it) },
+                    value = uiState.candidature.academicYear,
+                    onValueChange = { viewModel.updateAcademicYear(it) },
                     label = "Ano Letivo",
                     placeholder = "Ex: 2024/2025",
                     icon = ImageVector.vectorResource(id = R.drawable.student),
@@ -180,10 +181,10 @@ fun CandidatureView(
                     visualTransformation = SchoolYearVisualTransformation()
                 )
 
-                // DATA NASCIMENTO
+                // DATA NASCIMENTO -> BIRTH DATE
                 AppTextField(
-                    value = uiState.candidatura.dataNascimento,
-                    onValueChange = { viewModel.updateDataNascimento(it) },
+                    value = uiState.candidature.birthDate,
+                    onValueChange = { viewModel.updateBirthDate(it) },
                     label = "Data de Nascimento",
                     placeholder = "DD/MM/AAAA",
                     icon = ImageVector.vectorResource(id = R.drawable.calendar_outline),
@@ -192,9 +193,10 @@ fun CandidatureView(
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // TELEMOVEL -> MOBILE PHONE
                     AppTextField(
-                        value = uiState.candidatura.telemovel,
-                        onValueChange = { viewModel.updateTelemovel(it) },
+                        value = uiState.candidature.mobilePhone,
+                        onValueChange = { viewModel.updateMobilePhone(it) },
                         label = "Telemóvel",
                         placeholder = "999999999",
                         icon = Icons.Default.Phone,
@@ -203,7 +205,7 @@ fun CandidatureView(
                     )
 
                     AppTextField(
-                        value = uiState.candidatura.email,
+                        value = uiState.candidature.email,
                         onValueChange = { viewModel.updateEmail(it) },
                         label = "Email",
                         placeholder = "email@...",
@@ -218,7 +220,7 @@ fun CandidatureView(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     var expanded by remember { mutableStateOf(false) }
 
-                    // DROPDOWN TIPO
+                    // DROPDOWN TIPO -> TYPE
                     Column(modifier = Modifier.weight(1f).padding(bottom = 20.dp)) {
                         Text(
                             text = "Tipo",
@@ -230,12 +232,12 @@ fun CandidatureView(
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded }
                         ) {
-                            fun formatarEnum(t: Tipo): String {
+                            fun formatEnum(t: Type): String {
                                 return t.name.lowercase().replaceFirstChar { it.uppercase() }
                             }
 
                             OutlinedTextField(
-                                value = uiState.candidatura.tipo?.let { formatarEnum(it) } ?: "",
+                                value = uiState.candidature.type?.let { formatEnum(it) } ?: "",
                                 onValueChange = {},
                                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 shape = RoundedCornerShape(12.dp),
@@ -256,11 +258,11 @@ fun CandidatureView(
                                 onDismissRequest = { expanded = false },
                                 modifier = Modifier.background(Color.White)
                             ) {
-                                Tipo.values().forEach { tipoEnum ->
+                                Type.values().forEach { typeEnum ->
                                     DropdownMenuItem(
-                                        text = { Text(formatarEnum(tipoEnum)) },
+                                        text = { Text(formatEnum(typeEnum)) },
                                         onClick = {
-                                            viewModel.updateTipo(tipoEnum)
+                                            viewModel.updateType(typeEnum)
                                             expanded = false
                                         }
                                     )
@@ -269,10 +271,10 @@ fun CandidatureView(
                         }
                     }
 
-                    // NÚMERO CARTÃO
+                    // NÚMERO CARTÃO -> CARD NUMBER
                     AppTextField(
-                        value = uiState.candidatura.numeroCartao,
-                        onValueChange = { viewModel.updateNumeroCartao(it) },
+                        value = uiState.candidature.cardNumber,
+                        onValueChange = { viewModel.updateCardNumber(it) },
                         label = "N.º Cartão",
                         icon = ImageVector.vectorResource(id = R.drawable.numbercard),
                         placeholder = "00000",
@@ -280,27 +282,29 @@ fun CandidatureView(
                     )
                 }
 
-                // --- CORREÇÃO: CAMPO CURSO (SÓ APARECE SE NÃO FOR FUNCIONÁRIO) ---
-                if (uiState.candidatura.tipo != Tipo.FUNCIONARIO) {
+                // CURSO -> COURSE (SÓ APARECE SE NÃO FOR FUNCIONÁRIO)
+                // Nota: Assumo que existe Type.EMPLOYEE ou similar no teu Enum em inglês
+                if (uiState.candidature.type != Type.FUNCIONARIO) {
                     AppTextField(
-                        value = uiState.candidatura.curso ?: "",
-                        onValueChange = { viewModel.updateCurso(it) },
+                        value = uiState.candidature.course ?: "",
+                        onValueChange = { viewModel.updateCourse(it) },
                         label = "Curso",
                         placeholder = "Ex: Engenharia de Sistemas...",
-                        icon = Icons.Default.Info // Podes trocar por outro ícone se quiseres
+                        icon = Icons.Default.Info
                     )
                 }
 
                 SectionHeader("Produtos Solicitados")
 
                 AppCard {
+                    // Mapeamento dos produtos em Inglês
                     val produtos = listOf(
-                        "Produtos alimentares" to uiState.candidatura.produtosAlimentares,
-                        "Produtos de higiene pessoal" to uiState.candidatura.produtosHigiene,
-                        "Produtos de limpeza" to uiState.candidatura.produtosLimpeza
+                        "Produtos alimentares" to uiState.candidature.foodProducts,
+                        "Produtos de higiene pessoal" to uiState.candidature.hygieneProducts,
+                        "Produtos de limpeza" to uiState.candidature.cleaningProducts
                     )
 
-                    produtos.forEach { (produto, isChecked) ->
+                    produtos.forEach { (label, isChecked) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
@@ -308,15 +312,15 @@ fun CandidatureView(
                             Checkbox(
                                 checked = isChecked,
                                 onCheckedChange = { checked ->
-                                    when (produto) {
-                                        "Produtos alimentares" -> viewModel.updateProdutosAlimentares(checked)
-                                        "Produtos de higiene pessoal" -> viewModel.updateProdutosHigiene(checked)
-                                        "Produtos de limpeza" -> viewModel.updateProdutosLimpeza(checked)
+                                    when (label) {
+                                        "Produtos alimentares" -> viewModel.updateFoodProducts(checked)
+                                        "Produtos de higiene pessoal" -> viewModel.updateHygieneProducts(checked)
+                                        "Produtos de limpeza" -> viewModel.updateCleaningProducts(checked)
                                     }
                                 },
                                 colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                             )
-                            Text(text = produto, style = MaterialTheme.typography.bodyMedium)
+                            Text(text = label, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -327,10 +331,11 @@ fun CandidatureView(
                 AppCard {
                     Text("Apoio FAES?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Row {
-                        RadioButton(selected = uiState.candidatura.faesApoiado == true, onClick = { viewModel.updateFaesApoiado(true) })
+                        // FAES SUPPORT
+                        RadioButton(selected = uiState.candidature.faesSupport == true, onClick = { viewModel.updateFaesSupport(true) })
                         Text("Sim", Modifier.align(Alignment.CenterVertically))
                         Spacer(Modifier.width(16.dp))
-                        RadioButton(selected = uiState.candidatura.faesApoiado == false, onClick = { viewModel.updateFaesApoiado(false) })
+                        RadioButton(selected = uiState.candidature.faesSupport == false, onClick = { viewModel.updateFaesSupport(false) })
                         Text("Não", Modifier.align(Alignment.CenterVertically))
                     }
                 }
@@ -339,19 +344,21 @@ fun CandidatureView(
                 AppCard {
                     Text("Bolsa de Estudo?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Row {
-                        RadioButton(selected = uiState.candidatura.bolsaApoio == true, onClick = { viewModel.updateBolsaApoio(true) })
+                        // SCHOLARSHIP SUPPORT
+                        RadioButton(selected = uiState.candidature.scholarshipSupport == true, onClick = { viewModel.updateScholarshipSupport(true) })
                         Text("Sim", Modifier.align(Alignment.CenterVertically))
                         Spacer(Modifier.width(16.dp))
-                        RadioButton(selected = uiState.candidatura.bolsaApoio == false, onClick = { viewModel.updateBolsaApoio(false) })
+                        RadioButton(selected = uiState.candidature.scholarshipSupport == false, onClick = { viewModel.updateScholarshipSupport(false) })
                         Text("Não", Modifier.align(Alignment.CenterVertically))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
 
-                if (uiState.candidatura.bolsaApoio == true) {
+                if (uiState.candidature.scholarshipSupport == true) {
+                    // SCHOLARSHIP DETAILS
                     AppTextField(
-                        value = uiState.candidatura.detalhesBolsa,
-                        onValueChange = { viewModel.updateDetalhesBolsa(it) },
+                        value = uiState.candidature.scholarshipDetails,
+                        onValueChange = { viewModel.updateScholarshipDetails(it) },
                         label = "Entidade e Valor",
                         placeholder = "Ex: DGES - 1000€"
                     )
@@ -379,7 +386,7 @@ fun CandidatureView(
 
                 Spacer(Modifier.height(8.dp))
 
-                if (uiState.candidatura.faesApoiado != true) {
+                if (uiState.candidature.faesSupport != true) {
                     AppCard {
                         Text("Obrigatório anexar:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.height(4.dp))
@@ -392,17 +399,18 @@ fun CandidatureView(
                     Spacer(Modifier.height(8.dp))
 
                     AppCard {
-                        if (uiState.candidatura.anexos.isNotEmpty()) {
+                        // ANEXOS -> ATTACHMENTS
+                        if (uiState.candidature.attachments.isNotEmpty()) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                uiState.candidatura.anexos.forEachIndexed { index, anexo ->
+                                uiState.candidature.attachments.forEachIndexed { index, attachment ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.fillMaxWidth().background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp)).padding(8.dp)
                                     ) {
                                         Icon( ImageVector.vectorResource(id = R.drawable.file_dock), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text(anexo.nome, Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodySmall)
-                                        IconButton(onClick = { viewModel.removeAnexo(index) }, modifier = Modifier.size(24.dp)) {
+                                        Text(attachment.name, Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                                        IconButton(onClick = { viewModel.removeAttachment(index) }, modifier = Modifier.size(24.dp)) {
                                             Icon(Icons.Default.Delete, null, tint = Color.Red, modifier = Modifier.size(20.dp))
                                         }
                                     }
@@ -429,11 +437,13 @@ fun CandidatureView(
                 SectionHeader("Declarações")
 
                 Row(verticalAlignment = Alignment.Top) {
-                    Checkbox(checked = uiState.candidatura.declaracaoVeracidade, onCheckedChange = { viewModel.updateDeclaracaoVeracidade(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
+                    // TRUTHFULNESS DECLARATION
+                    Checkbox(checked = uiState.candidature.truthfulnessDeclaration, onCheckedChange = { viewModel.updateTruthfulnessDeclaration(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
                     Text("Declaro, sob compromisso de honra, a veracidade das informações.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
                 }
                 Row(verticalAlignment = Alignment.Top) {
-                    Checkbox(checked = uiState.candidatura.autorizacaoDados, onCheckedChange = { viewModel.updateAutorizacaoDados(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
+                    // DATA AUTHORIZATION
+                    Checkbox(checked = uiState.candidature.dataAuthorization, onCheckedChange = { viewModel.updateDataAuthorization(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
                     Text("Autorizo o tratamento de dados (RGPD).", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
                 }
 
@@ -441,10 +451,10 @@ fun CandidatureView(
                 SectionHeader("Finalização")
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // DATA ASSINATURA (Com Máscara)
+                    // SIGNATURE DATE
                     AppTextField(
-                        value = uiState.candidatura.dataAssinatura,
-                        onValueChange = { viewModel.updateDataAssinatura(it) },
+                        value = uiState.candidature.signatureDate,
+                        onValueChange = { viewModel.updateSignatureDate(it) },
                         label = "Data",
                         icon = ImageVector.vectorResource(id = R.drawable.calendar_outline),
                         modifier = Modifier.weight(1f),
@@ -452,9 +462,10 @@ fun CandidatureView(
                         placeholder = "DD/MM/AAAA",
                         visualTransformation = DateVisualTransformation()
                     )
+                    // SIGNATURE
                     AppTextField(
-                        value = uiState.candidatura.assinatura,
-                        onValueChange = { viewModel.updateAssinatura(it) },
+                        value = uiState.candidature.signature,
+                        onValueChange = { viewModel.updateSignature(it) },
                         label = "Assinatura",
                         icon = Icons.Default.Edit,
                         placeholder = "Escreve o teu nome",
@@ -466,15 +477,10 @@ fun CandidatureView(
 
                 Button(
                     onClick = {
-                        viewModel.submitCandidatura { success ->
+                        viewModel.submitCandidature { success ->
                             if (success) {
-                                Toast.makeText(context, "Candidatura enviada!", Toast.LENGTH_LONG).show()
-
-                                // --- ALTERAÇÃO AQUI ---
-                                // Em vez de voltar para trás, navegamos para o ecrã de espera
+                                Toast.makeText(context, "candidature enviada!", Toast.LENGTH_LONG).show()
                                 navController.navigate("await-candidature") {
-                                    // Opcional: Remove o ecrã de formulário da pilha para que o utilizador
-                                    // não possa voltar atrás e submeter novamente.
                                     popUpTo("candidature") { inclusive = true }
                                 }
                             }
@@ -489,7 +495,7 @@ fun CandidatureView(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                     } else {
-                        Text("Submeter Candidatura", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Submeter candidature", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

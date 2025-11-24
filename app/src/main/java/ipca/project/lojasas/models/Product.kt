@@ -2,7 +2,7 @@ package ipca.example.lojasas.models
 
 import java.util.Date
 
-data class Produto (
+data class Product (
     var docId : String? = null,
-    var validade : Date? = null
+    var validity : Date? = null
 )

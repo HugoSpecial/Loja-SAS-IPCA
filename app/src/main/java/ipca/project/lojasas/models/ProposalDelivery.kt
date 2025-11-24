@@ -2,10 +2,10 @@ package ipca.example.lojasas.models
 
 import java.util.Date
 
-data class PropostaEntrega (
+data class ProposalDelivery (
     var docId : String? = null,
-    var confirmado : Boolean = false,
-    var nova_data : Date? = null
+    var confirmed : Boolean = false,
+    var newDate : Date? = null
 )
 // --- Tabela Pedido --->
 // --- Tabela Entrega --->
