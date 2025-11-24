@@ -20,63 +20,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import ipca.example.lojasas.models.Candidatura
+import androidx.navigation.compose.rememberNavController
 import ipca.example.lojasas.models.EstadoCandidatura
-import ipca.project.lojasas.R // <-- Verifica se este import está correto para o teu projeto
+import ipca.project.lojasas.R
 import ipca.project.lojasas.ui.authentication.LoginViewModel
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 fun AwaitCandidatureView(
     navController: NavController,
-    viewModelAuth: LoginViewModel = viewModel()
+    viewModelAuth: LoginViewModel = viewModel(),
+    viewModelData: AwaitCandidatureViewModel = viewModel()
 ) {
-    // --- ESTADOS LOCAIS ---
-    var candidatura by remember { mutableStateOf<Candidatura?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val uiState = viewModelData.uiState.value
+    val candidatura = uiState.candidatura
+    val isLoading = uiState.isLoading
+    val errorMessage = uiState.error
 
-    // --- CARREGAR DADOS DO FIREBASE AO INICIAR A VIEW ---
-    LaunchedEffect(Unit) {
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseFirestore.getInstance()
-        val uid = auth.currentUser?.uid
-
-        if (uid != null) {
-            try {
-                // 1. Ler User para obter o ID da candidatura
-                val userDoc = db.collection("users").document(uid).get().await()
-                val candId = userDoc.getString("candidature")
-
-                if (!candId.isNullOrEmpty()) {
-                    // 2. Ler a Candidatura
-                    val candDoc = db.collection("candidatures").document(candId).get().await()
-                    if (candDoc.exists()) {
-                        val candObj = candDoc.toObject(Candidatura::class.java)
-                        candObj?.docId = candDoc.id
-                        candidatura = candObj
-                    } else {
-                        errorMessage = "Candidatura não encontrada."
-                    }
-                } else {
-                    errorMessage = "Nenhuma candidatura associada."
-                }
-            } catch (e: Exception) {
-                errorMessage = "Erro ao carregar: ${e.message}"
-            }
-        }
-        isLoading = false
-    }
-
-    // --- VARIÁVEIS DE UI BASEADAS NOS DADOS CARREGADOS ---
+    // --- VARIÁVEIS DE UI ---
     val estadoAtual = candidatura?.estado ?: EstadoCandidatura.PENDENTE
     val motivoRejeicao = candidatura?.motivoAlteracaoEstado ?: "Sem motivo registado."
 
@@ -100,26 +67,26 @@ fun AwaitCandidatureView(
         EstadoCandidatura.REJEITADA -> "Infelizmente o pedido não reuniu as condições necessárias."
     }
 
-    val BackgroundColor = Color(0xFFFAFAFA)
-    val TextPrimary = Color(0xFF1F2937)
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundColor
+        containerColor = Color(0xFFFAFAFA)
     ) { paddingValues ->
 
         if (isLoading) {
-            // TELA DE LOADING
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (errorMessage != null && candidatura == null) {
-            // TELA DE ERRO (Caso raro)
+        } else if (errorMessage != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = errorMessage!!, color = Color.Red)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = errorMessage, color = Color.Red, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { viewModelData.retry() }) {
+                        Text("Tentar Novamente")
+                    }
+                }
             }
         } else {
-            // TELA PRINCIPAL (Layout Responsivo)
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
@@ -138,27 +105,36 @@ fun AwaitCandidatureView(
                     verticalArrangement = if (isCompactScreen) Arrangement.Top else Arrangement.SpaceBetween
                 ) {
 
-                    // 1. CABEÇALHO
+                    // 1. CABEÇALHO CORRIGIDO
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Spacer(modifier = Modifier.height(if (isCompactScreen) 10.dp else 40.dp))
+
+                        // LOGO (Mantém-se centrado)
                         Image(
-                            painter = painterResource(id = R.drawable.logo_sas), // TEU LOGO
+                            painter = painterResource(id = R.drawable.logo_sas),
                             contentDescription = "Logo IPCA",
                             modifier = Modifier
                                 .height(if (isCompactScreen) 60.dp else 80.dp)
                                 .fillMaxWidth(),
                             alignment = Alignment.Center
                         )
-                        Spacer(modifier = Modifier.height(if (isCompactScreen) 16.dp else 24.dp))
+
+                        Spacer(modifier = Modifier.height(if (isCompactScreen) 32.dp else 40.dp))
+
+                        // TÍTULO (Agora alinhado à esquerda e maior)
                         Text(
                             text = "Estado da Candidatura",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineMedium, // Mudado para headlineMedium como no login
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = if (isCompactScreen) 20.sp else 24.sp
+                            // Aumentámos o tamanho para bater certo com o Login (32sp),
+                            // mas reduzimos um pouco em ecrãs pequenos para não quebrar linha
+                            fontSize = if (isCompactScreen) 26.sp else 32.sp,
+                            textAlign = TextAlign.Start, // Força alinhamento à esquerda
+                            modifier = Modifier.fillMaxWidth() // Ocupa a largura toda para poder alinhar à esquerda
                         )
                     }
 
@@ -177,7 +153,7 @@ fun AwaitCandidatureView(
                             modifier = Modifier.padding(if (isCompactScreen) 20.dp else 32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Badge
+                            // Badge Status
                             Surface(
                                 color = statusBg,
                                 shape = RoundedCornerShape(50),
@@ -198,11 +174,10 @@ fun AwaitCandidatureView(
                                 }
                             }
 
-                            // Título e Texto
                             Text(
                                 text = statusHeadline,
                                 style = MaterialTheme.typography.headlineSmall,
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center,
                                 fontSize = if (isCompactScreen) 20.sp else 24.sp
@@ -223,7 +198,7 @@ fun AwaitCandidatureView(
 
                             Spacer(modifier = Modifier.height(if (isCompactScreen) 20.dp else 32.dp))
 
-                            // Timeline Visual
+                            // Timeline
                             val stepAtual = when(estadoAtual) {
                                 EstadoCandidatura.PENDENTE -> 1
                                 EstadoCandidatura.EM_ANALISE -> 2
@@ -246,15 +221,12 @@ fun AwaitCandidatureView(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Motivo:", color = statusColor, fontWeight = FontWeight.Bold)
                                     }
-                                    Text(motivoRejeicao, color = TextPrimary, textAlign = TextAlign.Center)
+                                    Text(motivoRejeicao, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
-                                    onClick = {
-                                        // Navegar de volta ao form (sem passar dados, o form que se encarregue de buscar se quiser editar)
-                                        navController.navigate("candidature_form")
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = TextPrimary),
+                                    onClick = { navController.navigate("candidature_form") },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary,),
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
@@ -308,39 +280,84 @@ fun AwaitCandidatureView(
     }
 }
 
-// --- CLASSES AUXILIARES (Para o ficheiro compilar sozinho) ---
+data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
 
+/**
+ * Componente visual que desenha a linha do tempo (timeline).
+ */
 @Composable
 fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
     val steps = 3
-    Column {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 1. Bolinhas e Linhas
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             for (i in 1..steps) {
                 val isActive = i <= currentStep
+
+                // Bolinha
                 Box(
                     modifier = Modifier
                         .size(if (isActive) 14.dp else 10.dp)
-                        .background(if (isActive) activeColor else Color(0xFFE5E7EB), CircleShape)
-                        .border(if (isActive) 3.dp else 0.dp, if (isActive) activeColor.copy(alpha = 0.3f) else Color.Transparent, CircleShape)
+                        .background(
+                            color = if (isActive) activeColor else Color(0xFFE5E7EB),
+                            shape = CircleShape
+                        )
+                        .border(
+                            width = if (isActive) 3.dp else 0.dp,
+                            color = if (isActive) activeColor.copy(alpha = 0.3f) else Color.Transparent,
+                            shape = CircleShape
+                        )
                 )
+
+                // Linha de conexão (menos no último passo)
                 if (i < steps) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(2.dp)
                             .padding(horizontal = 2.dp)
-                            .background(if (i < currentStep) activeColor else Color(0xFFE5E7EB), RoundedCornerShape(1.dp))
+                            .background(
+                                color = if (i < currentStep) activeColor else Color(0xFFE5E7EB),
+                                shape = RoundedCornerShape(1.dp)
+                            )
                     )
                 }
             }
         }
+
         Spacer(modifier = Modifier.height(8.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Enviado", style = MaterialTheme.typography.labelSmall, color = Color.Black)
-            Text("Análise", style = MaterialTheme.typography.labelSmall, color = if(currentStep >= 2) Color.Black else Color.Gray)
-            Text("Decisão", style = MaterialTheme.typography.labelSmall, color = if(currentStep >= 3) Color.Black else Color.Gray)
+
+        // 2. Textos abaixo das bolinhas
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Enviado",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Black
+            )
+
+            Text(
+                text = "Análise",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (currentStep >= 2) Color.Black else Color.Gray
+            )
+
+            Text(
+                text = "Decisão",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (currentStep >= 3) Color.Black else Color.Gray
+            )
         }
     }
 }
-
-data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

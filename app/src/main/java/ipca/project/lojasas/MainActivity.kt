@@ -9,15 +9,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue // Necessário para o 'by'
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState // IMPORTANTE
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+// --- IMPORTS NOVOS NECESSÁRIOS ---
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+// ---------------------------------
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
@@ -45,8 +49,6 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val coroutineScope = rememberCoroutineScope()
 
-            // --- LÓGICA DE NAVEGAÇÃO MELHORADA ---
-            // Observa a pilha de navegação para saber onde estamos em tempo real
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
@@ -54,17 +56,13 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        // Lógica mais limpa para mostrar/esconder a barra
-                        // Se a rota atual estiver nesta lista, mostra a barra
                         val showBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
 
                         if (showBottomBar) {
                             MyBottomBar(
                                 navController = navController,
-                                currentRoute = currentRoute, // Passamos a rota para o ícone acender corretamente
+                                currentRoute = currentRoute,
                                 onAddClick = {
-                                    // Ação do botão do carrinho
-                                    // Ex: navController.navigate("cart")
                                     println("Botão Carrinho clicado!")
                                 }
                             )
@@ -110,20 +108,43 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Verifica utilizador
                 LaunchedEffect(Unit) {
-                    val userID = Firebase.auth.currentUser?.uid
-                    if (userID != null) {
+                    val user = Firebase.auth.currentUser
+
+                    if (user != null) {
                         coroutineScope.launch {
-                            val isBeneficiary = loginViewModel.isBeneficiario(userID)
-                            if (isBeneficiary == true) {
-                                navController.navigate("home") {
-                                    popUpTo("login") { inclusive = true }
+                            try {
+                                val db = FirebaseFirestore.getInstance()
+
+                                val document = db.collection("users").document(user.uid).get().await()
+
+                                val isCollaborator = document.getBoolean("isCollaborator") ?: false
+                                val isBeneficiary = document.getBoolean("isBeneficiary") ?: false
+                                val candidatureId = document.getString("candidature")
+
+                                if (isCollaborator) {
+                                    navController.navigate("home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
                                 }
-                            } else {
-                                navController.navigate("candidature") {
-                                    popUpTo("login") { inclusive = true }
+                                else if (isBeneficiary) {
+                                    navController.navigate("home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
                                 }
+                                else {
+                                    if (!candidatureId.isNullOrEmpty()) {
+                                        navController.navigate("await-candidature") {
+                                            popUpTo("login") { inclusive = true }
+                                        }
+                                    } else {
+                                        navController.navigate("candidature") {
+                                            popUpTo("login") { inclusive = true }
+                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
                         }
                     }
