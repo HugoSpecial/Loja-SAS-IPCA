@@ -47,39 +47,50 @@ class LoginViewModel : ViewModel() {
 
     fun login(onNavigate: (String) -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseFirestore.getInstance()
 
-        val email = uiState.value.email ?: ""
-        val password = uiState.value.password ?: ""
-
-        val auth = Firebase.auth
-
-        auth.signInWithEmailAndPassword(email, password)
+        auth.signInWithEmailAndPassword(uiState.value.email!!, uiState.value.password!!)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-
                     val uid = auth.currentUser?.uid ?: return@addOnCompleteListener
 
-                    // 🔥 Verificar beneficiario dentro de coroutine
                     viewModelScope.launch {
-                        val benef = isBeneficiario(uid)
+                        try {
+                            // 1. Ler o documento do Utilizador
+                            val userDoc = db.collection("users").document(uid).get().await()
 
-                        uiState.value = uiState.value.copy(
-                            isLoading = false,
-                            error = null
-                        )
+                            // Lemos os campos booleanos e strings
+                            val isBeneficiary = userDoc.getBoolean("isBeneficiary") ?: false
+                            val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false // Supondo que tens este campo
+                            val candidatureId = userDoc.getString("candidature")
 
-                        if (benef == true) {
-                            onNavigate("home") // Beneficiário
-                        } else {
-                            onNavigate("candidature") // Não-beneficiário
+                            uiState.value = uiState.value.copy(isLoading = false)
+
+                            // --- A TUA LÓGICA DE DECISÃO ---
+                            if (isCollaborator) {
+                                onNavigate("home") // Rota futura
+                            }
+                            else if (isBeneficiary) {
+                                onNavigate("home")
+                            }
+                            else {
+                                // Não é nem colaborador nem beneficiário
+                                if (!candidatureId.isNullOrEmpty()) {
+                                    // Tem ID de candidatura -> Vai ver o estado
+                                    onNavigate("await-candidature")
+                                } else {
+                                    // Não tem nada -> Vai preencher formulário
+                                    onNavigate("candidature")
+                                }
+                            }
+
+                        } catch (e: Exception) {
+                            uiState.value = uiState.value.copy(isLoading = false, error = e.message)
                         }
                     }
-
                 } else {
-                    uiState.value = uiState.value.copy(
-                        isLoading = false,
-                        error = "Wrong password or no internet connection"
-                    )
+                    uiState.value = uiState.value.copy(isLoading = false, error = "Login falhou.")
                 }
             }
     }
