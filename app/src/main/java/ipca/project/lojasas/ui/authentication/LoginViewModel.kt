@@ -57,30 +57,24 @@ class LoginViewModel : ViewModel() {
 
                     viewModelScope.launch {
                         try {
-                            // 1. Ler o documento do Utilizador
                             val userDoc = db.collection("users").document(uid).get().await()
 
-                            // Lemos os campos booleanos e strings
                             val isBeneficiary = userDoc.getBoolean("isBeneficiary") ?: false
-                            val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false // Supondo que tens este campo
+                            val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false
                             val candidatureId = userDoc.getString("candidature")
 
                             uiState.value = uiState.value.copy(isLoading = false)
 
-                            // --- A TUA LÓGICA DE DECISÃO ---
                             if (isCollaborator) {
-                                onNavigate("home") // Rota futura
+                                onNavigate("colaborador")
                             }
                             else if (isBeneficiary) {
                                 onNavigate("home")
                             }
                             else {
-                                // Não é nem colaborador nem beneficiário
                                 if (!candidatureId.isNullOrEmpty()) {
-                                    // Tem ID de candidatura -> Vai ver o estado
                                     onNavigate("await-candidature")
                                 } else {
-                                    // Não tem nada -> Vai preencher formulário
                                     onNavigate("candidature")
                                 }
                             }

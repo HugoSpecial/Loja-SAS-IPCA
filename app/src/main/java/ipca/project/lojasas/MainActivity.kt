@@ -24,6 +24,8 @@ import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
 import ipca.project.lojasas.ui.candidature.CandidatureView
+import ipca.project.lojasas.ui.colaborator.candidature.CandidatureDetailsView
+import ipca.project.lojasas.ui.colaborator.candidature.CandidatureListView
 import ipca.project.lojasas.ui.components.MyBottomBar
 import ipca.project.lojasas.ui.history.HistoryView
 import ipca.project.lojasas.ui.home.HomeView
@@ -76,6 +78,25 @@ class MainActivity : ComponentActivity() {
                             LoginView(navController = navController)
                         }
 
+                        composable("colaborador")
+                        {
+                            ipca.project.lojasas.ui.colaborator.home.HomeView(navController = navController)
+                        }
+
+                        composable("candidature_list") {
+                            CandidatureListView(navController = navController)
+                        }
+
+                        composable("candidature_details/{candidatureId}") { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("candidatureId")
+                            if (id != null) {
+                                CandidatureDetailsView(
+                                    navController = navController,
+                                    candidatureId = id
+                                )
+                            }
+                        }
+
                         composable("candidature") {
                             CandidatureView(navController = navController)
                         }
@@ -121,7 +142,7 @@ class MainActivity : ComponentActivity() {
                                 val candidatureId = document.getString("candidature")
 
                                 if (isCollaborator) {
-                                    navController.navigate("home") {
+                                    navController.navigate("colaborador") {
                                         popUpTo("login") { inclusive = true }
                                     }
                                 }

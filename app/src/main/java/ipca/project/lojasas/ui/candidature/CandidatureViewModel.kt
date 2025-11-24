@@ -1,6 +1,5 @@
 package ipca.project.lojasas.ui.candidature
 
-import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
@@ -23,8 +22,6 @@ class CandidatureViewModel : ViewModel() {
 
     var uiState = mutableStateOf(CandidatureState())
         private set
-
-    // --- DADOS PESSOAIS ---
 
     fun updateAnoLetivo(input: String) {
         val digits = input.filter { it.isDigit() }.take(8)
@@ -52,7 +49,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // --- DADOS ACADÉMICOS ---
     fun updateTipo(novoTipo: Tipo) {
         // Se mudar o tipo, convém limpar o erro se existir
         uiState.value = uiState.value.copy(
@@ -73,7 +69,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // --- PRODUTOS ---
     fun updateProdutosAlimentares(valor: Boolean) {
         uiState.value = uiState.value.copy(
             candidatura = uiState.value.candidatura.copy(produtosAlimentares = valor)
@@ -92,7 +87,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // --- APOIOS ---
     fun updateFaesApoiado(valor: Boolean) {
         uiState.value = uiState.value.copy(
             candidatura = uiState.value.candidatura.copy(faesApoiado = valor)
@@ -111,7 +105,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // --- FICHEIROS ---
     fun addAnexo(nomeFicheiro: String, base64: String) {
         val listaAtual = uiState.value.candidatura.anexos.toMutableList()
         listaAtual.add(DocumentoAnexo(nomeFicheiro, base64))
@@ -130,7 +123,6 @@ class CandidatureViewModel : ViewModel() {
         }
     }
 
-    // --- DECLARAÇÕES ---
     fun updateDeclaracaoVeracidade(valor: Boolean) {
         uiState.value = uiState.value.copy(
             candidatura = uiState.value.candidatura.copy(declaracaoVeracidade = valor)
@@ -143,7 +135,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // --- DATA ASSINATURA ---
     fun updateDataAssinatura(input: String) {
         val digits = input.filter { it.isDigit() }.take(8)
         uiState.value = uiState.value.copy(
@@ -157,7 +148,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    // --- VALIDAÇÃO ---
     private fun isFormValid(): Boolean {
         val c = uiState.value.candidatura
 
@@ -187,8 +177,6 @@ class CandidatureViewModel : ViewModel() {
                 c.assinatura.isNotBlank()
     }
 
-    // --- SUBMISSÃO ---
-    // --- SUBMISSÃO ---
     fun submitCandidatura(onSubmitResult: (Boolean) -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
 
@@ -202,7 +190,6 @@ class CandidatureViewModel : ViewModel() {
             return
         }
 
-        // 2. Obter o Utilizador Atual
         val user = Firebase.auth.currentUser
         if (user == null) {
             uiState.value = uiState.value.copy(
@@ -214,7 +201,6 @@ class CandidatureViewModel : ViewModel() {
         }
         val uid = user.uid
 
-        // 3. Preparar o Firestore e o Batch
         val db = Firebase.firestore
         val batch = db.batch()
 
