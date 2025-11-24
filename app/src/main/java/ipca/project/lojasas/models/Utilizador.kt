@@ -10,5 +10,5 @@ data class Utilizador (
     var phone : String? = null,
     var email : String? = null,
     var falta : Int = 0,
-    var candidature : String? = null
+    var candidatureId : String? = null
 )

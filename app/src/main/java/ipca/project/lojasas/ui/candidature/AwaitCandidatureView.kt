@@ -240,12 +240,21 @@ fun AwaitCandidatureView(
                             if (estadoAtual == EstadoCandidatura.ACEITE) {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Button(
-                                    onClick = { navController.navigate("home") },
+                                    onClick = {
+                                        // CHAMA A NOVA FUNÇÃO DO VIEWMODEL
+                                        viewModelData.ativarBeneficiario {
+                                            // Só navega se a atualização no Firebase for bem sucedida
+                                            navController.navigate("home") {
+                                                // Limpa a stack para o utilizador não voltar a este ecrã com o botão "Voltar"
+                                                popUpTo(0)
+                                            }
+                                        }
+                                    },
                                     colors = ButtonDefaults.buttonColors(containerColor = statusColor),
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Text("Ir para a Loja")
+                                    Text("Comecar Agora")
                                 }
                             }
                         }

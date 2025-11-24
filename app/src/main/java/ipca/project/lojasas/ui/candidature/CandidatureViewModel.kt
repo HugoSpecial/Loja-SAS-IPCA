@@ -245,7 +245,7 @@ class CandidatureViewModel : ViewModel() {
         val userRef = db.collection("users").document(uid)
 
         // Aqui atualizamos o campo 'candidature' do User com o 'docId' da Candidatura
-        batch.update(userRef, "candidature", idGerado)
+        batch.update(userRef, "candidatureId", idGerado)
 
         // 8. Executar tudo atomicamente
         batch.commit()

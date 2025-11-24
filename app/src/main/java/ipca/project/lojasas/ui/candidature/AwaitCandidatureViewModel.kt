@@ -4,9 +4,12 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import ipca.example.lojasas.models.Candidatura
@@ -44,7 +47,7 @@ class AwaitCandidatureViewModel : ViewModel() {
             try {
                 // 1. Buscar o ID da candidatura no User (Isto pode ser uma leitura única)
                 val userDoc = db.collection("users").document(uid).get().await()
-                val candId = userDoc.getString("candidature")
+                val candId = userDoc.getString("candidatureId")
 
                 if (!candId.isNullOrEmpty()) {
 
@@ -94,6 +97,28 @@ class AwaitCandidatureViewModel : ViewModel() {
             }
         }
     }
+
+
+
+    // Função para ativar o aluno como beneficiário
+    fun ativarBeneficiario(onSuccess: () -> Unit) {
+        val user = Firebase.auth.currentUser
+        if (user == null) return
+
+        val db = Firebase.firestore
+
+        // Atualiza o campo isBeneficiary no documento do user
+        db.collection("users").document(user.uid)
+            .update("isBeneficiary", true)
+            .addOnSuccessListener {
+                onSuccess() // Chama o callback para navegar
+            }
+            .addOnFailureListener { e ->
+                // Opcional: Tratar erro
+                uiState.value = uiState.value.copy(error = "Erro ao ativar conta: ${e.message}")
+            }
+    }
+
 
     // Importante: Quando o utilizador sai deste ecrã, paramos de escutar o Firebase
     override fun onCleared() {
