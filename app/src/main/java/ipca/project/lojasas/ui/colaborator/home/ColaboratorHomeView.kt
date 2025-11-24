@@ -20,9 +20,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
 @Composable
-fun HomeView(
+fun ColaboratorHomeView(
     navController: NavController,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: ColaboratorHomeViewModel = viewModel()
 ) {
     val state = viewModel.uiState.value
     val scrollState = rememberScrollState()

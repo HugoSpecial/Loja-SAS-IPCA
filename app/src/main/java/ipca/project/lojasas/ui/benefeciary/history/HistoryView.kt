@@ -1,14 +1,13 @@
-package ipca.project.lojasas.ui.home
+package ipca.project.lojasas.ui.benefeciary.history
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 
 @Composable
-fun HomeView(
+fun HistoryView(
+    modifier: Modifier = Modifier,
     navController: NavController,
-    modifier: Modifier = Modifier
-) {
-    Text("isto e a HomeView")
+){
+
 }

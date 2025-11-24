@@ -1,4 +1,4 @@
-package ipca.project.lojasas.ui.newBasket
+package ipca.project.lojasas.ui.benefeciary.newBasket
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -20,13 +20,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -322,5 +322,5 @@ fun TimeDropdownSelector(selectedTime: String, onTimeSelected: (String) -> Unit)
 @Preview(showBackground = true)
 @Composable
 fun NewBasketPreview() {
-    NewBasketView(navController = androidx.navigation.compose.rememberNavController())
+    NewBasketView(navController = rememberNavController())
 }

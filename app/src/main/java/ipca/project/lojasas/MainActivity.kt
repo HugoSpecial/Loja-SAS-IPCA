@@ -1,10 +1,12 @@
 package ipca.project.lojasas
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -26,12 +28,17 @@ import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
 import ipca.project.lojasas.ui.candidature.CandidatureView
 import ipca.project.lojasas.ui.colaborator.candidature.CandidatureDetailsView
 import ipca.project.lojasas.ui.colaborator.candidature.CandidatureListView
-import ipca.project.lojasas.ui.components.MyBottomBar
-import ipca.project.lojasas.ui.history.HistoryView
-import ipca.project.lojasas.ui.home.HomeView
-import ipca.project.lojasas.ui.newBasket.NewBasketView
-import ipca.project.lojasas.ui.notifications.NotificationView
-import ipca.project.lojasas.ui.profile.ProfileView
+import ipca.project.lojasas.ui.benefeciary.history.HistoryView
+import ipca.project.lojasas.ui.benefeciary.home.HomeView
+import ipca.project.lojasas.ui.benefeciary.newBasket.NewBasketView
+import ipca.project.lojasas.ui.benefeciary.notifications.NotificationView
+import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
+import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
+import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
+import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
+import ipca.project.lojasas.ui.colaborator.stock.StockView
+import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
+import ipca.project.lojasas.ui.components.CollaboratorBottomBar
 import ipca.project.lojasas.ui.theme.LojaSASTheme
 import kotlinx.coroutines.launch
 
@@ -41,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
     private val loginViewModel: LoginViewModel by viewModels()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -57,15 +65,21 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
                         // bottom bar do beneficiario // tirar o "colaborador"
-                        val showBottomBar = currentRoute in listOf("home", "notification", "history", "profile", "colaborador")
+                        val showBeneficiaryBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
 
-                        if (showBottomBar) {
-                            MyBottomBar(
+                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador", "notification-collaborador","history-collaborador","profile")
+
+                        if (showBeneficiaryBottomBar) {
+                            BeneficiaryBottomBar(
                                 navController = navController,
                                 currentRoute = currentRoute,
-                                onAddClick = {
-                                    println("Botão Carrinho clicado!")
-                                }
+                            )
+                        }
+
+                        if (showCollaboratorBottomBar) {
+                            CollaboratorBottomBar(
+                                navController = navController,
+                                currentRoute = currentRoute,
                             )
                         }
                     }
@@ -79,10 +93,46 @@ class MainActivity : ComponentActivity() {
                             LoginView(navController = navController)
                         }
 
+
+
+
+
+
+
+
+
+
+
                         composable("colaborador")
                         {
-                            ipca.project.lojasas.ui.colaborator.home.HomeView(navController = navController)
+                           ColaboratorHomeView(navController = navController)
                         }
+                        composable("notification-collaborador")
+                        {
+                            ColaboratorNotificationView(navController = navController)
+                        }
+                        composable("stock")
+                        {
+                            StockView(navController = navController)
+                        }
+                        composable("history-collaborador")
+                        {
+                            CollatorHistoryView(navController = navController)
+                        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                         composable("candidature_list") {
                             CandidatureListView(navController = navController)

@@ -9,7 +9,7 @@ import com.google.firebase.firestore.firestore
 import ipca.example.lojasas.models.Candidatura
 import ipca.example.lojasas.models.EstadoCandidatura
 
-data class HomeState(
+data class ColaboratorHomeState(
     val candidatures: List<Candidatura> = emptyList(),
     val pendingCount: Int = 0,
     val userName: String = "", // <--- NOVO CAMPO: Nome do utilizador
@@ -17,12 +17,12 @@ data class HomeState(
     val error: String? = null
 )
 
-class HomeViewModel : ViewModel() {
+class ColaboratorHomeViewModel : ViewModel() {
 
     private val db = Firebase.firestore
     private val auth = Firebase.auth // <--- Instância da Auth
 
-    var uiState = mutableStateOf(HomeState())
+    var uiState = mutableStateOf(ColaboratorHomeState())
         private set
 
     init {
