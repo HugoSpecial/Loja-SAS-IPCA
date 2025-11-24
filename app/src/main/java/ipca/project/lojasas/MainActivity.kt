@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         val showBeneficiaryBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
 
-                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador", "notification-collaborador","history-collaborador","profile", "candidature_list", "candidature_details/{candidatureId}")
+                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador", "notification-collaborador","history-collaborador","profile-collaborator", "candidature_list", "candidature_details/{candidatureId}")
 
                         if (showBeneficiaryBottomBar) {
                             BeneficiaryBottomBar(
@@ -148,6 +148,10 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("profile") {
+                            ProfileView(navController = navController)
+                        }
+                        
+                        composable("profile-collaborator") {
                             ProfileView(navController = navController)
                         }
                     }
