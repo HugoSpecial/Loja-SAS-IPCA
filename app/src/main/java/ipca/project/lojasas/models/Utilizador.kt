@@ -10,10 +10,6 @@ data class Utilizador (
     var isCollaborator : Boolean = false,
     var phone : String? = null,
     var email : String? = null,
-<<<<<<< Updated upstream
-    var falta : Int = 0,
-=======
     var fault : Int = 0,
->>>>>>> Stashed changes
     var candidatureId : String? = null
 )

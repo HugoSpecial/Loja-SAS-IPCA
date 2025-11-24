@@ -56,7 +56,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        val showBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
+                        // bottom bar do beneficiario // tirar o "colaborador"
+                        val showBottomBar = currentRoute in listOf("home", "notification", "history", "profile", "colaborador")
 
                         if (showBottomBar) {
                             MyBottomBar(
