@@ -4,15 +4,15 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
-import com.google.firebase.auth.auth // Necessário para saber quem está logado
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
-import ipca.example.lojasas.models.Candidatura
-import ipca.example.lojasas.models.EstadoCandidatura
+import ipca.example.lojasas.models.Candidature
+import ipca.example.lojasas.models.CandidatureState
 
 data class ColaboratorHomeState(
-    val candidatures: List<Candidatura> = emptyList(),
+    val candidatures: List<Candidature> = emptyList(),
     val pendingCount: Int = 0,
-    val userName: String = "", // <--- NOVO CAMPO: Nome do utilizador
+    val userName: String = "",
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -20,17 +20,16 @@ data class ColaboratorHomeState(
 class ColaboratorHomeViewModel : ViewModel() {
 
     private val db = Firebase.firestore
-    private val auth = Firebase.auth // <--- Instância da Auth
+    private val auth = Firebase.auth
 
     var uiState = mutableStateOf(ColaboratorHomeState())
         private set
 
     init {
         fetchData()
-        fetchUserName() // <--- Chamamos a função para buscar o nome
+        fetchUserName()
     }
 
-    // --- NOVA FUNÇÃO: Busca o nome do utilizador ---
     private fun fetchUserName() {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -40,7 +39,6 @@ class ColaboratorHomeViewModel : ViewModel() {
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
                         val name = document.getString("name") ?: ""
-                        // Atualizamos o estado com o nome obtido
                         uiState.value = uiState.value.copy(userName = name)
                     }
                 }
@@ -60,18 +58,20 @@ class ColaboratorHomeViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                val list = mutableListOf<Candidatura>()
+                val list = mutableListOf<Candidature>()
 
                 for (doc in value?.documents ?: emptyList()) {
                     try {
-                        val c = Candidatura()
+                        val c = Candidature()
                         c.docId = doc.id
-                        val estadoStr = doc.getString("estado")
+
+                        val estadoStr = doc.getString("state") ?: doc.getString("estado")
+
                         if (estadoStr != null) {
                             try {
-                                c.estado = EstadoCandidatura.valueOf(estadoStr)
+                                c.state = CandidatureState.valueOf(estadoStr)
                             } catch (e: Exception) {
-                                c.estado = EstadoCandidatura.PENDENTE
+                                c.state = CandidatureState.PENDENTE
                             }
                         }
                         list.add(c)
@@ -80,7 +80,7 @@ class ColaboratorHomeViewModel : ViewModel() {
                     }
                 }
 
-                val count = list.count { it.estado == EstadoCandidatura.PENDENTE }
+                val count = list.count { it.state == CandidatureState.PENDENTE }
 
                 uiState.value = uiState.value.copy(
                     candidatures = list,

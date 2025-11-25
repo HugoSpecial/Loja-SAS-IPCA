@@ -64,10 +64,9 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        // bottom bar do beneficiario // tirar o "colaborador"
                         val showBeneficiaryBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
 
-                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador", "notification-collaborador","history-collaborador","profile")
+                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador", "notification-collaborador","history-collaborador","profile-collaborator", "candidature_list", "candidature_details/{candidatureId}")
 
                         if (showBeneficiaryBottomBar) {
                             BeneficiaryBottomBar(
@@ -93,16 +92,6 @@ class MainActivity : ComponentActivity() {
                             LoginView(navController = navController)
                         }
 
-
-
-
-
-
-
-
-
-
-
                         composable("colaborador")
                         {
                            ColaboratorHomeView(navController = navController)
@@ -119,20 +108,6 @@ class MainActivity : ComponentActivity() {
                         {
                             CollatorHistoryView(navController = navController)
                         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
                         composable("candidature_list") {
                             CandidatureListView(navController = navController)
@@ -173,6 +148,10 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("profile") {
+                            ProfileView(navController = navController)
+                        }
+                        
+                        composable("profile-collaborator") {
                             ProfileView(navController = navController)
                         }
                     }

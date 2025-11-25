@@ -5,12 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import ipca.example.lojasas.models.Candidatura
-import ipca.example.lojasas.models.EstadoCandidatura
+import ipca.example.lojasas.models.Candidature
+import ipca.example.lojasas.models.CandidatureState
 
-data class CandidatureState(
-    val candidaturas: List<Candidatura> = emptyList(),
-    val pendingCount: Int = 0, // <--- NOVO CAMPO
+data class CandidatureListState(
+    val candidaturas: List<Candidature> = emptyList(),
+    val pendingCount: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -19,7 +19,7 @@ class CandidatureViewModel : ViewModel() {
 
     private val db = Firebase.firestore
 
-    var uiState = mutableStateOf(CandidatureState())
+    var uiState = mutableStateOf(CandidatureListState())
         private set
 
     init {
@@ -37,36 +37,46 @@ class CandidatureViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                val list = mutableListOf<Candidatura>()
+                val list = mutableListOf<Candidature>()
 
                 for (doc in value?.documents ?: emptyList()) {
                     try {
-                        val c = Candidatura()
+                        val c = Candidature()
                         c.docId = doc.id
-                        c.curso = doc.getString("curso")
-                        c.email = doc.getString("email") ?: ""
-                        c.telemovel = doc.getString("telemovel") ?: ""
-                        c.anoLetivo = doc.getString("anoLetivo") ?: ""
-                        c.dataNascimento = doc.getString("dataNascimento") ?: ""
-                        c.dataCriacao = doc.getDate("dataCriacao")
-                        c.dataAtualizacao = doc.getDate("dataAtualizacao")
 
-                        val estadoStr = doc.getString("estado")
+                        // --- CORREÇÃO AQUI ---
+                        // Tenta ler os nomes em Inglês primeiro. Se for null, lê os antigos em Português.
+
+                        c.course = doc.getString("course") ?: doc.getString("curso")
+                        c.email = doc.getString("email") ?: ""
+                        c.mobilePhone = doc.getString("mobilePhone") ?: doc.getString("telemovel") ?: ""
+                        c.academicYear = doc.getString("academicYear") ?: doc.getString("anoLetivo") ?: ""
+                        c.birthDate = doc.getString("birthDate") ?: doc.getString("dataNascimento") ?: ""
+
+                        // Datas
+                        c.creationDate = doc.getDate("creationDate") ?: doc.getDate("dataCriacao")
+                        c.updateDate = doc.getDate("updateDate") ?: doc.getDate("dataAtualizacao")
+
+                        // ESTADO: Prioridade ao 'state' (novo), fallback para 'estado' (antigo)
+                        val estadoStr = doc.getString("state") ?: doc.getString("estado")
+
                         if (estadoStr != null) {
                             try {
-                                c.estado = EstadoCandidatura.valueOf(estadoStr)
+                                c.state = CandidatureState.valueOf(estadoStr)
                             } catch (e: Exception) {
-                                c.estado = EstadoCandidatura.PENDENTE
+                                // Se o nome no enum mudou (ex: PENDING vs PENDENTE), isto protege o crash
+                                c.state = CandidatureState.PENDENTE
                             }
                         }
                         list.add(c)
 
                     } catch (e: Exception) {
-                        Log.e("DEBUG_FIREBASE", "Erro ao ler documento: ${doc.id}", e)
+                        Log.e("CandidatureVM", "Erro ao ler documento: ${doc.id}", e)
                     }
                 }
 
-                val pendentes = list.count { it.estado == EstadoCandidatura.PENDENTE }
+                // Filtrar contagem pelo estado correto
+                val pendentes = list.count { it.state == CandidatureState.PENDENTE }
 
                 uiState.value = uiState.value.copy(
                     candidaturas = list,

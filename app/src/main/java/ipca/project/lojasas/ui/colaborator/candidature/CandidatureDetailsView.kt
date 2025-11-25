@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.example.lojasas.models.DocumentoAnexo
-import ipca.example.lojasas.models.EstadoCandidatura
+import ipca.example.lojasas.models.DocumentAttachment
+import ipca.example.lojasas.models.CandidatureState
 import java.io.File
 import java.io.FileOutputStream
 
@@ -63,7 +63,7 @@ fun CandidatureDetailsView(
         }
     }
 
-    // --- DIÁLOGOS ---
+    // --- DIÁLOGOS DE PREVIEW ---
     if (selectedImageBase64 != null) {
         ImagePreviewDialog(
             base64String = selectedImageBase64!!,
@@ -78,6 +78,7 @@ fun CandidatureDetailsView(
         )
     }
 
+    // --- DIÁLOGO DE REJEIÇÃO ---
     if (showRejectDialog) {
         AlertDialog(
             onDismissRequest = { showRejectDialog = false },
@@ -127,8 +128,8 @@ fun CandidatureDetailsView(
 
             if (state.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (state.candidatura != null) {
-                val cand = state.candidatura
+            } else if (state.candidature != null) {
+                val cand = state.candidature
 
                 Column(
                     modifier = Modifier
@@ -136,40 +137,41 @@ fun CandidatureDetailsView(
                         .padding(16.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    StatusBadgeDetails(estado = cand.estado)
+                    // Estado no topo
+                    StatusBadgeDetails(state = cand.state)
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- IDENTIFICAÇÃO ---
                     SectionTitle("Dados do Aluno")
-                    InfoRow("Email:", cand.email ?: "N/A")
-                    InfoRow("Telemóvel:", cand.telemovel ?: "N/A")
-                    InfoRow("Nascimento:", cand.dataNascimento ?: "N/A")
+                    InfoRow("Email:", cand.email)
+                    InfoRow("Telemóvel:", cand.mobilePhone) // mobilePhone
+                    InfoRow("Nascimento:", cand.birthDate)  // birthDate
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- ACADÉMICOS ---
                     SectionTitle("Dados Académicos / Profissionais")
-                    InfoRow("Tipo:", cand.tipo?.name ?: "N/A")
-                    InfoRow("N.º Cartão:", cand.numeroCartao ?: "N/A") // ADICIONADO
-                    InfoRow("Curso:", cand.curso ?: "N/A")
-                    InfoRow("Ano Letivo:", cand.anoLetivo ?: "N/A")
+                    InfoRow("Tipo:", cand.type?.name ?: "N/A")
+                    InfoRow("N.º Cartão:", cand.cardNumber) // cardNumber
+                    InfoRow("Curso:", cand.course ?: "N/A")  // course
+                    InfoRow("Ano Letivo:", cand.academicYear)// academicYear
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- APOIOS SOLICITADOS ---
                     SectionTitle("Produtos Solicitados")
-                    CheckboxRow("Alimentares", cand.produtosAlimentares)
-                    CheckboxRow("Higiene Pessoal", cand.produtosHigiene)
-                    CheckboxRow("Limpeza", cand.produtosLimpeza)
+                    CheckboxRow("Alimentares", cand.foodProducts)      // foodProducts
+                    CheckboxRow("Higiene Pessoal", cand.hygieneProducts)// hygieneProducts
+                    CheckboxRow("Limpeza", cand.cleaningProducts)      // cleaningProducts
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- OUTROS APOIOS (NOVO) ---
+                    // --- OUTROS APOIOS ---
                     SectionTitle("Situação Socioeconómica")
-                    InfoRow("Beneficiário FAES:", if (cand.faesApoiado == true) "Sim" else "Não")
-                    InfoRow("Bolseiro:", if (cand.bolsaApoio == true) "Sim" else "Não")
+                    InfoRow("Beneficiário FAES:", if (cand.faesSupport == true) "Sim" else "Não")
+                    InfoRow("Bolseiro:", if (cand.scholarshipSupport == true) "Sim" else "Não")
 
-                    if (cand.bolsaApoio == true) {
+                    if (cand.scholarshipSupport == true) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
@@ -177,7 +179,7 @@ fun CandidatureDetailsView(
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("Detalhes da Bolsa:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                                Text(cand.detalhesBolsa.ifEmpty { "Sem detalhes" }, fontSize = 14.sp)
+                                Text(cand.scholarshipDetails.ifEmpty { "Sem detalhes" }, fontSize = 14.sp)
                             }
                         }
                     }
@@ -187,19 +189,19 @@ fun CandidatureDetailsView(
                     // --- ANEXOS ---
                     SectionTitle("Documentos Anexos")
 
-                    if (cand.anexos.isEmpty()) {
+                    if (cand.attachments.isEmpty()) {
                         Text("Sem documentos anexados.", color = Color.Gray, fontSize = 14.sp)
                     } else {
-                        cand.anexos.forEach { anexo ->
+                        cand.attachments.forEach { attachment ->
                             FileListItem(
-                                anexo = anexo,
+                                attachment = attachment,
                                 onClick = {
-                                    val nome = anexo.nome.lowercase()
-                                    if (nome.endsWith(".pdf")) {
-                                        val file = saveBase64ToTempFile(context, anexo.base64, anexo.nome)
+                                    val name = attachment.name.lowercase()
+                                    if (name.endsWith(".pdf")) {
+                                        val file = saveBase64ToTempFile(context, attachment.base64, attachment.name)
                                         selectedPdfFile = file
                                     } else {
-                                        selectedImageBase64 = anexo.base64
+                                        selectedImageBase64 = attachment.base64
                                     }
                                 }
                             )
@@ -208,22 +210,23 @@ fun CandidatureDetailsView(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- DECLARAÇÕES (NOVO) ---
+                    // --- DECLARAÇÕES ---
                     SectionTitle("Declarações")
-                    CheckboxRow("Compromisso de Honra (Veracidade)", cand.declaracaoVeracidade)
-                    CheckboxRow("Autorização RGPD", cand.autorizacaoDados)
+                    CheckboxRow("Compromisso de Honra (Veracidade)", cand.truthfulnessDeclaration)
+                    CheckboxRow("Autorização RGPD", cand.dataAuthorization)
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- ASSINATURA (NOVO) ---
+                    // --- ASSINATURA ---
                     SectionTitle("Finalização")
-                    InfoRow("Data Submissão:", cand.dataAssinatura.ifEmpty { "N/A" })
-                    InfoRow("Assinado por:", cand.assinatura.ifEmpty { "N/A" })
+                    InfoRow("Data Submissão:", cand.signatureDate.ifEmpty { "N/A" })
+                    InfoRow("Assinado por:", cand.signature.ifEmpty { "N/A" })
 
                     Spacer(modifier = Modifier.height(30.dp))
 
                     // --- BOTÕES DE AÇÃO ---
-                    val isFinalState = cand.estado == EstadoCandidatura.ACEITE || cand.estado == EstadoCandidatura.REJEITADA
+                    // Usamos ACEITE e REJEITADA conforme o teu Enum
+                    val isFinalState = cand.state == CandidatureState.ACEITE || cand.state == CandidatureState.REJEITADA
 
                     if (isFinalState) {
                         Card(
@@ -245,7 +248,7 @@ fun CandidatureDetailsView(
                                     color = Color.DarkGray
                                 )
                                 Text(
-                                    text = "Estado atual: ${cand.estado.name}",
+                                    text = "Estado atual: ${cand.state.name}",
                                     fontSize = 12.sp,
                                     color = Color.Gray
                                 )
@@ -334,16 +337,16 @@ private fun CheckboxRow(label: String, checked: Boolean) {
 }
 
 @Composable
-private fun StatusBadgeDetails(estado: EstadoCandidatura) {
-    val (backgroundColor, contentColor) = when (estado) {
-        EstadoCandidatura.PENDENTE -> Pair(Color(0xFFFFF3E0), Color(0xFFEF6C00))
-        EstadoCandidatura.EM_ANALISE -> Pair(Color(0xFFE3F2FD), Color(0xFF1565C0))
-        EstadoCandidatura.ACEITE -> Pair(Color(0xFFE8F5E9), Color(0xFF2E7D32))
-        EstadoCandidatura.REJEITADA -> Pair(Color(0xFFFFEBEE), Color(0xFFC62828))
+private fun StatusBadgeDetails(state: CandidatureState) {
+    // AQUI GARANTIMOS QUE OS ESTADOS BATEM CERTO COM O TEU ENUM
+    val (backgroundColor, contentColor) = when (state) {
+        CandidatureState.PENDENTE -> Pair(Color(0xFFFFF3E0), Color(0xFFEF6C00))
+        CandidatureState.ACEITE -> Pair(Color(0xFFE8F5E9), Color(0xFF2E7D32))
+        CandidatureState.REJEITADA -> Pair(Color(0xFFFFEBEE), Color(0xFFC62828))
     }
     Surface(color = backgroundColor, shape = RoundedCornerShape(16.dp)) {
         Text(
-            text = estado.name.replace("_", " "),
+            text = state.name,
             color = contentColor,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
@@ -353,7 +356,7 @@ private fun StatusBadgeDetails(estado: EstadoCandidatura) {
 }
 
 @Composable
-private fun FileListItem(anexo: DocumentoAnexo, onClick: () -> Unit) {
+private fun FileListItem(attachment: DocumentAttachment, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -365,7 +368,7 @@ private fun FileListItem(anexo: DocumentoAnexo, onClick: () -> Unit) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Info, contentDescription = "Ficheiro", tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = anexo.nome.ifEmpty { "Documento sem nome" }, fontWeight = FontWeight.Medium)
+            Text(text = attachment.name.ifEmpty { "Documento sem nome" }, fontWeight = FontWeight.Medium)
         }
     }
 }
