@@ -190,7 +190,7 @@ class MainActivity : ComponentActivity() {
 
                                 val isCollaborator = document.getBoolean("isCollaborator") ?: false
                                 val isBeneficiary = document.getBoolean("isBeneficiary") ?: false
-                                val candidatureId = document.getString("candidature")
+                                val candidatureId = document.getString("candidatureId")
 
                                 if (isCollaborator) {
                                     navController.navigate("colaborador") {
