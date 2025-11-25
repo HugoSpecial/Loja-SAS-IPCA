@@ -61,7 +61,7 @@ class LoginViewModel : ViewModel() {
 
                             val isBeneficiary = userDoc.getBoolean("isBeneficiary") ?: false
                             val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false
-                            val candidatureId = userDoc.getString("candidature")
+                            val candidatureId = userDoc.getString("candidatureId")
 
                             uiState.value = uiState.value.copy(isLoading = false)
 

@@ -1,4 +1,4 @@
-package ipca.example.lojasas.models
+package ipca.project.lojasas.models
 
 import java.util.Date
 

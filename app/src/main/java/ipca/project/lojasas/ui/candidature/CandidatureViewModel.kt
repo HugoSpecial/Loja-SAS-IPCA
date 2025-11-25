@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
-import ipca.example.lojasas.models.Candidature
-import ipca.example.lojasas.models.DocumentAttachment
-import ipca.example.lojasas.models.CandidatureState // O Enum do modelo (PENDING, etc)
-import ipca.example.lojasas.models.Type // O Enum do modelo (STUDENT, EMPLOYEE)
+import ipca.project.lojasas.models.Candidature
+import ipca.project.lojasas.models.DocumentAttachment
+import ipca.project.lojasas.models.CandidatureState // O Enum do modelo (PENDING, etc)
+import ipca.project.lojasas.models.Type // O Enum do modelo (STUDENT, EMPLOYEE)
 import java.util.Date
 
 // Renomeei para UiState para evitar confusão com o Enum 'CandidatureState' do modelo

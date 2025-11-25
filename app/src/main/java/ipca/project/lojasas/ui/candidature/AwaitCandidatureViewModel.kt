@@ -12,7 +12,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import ipca.example.lojasas.models.Candidature
+import ipca.project.lojasas.models.Candidature
 
 // Estado da UI
 data class AwaitCandidatureState(

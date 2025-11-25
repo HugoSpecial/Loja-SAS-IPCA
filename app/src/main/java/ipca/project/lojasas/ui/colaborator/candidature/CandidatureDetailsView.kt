@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.example.lojasas.models.DocumentAttachment
-import ipca.example.lojasas.models.CandidatureState
+import ipca.project.lojasas.models.DocumentAttachment
+import ipca.project.lojasas.models.CandidatureState
 import java.io.File
 import java.io.FileOutputStream
 

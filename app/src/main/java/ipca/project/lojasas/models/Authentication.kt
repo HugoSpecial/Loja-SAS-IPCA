@@ -1,4 +1,4 @@
-package ipca.example.lojasas.models
+package ipca.project.lojasas.models
 
 data class Authentication (
     var docId: String? = null,

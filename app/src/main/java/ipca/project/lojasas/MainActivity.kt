@@ -14,10 +14,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,6 +38,7 @@ import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
 import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
 import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
+import ipca.project.lojasas.ui.colaborator.product.ProductView
 import ipca.project.lojasas.ui.colaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
@@ -66,7 +69,10 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         val showBeneficiaryBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
 
-                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador", "notification-collaborador","history-collaborador","profile-collaborator", "candidature_list", "candidature_details/{candidatureId}")
+                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador",
+                            "notification-collaborador","history-collaborador","profile-collaborator",
+                            "candidature_list", "candidature_details/{candidatureId}"
+                        )
 
                         if (showBeneficiaryBottomBar) {
                             BeneficiaryBottomBar(
@@ -104,6 +110,10 @@ class MainActivity : ComponentActivity() {
                         {
                             StockView(navController = navController)
                         }
+                        composable("product")
+                        {
+                            ProductView(navController = navController)
+                        }
                         composable("history-collaborador")
                         {
                             CollatorHistoryView(navController = navController)
@@ -111,6 +121,19 @@ class MainActivity : ComponentActivity() {
 
                         composable("candidature_list") {
                             CandidatureListView(navController = navController)
+                        }
+
+                        // Nao obriga que o id exista
+                        composable(
+                            route = "product?productId={productId}", // Rota aceita argumento opcional
+                            arguments = listOf(navArgument("productId") {
+                                nullable = true
+                                defaultValue = null
+                                type = NavType.StringType
+                            })
+                        ) { backStackEntry ->
+                            val productId = backStackEntry.arguments?.getString("productId")
+                            ProductView(navController, productId)
                         }
 
                         composable("candidature_details/{candidatureId}") { backStackEntry ->

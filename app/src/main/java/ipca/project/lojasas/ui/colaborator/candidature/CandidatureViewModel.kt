@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import ipca.example.lojasas.models.Candidature
-import ipca.example.lojasas.models.CandidatureState
+import ipca.project.lojasas.models.Candidature
+import ipca.project.lojasas.models.CandidatureState
 
 data class CandidatureListState(
     val candidaturas: List<Candidature> = emptyList(),

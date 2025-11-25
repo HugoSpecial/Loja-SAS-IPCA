@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import ipca.example.lojasas.models.Type // Atualizado de Tipo para Type
+import ipca.project.lojasas.models.Type // Atualizado de Tipo para Type
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

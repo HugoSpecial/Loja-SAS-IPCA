@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.example.lojasas.models.CandidatureState // Enum em Inglês
 import ipca.project.lojasas.R
+import ipca.project.lojasas.models.CandidatureState
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale

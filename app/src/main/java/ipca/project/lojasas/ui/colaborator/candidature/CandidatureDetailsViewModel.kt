@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
-import ipca.example.lojasas.models.Candidature
-import ipca.example.lojasas.models.CandidatureState
+import ipca.project.lojasas.models.Candidature
+import ipca.project.lojasas.models.CandidatureState
 import java.util.Date
 
 data class CandidatureDetailsState(

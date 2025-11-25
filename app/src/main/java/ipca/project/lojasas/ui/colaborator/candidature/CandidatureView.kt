@@ -14,8 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.example.lojasas.models.Candidature
-import ipca.example.lojasas.models.CandidatureState
+import ipca.project.lojasas.models.Candidature
+import ipca.project.lojasas.models.CandidatureState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
