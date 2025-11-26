@@ -1,5 +1,6 @@
 package ipca.project.lojasas.ui.colaborator.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,17 +10,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Star // Adicionei para as Campanhas
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import ipca.project.lojasas.R
 
 @Composable
 fun ColaboratorHomeView(
@@ -33,12 +37,28 @@ fun ColaboratorHomeView(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp)
+            .padding(horizontal = 24.dp) // Padding lateral geral
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.Start
     ) {
 
-        // --- CABEÇALHO ---
+        // --- CABEÇALHO (LOGÓTIPO) ---
+        // Removi o 'weight' e ajustei para ficar no topo com espaçamento
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 24.dp, bottom = 32.dp), // Espaço em cima e em baixo do logo
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_sas),
+                contentDescription = "Logótipo",
+                modifier = Modifier.height(55.dp), // Altura fixa para consistência
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        // --- TEXTOS DE BOAS-VINDAS ---
         Text(
             text = "Olá, ${state.userName}",
             fontSize = 32.sp,
@@ -62,7 +82,7 @@ fun ColaboratorHomeView(
             lineHeight = 14.sp
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
         // --- INFO CARD ---
         HomeInfoCard(
@@ -78,14 +98,12 @@ fun ColaboratorHomeView(
             color = MaterialTheme.colorScheme.primary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
         // --- BOTÃO 1: VER CANDIDATURAS ---
         Button(
-            onClick = {
-                navController.navigate("candidature_list")
-            },
+            onClick = { navController.navigate("candidature_list") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -112,17 +130,15 @@ fun ColaboratorHomeView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- BOTÃO 2: CRIAR DOAÇÃO (PRODUTO) ---
+        // --- BOTÃO 2: ADICIONAR DOAÇÃO ---
         Button(
-            onClick = {
-                navController.navigate("product") // Sem ID = Criar Novo
-            },
+            onClick = { navController.navigate("product") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary
+                containerColor = MaterialTheme.colorScheme.secondary // Cor de destaque (Laranja/Amarelo do tema?)
             )
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -143,11 +159,9 @@ fun ColaboratorHomeView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- BOTÃO 3: VER HISTÓRICO DE DOAÇÕES ---
+        // --- BOTÃO 3: HISTÓRICO ---
         OutlinedButton(
-            onClick = {
-                navController.navigate("donations_list")
-            },
+            onClick = { navController.navigate("donations_list") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -173,23 +187,20 @@ fun ColaboratorHomeView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- BOTÃO 4: GERIR CAMPANHAS (NOVO) ---
+        // --- BOTÃO 4: GERIR CAMPANHAS ---
         OutlinedButton(
-            onClick = {
-                // Certifica-te que tens esta rota "campaigns" no NavHost
-                navController.navigate("campaigns")
-            },
+            onClick = { navController.navigate("campaigns") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.tertiary
+                // Usei uma cor cinza escura ou a primária para manter consistência
+                contentColor = MaterialTheme.colorScheme.primary
             ),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary)
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Usei 'Star' para campanhas, mas podes mudar
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
@@ -203,7 +214,7 @@ fun ColaboratorHomeView(
             }
         }
 
-        Spacer(modifier = Modifier.height(50.dp))
+        Spacer(modifier = Modifier.height(50.dp)) // Espaço final para scroll
     }
 }
 
@@ -218,7 +229,9 @@ fun HomeInfoCard(title: String, count: String) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -229,13 +242,20 @@ fun HomeInfoCard(title: String, count: String) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Text(text = "Disponíveis para si", fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    text = "Disponíveis para si",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
             }
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(40.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = RoundedCornerShape(50))
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(50)
+                    )
             ) {
                 Text(
                     text = count,
