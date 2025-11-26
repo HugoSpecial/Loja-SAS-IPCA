@@ -34,7 +34,7 @@ sealed class BottomBarItemCollaborator(val title: String, val route: String) {
     object Home : BottomBarItemCollaborator("Início", "colaborador")
     object Notification : BottomBarItemCollaborator("Notificações", "notification-collaborador")
     object History : BottomBarItemCollaborator("Histórico ", "history-collaborador")
-    object Profile : BottomBarItemCollaborator("Perfil", "profile")
+    object Profile : BottomBarItemCollaborator("Perfil", "profile-collaborator")
 }
 
 @Composable

@@ -146,6 +146,12 @@ fun ColaboratorHomeView(
             onClick = {
                 // Certifica-te de adicionar esta rota no NavHost
                 navController.navigate("donations_list")
+        Spacer(modifier = Modifier.height(16.dp)) // Espaço entre botões
+
+        // BOTÃO 3
+        Button(
+            onClick = {
+                navController.navigate("campaigns")
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -166,6 +172,22 @@ fun ColaboratorHomeView(
                     text = "Ver Histórico de Doações",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary
+            )
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "campanhas",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         }

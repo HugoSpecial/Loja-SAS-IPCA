@@ -35,16 +35,23 @@ import ipca.project.lojasas.ui.benefeciary.home.HomeView
 import ipca.project.lojasas.ui.benefeciary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.benefeciary.notifications.NotificationView
 import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
-import ipca.project.lojasas.ui.colaborator.donation.DonationListView
+import ipca.project.lojasas.ui.colaborator.campaigns.CampaignDetailsView
+import ipca.project.lojasas.ui.colaborator.campaigns.CampaignsView
+import ipca.project.lojasas.ui.colaborator.campaigns.NewCampaignView
 import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
 import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
-import ipca.project.lojasas.ui.colaborator.donation.DonationView
+import ipca.project.lojasas.ui.colaborator.product.ProductView
+import ipca.project.lojasas.ui.colaborator.profile.ProfileCollaboratorView
 import ipca.project.lojasas.ui.colaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
+// IMPORTANTE: Importa a tua SplashView aqui
+import ipca.project.lojasas.ui.components.SplashView
 import ipca.project.lojasas.ui.theme.LojaSASTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.getValue
 
 const val TAG = "LojaSAS-IPCA"
 
@@ -59,7 +66,7 @@ class MainActivity : ComponentActivity() {
         setContent {
 
             val navController = rememberNavController()
-            val coroutineScope = rememberCoroutineScope()
+            // Removi o 'coroutineScope' aqui porque o LaunchedEffect já tem o seu próprio scope
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
@@ -102,10 +109,14 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = "login",
+                        startDestination = "splash",
                         modifier = Modifier.padding(innerPadding)
                     ) {
-                        // --- LOGIN ---
+
+                        composable("splash") {
+                            SplashView()
+                        }
+
                         composable("login") {
                             LoginView(navController = navController)
                         }
@@ -127,6 +138,42 @@ class MainActivity : ComponentActivity() {
                             StockView(navController = navController)
                         }
 
+                        composable("profile-collaborator") {
+                            ProfileCollaboratorView(navController = navController)
+                        }
+
+                        composable("colaborador") {
+                            ColaboratorHomeView(navController = navController)
+                        }
+                        composable("campaigns") {
+                            CampaignsView(navController = navController)
+                        }
+                        composable("new-campaign") {
+                            NewCampaignView(navController = navController)
+                        }
+                        composable(
+                            route = "campaign_details/{campaignId}",
+                            arguments = listOf(navArgument("campaignId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val campaignId = backStackEntry.arguments?.getString("campaignId")
+                            if (campaignId != null) {
+                                CampaignDetailsView(
+                                    navController = navController,
+                                    campaignId = campaignId
+                                )
+                            }
+                        }
+
+
+                        composable("notification-collaborador") {
+                            ColaboratorNotificationView(navController = navController)
+                        }
+                        composable("stock") {
+                            StockView(navController = navController)
+                        }
+                        composable("product") {
+                            ProductView(navController = navController)
+                        }
                         composable("history-collaborador") {
                             CollatorHistoryView(navController = navController)
                         }
@@ -191,47 +238,54 @@ class MainActivity : ComponentActivity() {
                         composable("profile") {
                             ProfileView(navController = navController)
                         }
+
+                        composable("profile-collaborator") {
+                            ProfileView(navController = navController)
+                        }
                     }
                 }
 
-                // --- Lógica de Redirecionamento Automático ao Abrir ---
+                // <--- LÓGICA DE VERIFICAÇÃO INICIAL --->
                 LaunchedEffect(Unit) {
+                    // Pequeno delay opcional para ver o splash (se o telemóvel for muito rápido)
+                    // delay(1000)
+
                     val user = Firebase.auth.currentUser
 
                     if (user != null) {
-                        coroutineScope.launch {
-                            try {
-                                val db = FirebaseFirestore.getInstance()
-                                val document = db.collection("users").document(user.uid).get().await()
+                        try {
+                            val db = FirebaseFirestore.getInstance()
+                            val document = db.collection("users").document(user.uid).get().await()
 
-                                val isCollaborator = document.getBoolean("isCollaborator") ?: false
-                                val isBeneficiary = document.getBoolean("isBeneficiary") ?: false
-                                val candidatureId = document.getString("candidatureId")
+                            val isCollaborator = document.getBoolean("isCollaborator") ?: false
+                            val isBeneficiary = document.getBoolean("isBeneficiary") ?: false
+                            val candidatureId = document.getString("candidatureId")
 
-                                if (isCollaborator) {
-                                    navController.navigate("colaborador") {
-                                        popUpTo("login") { inclusive = true }
-                                    }
-                                }
-                                else if (isBeneficiary) {
-                                    navController.navigate("home") {
-                                        popUpTo("login") { inclusive = true }
-                                    }
-                                }
-                                else {
-                                    if (!candidatureId.isNullOrEmpty()) {
-                                        navController.navigate("await-candidature") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                    } else {
-                                        navController.navigate("candidature") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
+                            // Decide o destino
+                            val destination = if (isCollaborator) {
+                                "colaborador"
+                            } else if (isBeneficiary) {
+                                "home"
+                            } else {
+                                if (!candidatureId.isNullOrEmpty()) "await-candidature" else "candidature"
                             }
+
+                            // Navega para a página certa e remove o "splash" da pilha
+                            navController.navigate(destination) {
+                                popUpTo("splash") { inclusive = true }
+                            }
+
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            // Se der erro (ex: sem net), manda para login
+                            navController.navigate("login") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        }
+                    } else {
+                        // Se NÃO estiver logado, manda para o Login
+                        navController.navigate("login") {
+                            popUpTo("splash") { inclusive = true }
                         }
                     }
                 }
