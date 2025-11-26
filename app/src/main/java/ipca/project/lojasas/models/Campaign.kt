@@ -14,5 +14,5 @@ data class Campaign(
     var startDate: Date = Date(),        // Adicionado = Date()
     var endDate: Date = Date(),          // Adicionado = Date()
     var campaignType: CampaignType = CampaignType.INTERNO, // Adicionado valor padrão
-    var donations: MutableList<Donation> = mutableListOf()
+    var donations: List<String> = emptyList()
 )

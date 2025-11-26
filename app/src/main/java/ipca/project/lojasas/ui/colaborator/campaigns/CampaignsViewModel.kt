@@ -28,7 +28,7 @@ class CampaignsViewModel : ViewModel() {
         uiState.value = uiState.value.copy(isLoading = true)
         val db = FirebaseFirestore.getInstance()
 
-        listener = db.collection("campaigns") // <--- CONFIRMA SE O NOME É ESTE
+        listener = db.collection("campaigns")
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     Log.e("CampaignsViewModel", "Erro de conexão: ${error.message}")

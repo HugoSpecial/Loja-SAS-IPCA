@@ -10,6 +10,7 @@ import android.util.Base64
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.FieldValue // <--- IMPORTANTE
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Campaign
 import ipca.project.lojasas.models.Donation
@@ -20,25 +21,17 @@ import java.util.Calendar
 import java.util.Date
 
 data class DonationState(
-    // Campos do Produto Atual (Input)
     var currentName: String = "",
     var currentQuantity: String = "",
     var currentValidity: Date? = null,
     var currentImageBase64: String? = null,
-
-    // Lista de Produtos já adicionados à doação
     var productsToAdd: MutableList<Product> = mutableListOf(),
-
-    // Dados da Doação (Geral)
     var isAnonymous: Boolean = false,
     var donorName: String = "",
     var selectedCampaign: Campaign? = null,
-
-    // Listas Auxiliares
     var activeCampaigns: List<Campaign> = emptyList(),
     var existingProducts: List<Product> = emptyList(),
     var filteredProducts: List<Product> = emptyList(),
-
     var isLoading: Boolean = false,
     var error: String? = null,
     var isSuccess: Boolean = false
@@ -76,7 +69,23 @@ class DonationViewModel : ViewModel() {
         }
     }
 
-    // --- INPUTS PRODUTO ATUAL ---
+    fun loadProduct(productId: String?) {
+        if (productId.isNullOrEmpty()) return
+        uiState.value = uiState.value.copy(isLoading = true)
+        db.collection("products").document(productId).get().addOnSuccessListener { doc ->
+            if (doc.exists()) {
+                val item = doc.toObject(Product::class.java)
+                uiState.value = uiState.value.copy(
+                    currentName = item?.name ?: "",
+                    currentImageBase64 = item?.imageUrl,
+                    isLoading = false
+                )
+            } else {
+                uiState.value = uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
     fun onNameChange(text: String) {
         val filtered = if (text.isBlank()) emptyList() else {
             uiState.value.existingProducts.filter { it.name.contains(text, ignoreCase = true) }
@@ -109,34 +118,24 @@ class DonationViewModel : ViewModel() {
         } catch (e: Exception) { }
     }
 
-    // --- ADICIONAR PRODUTO À LISTA TEMPORÁRIA ---
     fun addProductToList() {
         val state = uiState.value
         if (state.currentName.isBlank() || state.currentQuantity.isBlank()) {
-            uiState.value = uiState.value.copy(error = "Preencha nome e quantidade do produto.")
+            uiState.value = uiState.value.copy(error = "Preencha nome e quantidade.")
             return
         }
-
         val qty = state.currentQuantity.toInt()
         val validDate = state.currentValidity ?: Date()
-
         val newProduct = Product(
             name = state.currentName,
             imageUrl = state.currentImageBase64 ?: "",
             batches = mutableListOf(ProductBatch(validity = validDate, quantity = qty))
         )
-
-        // Adiciona à lista e limpa os campos
         val currentList = state.productsToAdd.toMutableList()
         currentList.add(newProduct)
-
         uiState.value = uiState.value.copy(
             productsToAdd = currentList,
-            currentName = "",
-            currentQuantity = "",
-            currentValidity = null,
-            currentImageBase64 = null,
-            error = null
+            currentName = "", currentQuantity = "", currentValidity = null, currentImageBase64 = null, error = null
         )
     }
 
@@ -148,31 +147,16 @@ class DonationViewModel : ViewModel() {
         }
     }
 
-    // --- INPUTS GERAIS ---
     fun onCampaignSelected(campaign: Campaign) { uiState.value = uiState.value.copy(selectedCampaign = campaign) }
     fun onAnonymousChange(isAnonymous: Boolean) { uiState.value = uiState.value.copy(isAnonymous = isAnonymous, donorName = if(isAnonymous) "" else uiState.value.donorName) }
     fun onDonorNameChange(text: String) { uiState.value = uiState.value.copy(donorName = text) }
 
-    // --- CARREGAR DADOS SE VIER DO STOCK (Opcional) ---
-    fun loadProduct(productId: String?) {
-        if (productId.isNullOrEmpty()) return
-        db.collection("products").document(productId).get().addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                val item = doc.toObject(Product::class.java)
-                uiState.value = uiState.value.copy(
-                    currentName = item?.name ?: "",
-                    currentImageBase64 = item?.imageUrl
-                )
-            }
-        }
-    }
-
-    // --- GUARDAR TUDO ---
+    // --- LÓGICA DE GUARDAR (Atualizada) ---
     fun saveDonation(onSuccess: () -> Unit) {
         val state = uiState.value
 
         if (state.productsToAdd.isEmpty()) {
-            uiState.value = uiState.value.copy(error = "Adicione pelo menos um produto à doação.")
+            uiState.value = uiState.value.copy(error = "Adicione produtos à lista.")
             return
         }
         if (!state.isAnonymous && state.donorName.isBlank()) {
@@ -193,9 +177,23 @@ class DonationViewModel : ViewModel() {
             campaignId = state.selectedCampaign?.docId
         )
 
+        // 1. Criar a Doação
         db.collection("donations").add(donation)
-            .addOnSuccessListener {
-                // Atualizar Stock de CADA produto na lista
+            .addOnSuccessListener { docRef ->
+                val newDonationId = docRef.id
+
+                // 2. SE TIVER CAMPANHA, ATUALIZAR A LISTA DA CAMPANHA NA BD
+                val campaignId = state.selectedCampaign?.docId
+                if (!campaignId.isNullOrEmpty()) {
+                    db.collection("campaigns").document(campaignId)
+                        .update("donations", FieldValue.arrayUnion(newDonationId))
+                        .addOnFailureListener { e ->
+                            // Apenas logar o erro, não impede o sucesso da doação
+                            println("Erro ao atualizar campanha: ${e.message}")
+                        }
+                }
+
+                // 3. Atualizar Stock de Produtos
                 updateStockForList(state.productsToAdd, onSuccess)
             }
             .addOnFailureListener {
@@ -203,14 +201,9 @@ class DonationViewModel : ViewModel() {
             }
     }
 
-    // Função recursiva ou iterativa para atualizar vários produtos
     private fun updateStockForList(products: List<Product>, onComplete: () -> Unit) {
         var processedCount = 0
-
-        if (products.isEmpty()) {
-            onComplete()
-            return
-        }
+        if (products.isEmpty()) { onComplete(); return }
 
         for (product in products) {
             val qty = product.batches[0].quantity
@@ -218,7 +211,6 @@ class DonationViewModel : ViewModel() {
             val img = product.imageUrl
             val name = product.name
 
-            // Chama a função de update individual
             updateSingleProductStock(name, qty, date, img) {
                 processedCount++
                 if (processedCount == products.size) {
@@ -246,8 +238,7 @@ class DonationViewModel : ViewModel() {
                     if (!found) batches.add(ProductBatch(validity = date, quantity = qty))
 
                     val updates = mutableMapOf<String, Any>("batches" to batches)
-                    if (!img.isNullOrEmpty()) updates["imageUrl"] = img // Atualiza foto se houver nova
-
+                    if (!img.isNullOrEmpty()) updates["imageUrl"] = img
                     doc.reference.update(updates).addOnCompleteListener { onDone() }
                 } else {
                     val newBatch = ProductBatch(validity = date, quantity = qty)
@@ -257,7 +248,7 @@ class DonationViewModel : ViewModel() {
             }
     }
 
-    // (Funções utilitárias isSameDay, scale, base64 mantêm-se iguais)
+    // --- Helpers ---
     private fun isSameDay(date1: Date?, date2: Date?): Boolean {
         if (date1 == null && date2 == null) return true
         if (date1 == null || date2 == null) return false
@@ -265,7 +256,14 @@ class DonationViewModel : ViewModel() {
         val cal2 = Calendar.getInstance().apply { time = date2 }
         return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) && cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
-    private fun scaleBitmapDown(bitmap: Bitmap, maxDimension: Int): Bitmap { return bitmap } // Simplificado aqui
+    private fun scaleBitmapDown(bitmap: Bitmap, maxDimension: Int): Bitmap {
+        val originalWidth = bitmap.width; val originalHeight = bitmap.height
+        var resizedWidth = maxDimension; var resizedHeight = maxDimension
+        if (originalHeight > originalWidth) { resizedHeight = maxDimension; resizedWidth = (resizedHeight * originalWidth.toFloat() / originalHeight.toFloat()).toInt() }
+        else if (originalWidth > originalHeight) { resizedWidth = maxDimension; resizedHeight = (resizedWidth * originalHeight.toFloat() / originalWidth.toFloat()).toInt() }
+        else { if (originalHeight < maxDimension) return bitmap }
+        return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false)
+    }
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val outputStream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)

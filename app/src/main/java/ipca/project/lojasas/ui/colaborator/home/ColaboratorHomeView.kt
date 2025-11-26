@@ -7,8 +7,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DateRange // Icon para histórico
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Star // Adicionei para as Campanhas
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ fun ColaboratorHomeView(
         horizontalAlignment = Alignment.Start
     ) {
 
+        // --- CABEÇALHO ---
         Text(
             text = "Olá, ${state.userName}",
             fontSize = 32.sp,
@@ -79,7 +81,7 @@ fun ColaboratorHomeView(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // BOTÃO 1: VER CANDIDATURAS
+        // --- BOTÃO 1: VER CANDIDATURAS ---
         Button(
             onClick = {
                 navController.navigate("candidature_list")
@@ -110,10 +112,10 @@ fun ColaboratorHomeView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // BOTÃO 2: CRIAR DOAÇÃO (PRODUTO)
+        // --- BOTÃO 2: CRIAR DOAÇÃO (PRODUTO) ---
         Button(
             onClick = {
-                navController.navigate("product") // product sem ID = Criar Novo
+                navController.navigate("product") // Sem ID = Criar Novo
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -141,17 +143,10 @@ fun ColaboratorHomeView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // BOTÃO 3: VER LISTA DE DOAÇÕES (NOVO)
+        // --- BOTÃO 3: VER HISTÓRICO DE DOAÇÕES ---
         OutlinedButton(
             onClick = {
-                // Certifica-te de adicionar esta rota no NavHost
                 navController.navigate("donations_list")
-        Spacer(modifier = Modifier.height(16.dp)) // Espaço entre botões
-
-        // BOTÃO 3
-        Button(
-            onClick = {
-                navController.navigate("campaigns")
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -172,22 +167,38 @@ fun ColaboratorHomeView(
                     text = "Ver Histórico de Doações",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary
-            )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- BOTÃO 4: GERIR CAMPANHAS (NOVO) ---
+        OutlinedButton(
+            onClick = {
+                // Certifica-te que tens esta rota "campaigns" no NavHost
+                navController.navigate("campaigns")
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.tertiary
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Usei 'Star' para campanhas, mas podes mudar
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = Color.White,
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 Text(
-                    text = "campanhas",
+                    text = "Gerir Campanhas",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

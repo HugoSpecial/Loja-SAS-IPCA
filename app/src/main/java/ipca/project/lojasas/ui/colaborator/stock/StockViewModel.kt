@@ -5,10 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import ipca.project.lojasas.models.StockItem
+import ipca.project.lojasas.models.Product
 
 data class StockState(
-    val items: List<StockItem> = emptyList(),
+    val items: List<Product> = emptyList(), // Lista de Produtos
     val isLoading: Boolean = false,
     val error: String? = null,
     val searchText: String = ""
@@ -35,15 +35,14 @@ class StockViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                val stockList = mutableListOf<StockItem>()
+                val stockList = mutableListOf<Product>()
 
                 for (doc in value?.documents ?: emptyList()) {
                     try {
-                        // Converte o documento diretamente para o objeto StockItem
-                        // Isto funciona automaticamente se os nomes na BD baterem certo (name, imageUrl, batches)
-                        val item = doc.toObject(StockItem::class.java)
+                        // Converte diretamente para o objeto Product
+                        val item = doc.toObject(Product::class.java)
                         if (item != null) {
-                            item.docId = doc.id
+                            item.docId = doc.id // Guarda o ID do documento
                             stockList.add(item)
                         }
                     } catch (e: Exception) {
@@ -63,7 +62,7 @@ class StockViewModel : ViewModel() {
         uiState.value = uiState.value.copy(searchText = text)
     }
 
-    fun getFilteredItems(): List<StockItem> {
+    fun getFilteredItems(): List<Product> {
         val query = uiState.value.searchText.lowercase()
         return if (query.isEmpty()) {
             uiState.value.items
@@ -74,17 +73,12 @@ class StockViewModel : ViewModel() {
         }
     }
 
+    // --- APAGAR PRODUTO ---
     fun deleteProduct(docId: String, onSuccess: () -> Unit) {
         if (docId.isEmpty()) return
 
-        db.collection("products")
-            .document(docId)
-            .delete()
-            .addOnSuccessListener {
-                onSuccess()
-            }
-            .addOnFailureListener { e ->
-                Log.e("StockViewModel", "Erro ao apagar", e)
-            }
+        db.collection("products").document(docId).delete()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { e -> Log.e("StockViewModel", "Erro ao apagar", e) }
     }
 }

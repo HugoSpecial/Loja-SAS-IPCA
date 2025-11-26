@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -38,20 +37,18 @@ import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
 import ipca.project.lojasas.ui.colaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.colaborator.campaigns.CampaignsView
 import ipca.project.lojasas.ui.colaborator.campaigns.NewCampaignView
+import ipca.project.lojasas.ui.colaborator.donation.DonationListView
+import ipca.project.lojasas.ui.colaborator.donation.DonationView
 import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
 import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
-import ipca.project.lojasas.ui.colaborator.product.ProductView
 import ipca.project.lojasas.ui.colaborator.profile.ProfileCollaboratorView
 import ipca.project.lojasas.ui.colaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
-// IMPORTANTE: Importa a tua SplashView aqui
 import ipca.project.lojasas.ui.components.SplashView
 import ipca.project.lojasas.ui.theme.LojaSASTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.getValue
 
 const val TAG = "LojaSAS-IPCA"
 
@@ -66,8 +63,6 @@ class MainActivity : ComponentActivity() {
         setContent {
 
             val navController = rememberNavController()
-            // Removi o 'coroutineScope' aqui porque o LaunchedEffect já tem o seu próprio scope
-
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
@@ -75,35 +70,24 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        // Define em que ecrãs a barra do Beneficiário aparece
                         val showBeneficiaryBottomBar = currentRoute in listOf(
-                            "home",
-                            "notification",
-                            "history",
-                            "profile"
+                            "home", "notification", "history", "profile"
                         )
 
-                        // Define em que ecrãs a barra do Colaborador aparece
                         val showCollaboratorBottomBar = currentRoute in listOf(
                             "colaborador",
-                            "stock", // Adicionado para aparecer no stock
+                            "stock",
                             "notification-collaborador",
                             "history-collaborador",
                             "profile-collaborator"
                         )
 
                         if (showBeneficiaryBottomBar) {
-                            BeneficiaryBottomBar(
-                                navController = navController,
-                                currentRoute = currentRoute,
-                            )
+                            BeneficiaryBottomBar(navController = navController, currentRoute = currentRoute)
                         }
 
                         if (showCollaboratorBottomBar) {
-                            CollaboratorBottomBar(
-                                navController = navController,
-                                currentRoute = currentRoute,
-                            )
+                            CollaboratorBottomBar(navController = navController, currentRoute = currentRoute)
                         }
                     }
                 ) { innerPadding ->
@@ -113,79 +97,41 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     ) {
 
-                        composable("splash") {
-                            SplashView()
-                        }
-
-                        composable("login") {
-                            LoginView(navController = navController)
-                        }
+                        // --- ECRA INICIAL ---
+                        composable("splash") { SplashView() }
+                        composable("login") { LoginView(navController = navController) }
 
                         // --- ROTAS COLABORADOR ---
-                        composable("colaborador") {
-                            ColaboratorHomeView(navController = navController)
-                        }
+                        composable("colaborador") { ColaboratorHomeView(navController = navController) }
+                        composable("notification-collaborador") { ColaboratorNotificationView(navController = navController) }
+                        composable("donations_list") { DonationListView(navController = navController) }
+                        composable("stock") { StockView(navController = navController) }
+                        composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) } // Usa a view correta
+                        composable("history-collaborador") { CollatorHistoryView(navController = navController) }
 
-                        composable("notification-collaborador") {
-                            ColaboratorNotificationView(navController = navController)
-                        }
-
-                        composable("donations_list") {
-                            DonationListView(navController = navController)
-                        }
-
-                        composable("stock") {
-                            StockView(navController = navController)
-                        }
-
-                        composable("profile-collaborator") {
-                            ProfileCollaboratorView(navController = navController)
-                        }
-
-                        composable("colaborador") {
-                            ColaboratorHomeView(navController = navController)
-                        }
-                        composable("campaigns") {
-                            CampaignsView(navController = navController)
-                        }
-                        composable("new-campaign") {
-                            NewCampaignView(navController = navController)
-                        }
+                        // Campanhas
+                        composable("campaigns") { CampaignsView(navController = navController) }
+                        composable("new-campaign") { NewCampaignView(navController = navController) }
                         composable(
                             route = "campaign_details/{campaignId}",
                             arguments = listOf(navArgument("campaignId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val campaignId = backStackEntry.arguments?.getString("campaignId")
                             if (campaignId != null) {
-                                CampaignDetailsView(
-                                    navController = navController,
-                                    campaignId = campaignId
-                                )
+                                CampaignDetailsView(navController = navController, campaignId = campaignId)
                             }
                         }
 
-
-                        composable("notification-collaborador") {
-                            ColaboratorNotificationView(navController = navController)
-                        }
-                        composable("stock") {
-                            StockView(navController = navController)
-                        }
-                        composable("product") {
-                            ProductView(navController = navController)
-                        }
-                        composable("history-collaborador") {
-                            CollatorHistoryView(navController = navController)
+                        // Candidaturas
+                        composable("candidature_list") { CandidatureListView(navController = navController) }
+                        composable("candidature_details/{candidatureId}") { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("candidatureId")
+                            if (id != null) {
+                                CandidatureDetailsView(navController = navController, candidatureId = id)
+                            }
                         }
 
-                        composable("profile-collaborator") {
-                            ProfileView(navController = navController)
-                        }
-
-                        composable("candidature_list") {
-                            CandidatureListView(navController = navController)
-                        }
-
+                        // Produtos / Doações
                         composable(
                             route = "product?productId={productId}",
                             arguments = listOf(navArgument("productId") {
@@ -195,60 +141,23 @@ class MainActivity : ComponentActivity() {
                             })
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId")
-
-                            // CORREÇÃO: Passa o ID para a View
                             DonationView(navController, productId)
                         }
 
-                        composable("candidature_details/{candidatureId}") { backStackEntry ->
-                            val id = backStackEntry.arguments?.getString("candidatureId")
-                            if (id != null) {
-                                CandidatureDetailsView(
-                                    navController = navController,
-                                    candidatureId = id
-                                )
-                            }
-                        }
-
                         // --- ROTAS BENEFICIÁRIO ---
-                        composable("candidature") {
-                            CandidatureView(navController = navController)
-                        }
-
-                        composable("await-candidature") {
-                            AwaitCandidatureView(navController = navController)
-                        }
-
-                        composable("home") {
-                            HomeView(navController = navController)
-                        }
-
-                        composable("notification") {
-                            NotificationView(navController = navController)
-                        }
-
-                        composable("newbasket") {
-                            NewBasketView(navController = navController)
-                        }
-
-                        composable("history") {
-                            HistoryView(navController = navController)
-                        }
-
-                        composable("profile") {
-                            ProfileView(navController = navController)
-                        }
-
-                        composable("profile-collaborator") {
-                            ProfileView(navController = navController)
-                        }
+                        composable("candidature") { CandidatureView(navController = navController) }
+                        composable("await-candidature") { AwaitCandidatureView(navController = navController) }
+                        composable("home") { HomeView(navController = navController) }
+                        composable("notification") { NotificationView(navController = navController) }
+                        composable("newbasket") { NewBasketView(navController = navController) }
+                        composable("history") { HistoryView(navController = navController) }
+                        composable("profile") { ProfileView(navController = navController) }
                     }
                 }
 
-                // <--- LÓGICA DE VERIFICAÇÃO INICIAL --->
+                // <--- LÓGICA DE VERIFICAÇÃO INICIAL (SPLASH) --->
                 LaunchedEffect(Unit) {
-                    // Pequeno delay opcional para ver o splash (se o telemóvel for muito rápido)
-                    // delay(1000)
+                    delay(1000) // Pequeno delay para o splash ser visível
 
                     val user = Firebase.auth.currentUser
 
@@ -261,7 +170,6 @@ class MainActivity : ComponentActivity() {
                             val isBeneficiary = document.getBoolean("isBeneficiary") ?: false
                             val candidatureId = document.getString("candidatureId")
 
-                            // Decide o destino
                             val destination = if (isCollaborator) {
                                 "colaborador"
                             } else if (isBeneficiary) {
@@ -270,20 +178,17 @@ class MainActivity : ComponentActivity() {
                                 if (!candidatureId.isNullOrEmpty()) "await-candidature" else "candidature"
                             }
 
-                            // Navega para a página certa e remove o "splash" da pilha
                             navController.navigate(destination) {
                                 popUpTo("splash") { inclusive = true }
                             }
 
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            // Se der erro (ex: sem net), manda para login
                             navController.navigate("login") {
                                 popUpTo("splash") { inclusive = true }
                             }
                         }
                     } else {
-                        // Se NÃO estiver logado, manda para o Login
                         navController.navigate("login") {
                             popUpTo("splash") { inclusive = true }
                         }

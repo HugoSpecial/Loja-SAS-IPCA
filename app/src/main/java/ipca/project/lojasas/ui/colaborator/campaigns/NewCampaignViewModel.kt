@@ -2,7 +2,7 @@ package ipca.project.lojasas.ui.colaborator.campaigns
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.google.firebase.auth.FirebaseAuth // <--- Importante
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import ipca.project.lojasas.models.CampaignType
 import java.util.Date
@@ -68,7 +68,8 @@ class NewCampaignViewModel : ViewModel() {
             "startDate" to state.startDate,
             "endDate" to state.endDate,
             "campaignType" to state.campaignType.name,
-            "collaboratorId" to currentUserId
+            "collaboratorId" to currentUserId,
+            "donations" to emptyList<String>()
         )
 
         db.collection("campaigns")

@@ -1,5 +1,8 @@
 package ipca.project.lojasas.ui.colaborator.stock
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,19 +22,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.project.lojasas.models.StockItem
+import ipca.project.lojasas.models.Product // <--- IMPORTANTE: Usa o teu modelo Product
 import java.text.SimpleDateFormat
 import java.util.Locale
-import android.graphics.BitmapFactory
-import android.util.Base64
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,17 +42,17 @@ fun StockView(
     val state = viewModel.uiState.value
     val filteredItems = viewModel.getFilteredItems()
 
-    var selectedItem by remember { mutableStateOf<StockItem?>(null) }
+    // Agora usamos Product em vez de StockItem
+    var selectedItem by remember { mutableStateOf<Product?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    // DIÁLOGO DE DETALHES / EDIÇÃO
+    // --- DIÁLOGO DE DETALHES ---
     if (selectedItem != null) {
         ProductBatchesDialog(
             item = selectedItem!!,
             onDismiss = { selectedItem = null },
             onEdit = {
                 val id = selectedItem!!.docId
-                // Navega enviando o ID para editar
                 navController.navigate("product?productId=$id")
                 selectedItem = null
             },
@@ -60,7 +60,7 @@ fun StockView(
         )
     }
 
-    // DIÁLOGO DE CONFIRMAÇÃO APAGAR
+    // --- DIÁLOGO DE APAGAR ---
     if (showDeleteConfirm && selectedItem != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -97,10 +97,7 @@ fun StockView(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    // ROTA PARA CRIAR: Não envia ID (productId fica null)
-                    navController.navigate("product")
-                },
+                onClick = { navController.navigate("product") }, // Criar Novo
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
             ) {
@@ -116,6 +113,7 @@ fun StockView(
                 .background(Color(0xFFFAFAFA))
                 .padding(16.dp)
         ) {
+            // Pesquisa
             OutlinedTextField(
                 value = state.searchText,
                 onValueChange = { viewModel.onSearchTextChange(it) },
@@ -158,7 +156,10 @@ fun StockView(
 }
 
 @Composable
-fun ProductCard(item: StockItem, onClick: () -> Unit) {
+fun ProductCard(item: Product, onClick: () -> Unit) {
+    // Calcula o total aqui (pois o Product pode não ter o método no modelo)
+    val totalQuantity = item.batches.sumOf { it.quantity }
+
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -168,6 +169,7 @@ fun ProductCard(item: StockItem, onClick: () -> Unit) {
             .clickable { onClick() }
     ) {
         Column {
+            // Imagem
             Box(
                 modifier = Modifier.fillMaxWidth().height(120.dp).background(Color.LightGray)
             ) {
@@ -188,15 +190,32 @@ fun ProductCard(item: StockItem, onClick: () -> Unit) {
                 }
             }
 
+            // Info
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(text = item.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = item.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(text = "Total: ", fontSize = 12.sp, color = Color.Gray)
-                    Text(text = "${item.getTotalQuantity()} un", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        text = "$totalQuantity un",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
+
                 if (item.batches.size > 1) {
-                    Text(text = "${item.batches.size} validades", fontSize = 10.sp, color = Color.Blue)
+                    Text(
+                        text = "${item.batches.size} validades",
+                        fontSize = 10.sp,
+                        color = Color.Blue
+                    )
                 }
             }
         }
@@ -205,7 +224,7 @@ fun ProductCard(item: StockItem, onClick: () -> Unit) {
 
 @Composable
 fun ProductBatchesDialog(
-    item: StockItem,
+    item: Product, // Recebe Product
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDeleteRequest: () -> Unit
@@ -218,10 +237,21 @@ fun ProductBatchesDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = item.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, maxLines = 1, modifier = Modifier.weight(1f))
+                Text(
+                    text = item.name,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
+                )
+
                 Row {
-                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray) }
-                    IconButton(onClick = onDeleteRequest) { Icon(Icons.Default.Delete, contentDescription = "Apagar", tint = Color.Red) }
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray)
+                    }
+                    IconButton(onClick = onDeleteRequest) {
+                        Icon(Icons.Default.Delete, contentDescription = "Apagar", tint = Color.Red)
+                    }
                 }
             }
         },
@@ -231,17 +261,40 @@ fun ProductBatchesDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Detalhes por validade:", fontSize = 14.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(8.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 300.dp)) {
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.heightIn(max = 300.dp)
+                ) {
+                    // Ordena os lotes pela data
                     items(item.batches.sortedBy { it.validity }) { batch ->
-                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)), modifier = Modifier.fillMaxWidth()) {
-                            Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Column {
                                     Text("Validade", fontSize = 10.sp, color = Color.Gray)
-                                    val dateStr = batch.validity?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Sem data"
+                                    val dateStr = batch.validity?.let {
+                                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
+                                    } ?: "Sem data"
                                     Text(dateStr, fontWeight = FontWeight.Bold)
                                 }
-                                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
-                                    Text(text = "${batch.quantity} un", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = "${batch.quantity} un",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
                                 }
                             }
                         }
@@ -249,6 +302,10 @@ fun ProductBatchesDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fechar") } }
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar")
+            }
+        }
     )
 }
