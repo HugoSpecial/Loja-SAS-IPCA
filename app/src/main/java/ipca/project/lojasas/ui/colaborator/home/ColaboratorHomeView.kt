@@ -139,6 +139,37 @@ fun ColaboratorHomeView(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp)) // Espaço entre botões
+
+        // BOTÃO 3
+        Button(
+            onClick = {
+                navController.navigate("campaigns")
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary
+            )
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "campanhas",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(50.dp))
     }
 }

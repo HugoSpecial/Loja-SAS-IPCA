@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import ipca.project.lojasas.TAG
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import androidx.compose.runtime.getValue
 
 data class LoginState (
     var email : String? = null,
@@ -35,58 +36,69 @@ class LoginViewModel : ViewModel() {
         uiState.value = uiState.value.copy(password = password)
     }
 
-    suspend fun isBeneficiario(uid: String): Boolean? {
-        val doc = FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(uid)
-            .get()
-            .await()
-
-        return doc.getBoolean("isBeneficiary")
-    }
-
     fun login(onNavigate: (String) -> Unit) {
-        uiState.value = uiState.value.copy(isLoading = true)
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseFirestore.getInstance()
+        // 1. Validação de segurança ANTES de chamar o Firebase
+        val email = uiState.value.email
+        val password = uiState.value.password
 
-        auth.signInWithEmailAndPassword(uiState.value.email!!, uiState.value.password!!)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val uid = auth.currentUser?.uid ?: return@addOnCompleteListener
+        if (email.isNullOrBlank() || password.isNullOrBlank()) {
+            uiState.value = uiState.value.copy(error = "Preencha todos os campos.")
+            return
+        }
 
-                    viewModelScope.launch {
-                        try {
-                            val userDoc = db.collection("users").document(uid).get().await()
+        // Inicia loading
+        uiState.value = uiState.value.copy(isLoading = true, error = null)
 
-                            val isBeneficiary = userDoc.getBoolean("isBeneficiary") ?: false
-                            val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false
-                            val candidatureId = userDoc.getString("candidatureId")
+        viewModelScope.launch {
+            val auth = FirebaseAuth.getInstance()
+            val db = FirebaseFirestore.getInstance()
 
-                            uiState.value = uiState.value.copy(isLoading = false)
+            try {
+                // 2. Autenticação (Login) usando await()
+                // Isto suspende a execução até o login terminar, sem bloquear a thread principal
+                auth.signInWithEmailAndPassword(email, password).await()
 
-                            if (isCollaborator) {
-                                onNavigate("colaborador")
-                            }
-                            else if (isBeneficiary) {
-                                onNavigate("home")
-                            }
-                            else {
-                                if (!candidatureId.isNullOrEmpty()) {
-                                    onNavigate("await-candidature")
-                                } else {
-                                    onNavigate("candidature")
-                                }
-                            }
+                // Se passou daqui, o login está feito. Agora vamos buscar os dados.
+                val uid = auth.currentUser?.uid ?: throw Exception("Erro ao obter UID.")
 
-                        } catch (e: Exception) {
-                            uiState.value = uiState.value.copy(isLoading = false, error = e.message)
-                        }
-                    }
+                // 3. Buscar dados extra no Firestore
+                val userDoc = db.collection("users").document(uid).get().await()
+
+                // Leitura segura dos campos (evita crashes se o campo não existir)
+                val isBeneficiary = userDoc.getBoolean("isBeneficiary") ?: false
+                val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false
+                val candidatureId = userDoc.getString("candidatureId")
+
+                // Sucesso! Parar loading
+                uiState.value = uiState.value.copy(isLoading = false)
+
+                // 4. Lógica de Navegação
+                if (isCollaborator) {
+                    onNavigate("colaborador")
+                } else if (isBeneficiary) {
+                    onNavigate("home")
                 } else {
-                    uiState.value = uiState.value.copy(isLoading = false, error = "Login falhou.")
+                    if (!candidatureId.isNullOrEmpty()) {
+                        onNavigate("await-candidature")
+                    } else {
+                        onNavigate("candidature")
+                    }
                 }
+
+            } catch (e: FirebaseAuthInvalidUserException) {
+                // Conta não existe ou foi desativada
+                uiState.value =
+                    uiState.value.copy(isLoading = false, error = "Conta não encontrada.")
+            } catch (e: FirebaseAuthInvalidCredentialsException) {
+                // Password errada
+                uiState.value =
+                    uiState.value.copy(isLoading = false, error = "Email ou password incorretos.")
+            } catch (e: Exception) {
+                // Outros erros (ex: Sem internet)
+                uiState.value =
+                    uiState.value.copy(isLoading = false, error = e.message ?: "Erro desconhecido.")
             }
+        }
     }
 
     fun logout(onLogoutSuccess: () -> Unit) {

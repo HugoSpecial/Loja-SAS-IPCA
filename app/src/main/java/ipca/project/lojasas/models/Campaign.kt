@@ -2,11 +2,17 @@ package ipca.project.lojasas.models
 
 import java.util.Date
 
+enum class CampaignType {
+    INTERNO,
+    EXTERNO
+}
+
 data class Campaign(
-    var docId: String? = null,
-    var name: String? = null,         // nome
-    var startDate: Date? = null,      // data_inicio
-    var endDate: Date? = null,        // data_fim
-    var campaignType: String? = null  // tipo_campanha
+    var docId: String = "",              // Adicionado = ""
+    var collaboradorId: String = "",     // Adicionado = ""
+    var name: String = "",               // Adicionado = ""
+    var startDate: Date = Date(),        // Adicionado = Date()
+    var endDate: Date = Date(),          // Adicionado = Date()
+    var campaignType: CampaignType = CampaignType.INTERNO, // Adicionado valor padrão
+    var donations: MutableList<Donation> = mutableListOf()
 )
-// --- Tabela Doacao ---
