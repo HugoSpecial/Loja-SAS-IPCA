@@ -6,7 +6,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add // <--- IMPORT NOVO
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange // Icon para histórico
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -107,13 +108,12 @@ fun ColaboratorHomeView(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp)) // Espaço entre botões
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // BOTÃO 2: CRIAR PRODUTO (NOVO)
+        // BOTÃO 2: CRIAR DOAÇÃO (PRODUTO)
         Button(
             onClick = {
-                // Certifica-te que tens esta rota no NavHost
-                navController.navigate("create_product")
+                navController.navigate("product") // product sem ID = Criar Novo
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -131,10 +131,41 @@ fun ColaboratorHomeView(
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 Text(
-                    text = "Adicionar Novo Produto",
+                    text = "Adicionar Nova Doação",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // BOTÃO 3: VER LISTA DE DOAÇÕES (NOVO)
+        OutlinedButton(
+            onClick = {
+                // Certifica-te de adicionar esta rota no NavHost
+                navController.navigate("donations_list")
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "Ver Histórico de Doações",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

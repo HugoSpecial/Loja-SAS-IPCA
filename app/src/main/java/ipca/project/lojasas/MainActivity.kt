@@ -35,10 +35,11 @@ import ipca.project.lojasas.ui.benefeciary.home.HomeView
 import ipca.project.lojasas.ui.benefeciary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.benefeciary.notifications.NotificationView
 import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
+import ipca.project.lojasas.ui.colaborator.donation.DonationListView
 import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
 import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
-import ipca.project.lojasas.ui.colaborator.product.ProductView
+import ipca.project.lojasas.ui.colaborator.donation.DonationView
 import ipca.project.lojasas.ui.colaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
@@ -67,11 +68,21 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        val showBeneficiaryBottomBar = currentRoute in listOf("home", "notification", "history", "profile")
+                        // Define em que ecrãs a barra do Beneficiário aparece
+                        val showBeneficiaryBottomBar = currentRoute in listOf(
+                            "home",
+                            "notification",
+                            "history",
+                            "profile"
+                        )
 
-                        val showCollaboratorBottomBar = currentRoute in listOf("colaborador",
-                            "notification-collaborador","history-collaborador","profile-collaborator",
-                            "candidature_list", "candidature_details/{candidatureId}"
+                        // Define em que ecrãs a barra do Colaborador aparece
+                        val showCollaboratorBottomBar = currentRoute in listOf(
+                            "colaborador",
+                            "stock", // Adicionado para aparecer no stock
+                            "notification-collaborador",
+                            "history-collaborador",
+                            "profile-collaborator"
                         )
 
                         if (showBeneficiaryBottomBar) {
@@ -94,38 +105,42 @@ class MainActivity : ComponentActivity() {
                         startDestination = "login",
                         modifier = Modifier.padding(innerPadding)
                     ) {
+                        // --- LOGIN ---
                         composable("login") {
                             LoginView(navController = navController)
                         }
 
-                        composable("colaborador")
-                        {
-                           ColaboratorHomeView(navController = navController)
+                        // --- ROTAS COLABORADOR ---
+                        composable("colaborador") {
+                            ColaboratorHomeView(navController = navController)
                         }
-                        composable("notification-collaborador")
-                        {
+
+                        composable("notification-collaborador") {
                             ColaboratorNotificationView(navController = navController)
                         }
-                        composable("stock")
-                        {
+
+                        composable("donations_list") {
+                            DonationListView(navController = navController)
+                        }
+
+                        composable("stock") {
                             StockView(navController = navController)
                         }
-                        composable("product")
-                        {
-                            ProductView(navController = navController)
-                        }
-                        composable("history-collaborador")
-                        {
+
+                        composable("history-collaborador") {
                             CollatorHistoryView(navController = navController)
+                        }
+
+                        composable("profile-collaborator") {
+                            ProfileView(navController = navController)
                         }
 
                         composable("candidature_list") {
                             CandidatureListView(navController = navController)
                         }
 
-                        // Nao obriga que o id exista
                         composable(
-                            route = "product?productId={productId}", // Rota aceita argumento opcional
+                            route = "product?productId={productId}",
                             arguments = listOf(navArgument("productId") {
                                 nullable = true
                                 defaultValue = null
@@ -133,7 +148,9 @@ class MainActivity : ComponentActivity() {
                             })
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId")
-                            ProductView(navController, productId)
+
+                            // CORREÇÃO: Passa o ID para a View
+                            DonationView(navController, productId)
                         }
 
                         composable("candidature_details/{candidatureId}") { backStackEntry ->
@@ -146,6 +163,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        // --- ROTAS BENEFICIÁRIO ---
                         composable("candidature") {
                             CandidatureView(navController = navController)
                         }
@@ -173,13 +191,10 @@ class MainActivity : ComponentActivity() {
                         composable("profile") {
                             ProfileView(navController = navController)
                         }
-                        
-                        composable("profile-collaborator") {
-                            ProfileView(navController = navController)
-                        }
                     }
                 }
 
+                // --- Lógica de Redirecionamento Automático ao Abrir ---
                 LaunchedEffect(Unit) {
                     val user = Firebase.auth.currentUser
 
@@ -187,7 +202,6 @@ class MainActivity : ComponentActivity() {
                         coroutineScope.launch {
                             try {
                                 val db = FirebaseFirestore.getInstance()
-
                                 val document = db.collection("users").document(user.uid).get().await()
 
                                 val isCollaborator = document.getBoolean("isCollaborator") ?: false
