@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
 sealed class BottomBarItemCollaborator(val title: String, val route: String) {
-    object Home : BottomBarItemCollaborator("Início", "colaborador")
+    object Home : BottomBarItemCollaborator("Início", "collaborator")
     object Notification : BottomBarItemCollaborator("Notificações", "notification-collaborador")
     object History : BottomBarItemCollaborator("Histórico ", "history-collaborador")
     object Profile : BottomBarItemCollaborator("Perfil", "profile-collaborator")

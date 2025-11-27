@@ -27,24 +27,24 @@ import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
 import ipca.project.lojasas.ui.candidature.CandidatureView
-import ipca.project.lojasas.ui.colaborator.candidature.CandidatureDetailsView
-import ipca.project.lojasas.ui.colaborator.candidature.CandidatureListView
+import ipca.project.lojasas.ui.collaborator.candidature.CandidatureDetailsView
+import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
 import ipca.project.lojasas.ui.benefeciary.history.HistoryView
 import ipca.project.lojasas.ui.benefeciary.home.HomeView
 import ipca.project.lojasas.ui.benefeciary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.benefeciary.notifications.NotificationView
 import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
-import ipca.project.lojasas.ui.colaborator.campaigns.CampaignDetailsView
-import ipca.project.lojasas.ui.colaborator.campaigns.CampaignsView
-import ipca.project.lojasas.ui.colaborator.campaigns.NewCampaignView
-import ipca.project.lojasas.ui.colaborator.donation.DonationListView
-import ipca.project.lojasas.ui.colaborator.donation.DonationView
-import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
-import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
-import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
-import ipca.project.lojasas.ui.colaborator.orders.OrderListView
-import ipca.project.lojasas.ui.colaborator.profile.ProfileCollaboratorView
-import ipca.project.lojasas.ui.colaborator.stock.StockView
+import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
+import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
+import ipca.project.lojasas.ui.collaborator.campaigns.NewCampaignView
+import ipca.project.lojasas.ui.collaborator.donation.DonationListView
+import ipca.project.lojasas.ui.collaborator.donation.DonationView
+import ipca.project.lojasas.ui.collaborator.history.CollatorHistoryView
+import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
+import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificationView
+import ipca.project.lojasas.ui.collaborator.orders.OrderListView
+import ipca.project.lojasas.ui.collaborator.profile.ProfileCollaboratorView
+import ipca.project.lojasas.ui.collaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
 import ipca.project.lojasas.ui.components.SplashView
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                         )
 
                         val showCollaboratorBottomBar = currentRoute in listOf(
-                            "colaborador",
+                            "collaborator",
                             "stock",
                             "notification-collaborador",
                             "history-collaborador",
@@ -103,8 +103,8 @@ class MainActivity : ComponentActivity() {
                         composable("login") { LoginView(navController = navController) }
 
                         // --- ROTAS COLABORADOR ---
-                        composable("colaborador") { ColaboratorHomeView(navController = navController) }
-                        composable("notification-collaborador") { ColaboratorNotificationView(navController = navController) }
+                        composable("collaborator") { CollaboratorHomeView(navController = navController) }
+                        composable("notification-collaborador") { CollaboratorNotificationView(navController = navController) }
                         composable("donations_list") { DonationListView(navController = navController) }
                         composable("stock") { StockView(navController = navController) }
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) } // Usa a view correta
@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
                             val candidatureId = document.getString("candidatureId")
 
                             val destination = if (isCollaborator) {
-                                "colaborador"
+                                "collaborator"
                             } else if (isBeneficiary) {
                                 "home"
                             } else {

@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import ipca.project.lojasas.ui.colaborator.campaigns.CampaignDetailsViewModel
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
