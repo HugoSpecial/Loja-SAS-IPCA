@@ -25,8 +25,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import ipca.project.lojasas.ui.colaborator.campaigns.CampaignDetailsViewModel
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -46,11 +48,14 @@ val TextGray = Color(0xFF999999)
 @Composable
 fun NewBasketView(
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: NewBasketViewModel = viewModel()
 ) {
     val scrollState = rememberScrollState()
 
-    // --- ESTADO ---
+    val uiState = viewModel.uiState.value
+
+    // --- ESTADO DE DATA E HORA ---
     var selectedDate by remember { mutableStateOf(LocalDate.now().plusDays(1)) }
     var displayedYearMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var selectedTime by remember { mutableStateOf("09:00") }
@@ -59,6 +64,9 @@ fun NewBasketView(
         selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
     }
 
+    // --- ESTADO LOCAL DAS QUANTIDADES ---
+    val productQuantities = remember { mutableStateMapOf<String, Int>() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -66,7 +74,7 @@ fun NewBasketView(
             .padding(24.dp)
             .verticalScroll(scrollState)
     ) {
-        // --- BOTÃO DE VOLTAR (ESSENCIAL) ---
+        // --- BOTÃO DE VOLTAR ---
         Box(modifier = Modifier.fillMaxWidth()) {
             IconButton(
                 onClick = { navController.popBackStack() }, // Volta para o ecrã anterior
@@ -119,8 +127,75 @@ fun NewBasketView(
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        SectionHeader("Produtos", "Escolha os produtos disponíveis em stock o cabaz.")
+        SectionHeader("Produtos", "Escolha os produtos disponíveis para o cabaz.")
         Spacer(modifier = Modifier.height(60.dp))
+
+        if (uiState.isLoading) {
+            CircularProgressIndicator(color = CabazGreen)
+        } else if (!uiState.error.isNullOrEmpty()) {
+            Text("Erro: ${uiState.error}", color = Color.Red)
+        } else {
+            Column {
+                uiState.products.filter { it.batches.any { batch -> batch.quantity > 0 } }
+                    .forEach { product ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                                .background(Color.White, RoundedCornerShape(8.dp))
+                                .border(1.dp, CabazGreen, RoundedCornerShape(8.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                product.name,
+                                color = TextDark,
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = {
+                                        val current = productQuantities[product.docId] ?: 0
+                                        if (current > 0) productQuantities[product.docId] =
+                                            current - 1
+                                    }
+                                ) {
+                                    Text(
+                                        "-",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CabazGreen
+                                    )
+                                }
+
+                                Text(
+                                    "${productQuantities[product.docId] ?: 0}",
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                )
+
+                                IconButton(
+                                    onClick = {
+                                        val current = productQuantities[product.docId] ?: 0
+                                        val stock = product.batches.sumOf { it.quantity }
+                                        if (current < stock) productQuantities[product.docId] =
+                                            current + 1
+                                    }
+                                ) {
+                                    Text(
+                                        "+",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CabazGreen
+                                    )
+                                }
+                            }
+                        }
+                    }
+            }
+        }
     }
 }
 
