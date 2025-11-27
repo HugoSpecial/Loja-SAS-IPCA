@@ -3,9 +3,13 @@ package ipca.project.lojasas.ui.benefeciary.newBasket
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import ipca.project.lojasas.models.Order
+import ipca.project.lojasas.models.OrderItem
+import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.Product
 import java.util.*
 
@@ -22,6 +26,7 @@ class NewBasketViewModel : ViewModel() {
         private set
 
     private val db = FirebaseFirestore.getInstance()
+    private val auth = Firebase.auth
 
     // Inicializa e carrega produtos
     fun initialize() {
@@ -70,7 +75,11 @@ class NewBasketViewModel : ViewModel() {
             docId = null,
             orderDate = Date(),
             surveyDate = selectedDate,
-            accept = false
+            accept = OrderState.PENDENTE,
+            items = orderProducts.map { (productId, quantity) ->
+                OrderItem(name = uiState.value.products.find { it.docId == productId }?.name, quantity = quantity)
+            }.toMutableList(),
+            userId = auth.currentUser?.uid
         )
 
         db.collection("orders")

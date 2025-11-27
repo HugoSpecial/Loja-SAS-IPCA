@@ -7,6 +7,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Order
+import ipca.project.lojasas.models.OrderItem
+import ipca.project.lojasas.models.OrderState
 
 data class BeneficiaryHomeState(
     val orders: List<Order> = emptyList(),
@@ -58,22 +60,21 @@ class BeneficiaryHomeViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                val ordersList = mutableListOf<Order>()
+                var pendingCount = 0
                 for (doc in snapshot?.documents ?: emptyList()) {
                     try {
-                        val order = doc.toObject(Order::class.java)
-                        order?.docId = doc.id
-                        if (order != null) ordersList.add(order)
+                        val acceptStr = doc.getString("accept") ?: "PENDENTE"
+                        val acceptState = OrderState.valueOf(acceptStr)
+                        if (acceptState == OrderState.PENDENTE) {
+                            pendingCount++
+                        }
                     } catch (e: Exception) {
                         Log.e("BeneficiaryHomeVM", "Erro ao ler order", e)
                     }
                 }
 
-                val upcomingCount = ordersList.count { !it.accept } // pedidos ainda não aceites
-
                 uiState.value = uiState.value.copy(
-                    orders = ordersList,
-                    upcomingCount = upcomingCount,
+                    upcomingCount = pendingCount,
                     isLoading = false,
                     error = null
                 )
