@@ -42,6 +42,7 @@ import ipca.project.lojasas.ui.colaborator.donation.DonationView
 import ipca.project.lojasas.ui.colaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.colaborator.home.ColaboratorHomeView
 import ipca.project.lojasas.ui.colaborator.notifications.ColaboratorNotificationView
+import ipca.project.lojasas.ui.colaborator.orders.OrderListView
 import ipca.project.lojasas.ui.colaborator.profile.ProfileCollaboratorView
 import ipca.project.lojasas.ui.colaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
@@ -108,6 +109,7 @@ class MainActivity : ComponentActivity() {
                         composable("stock") { StockView(navController = navController) }
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) } // Usa a view correta
                         composable("history-collaborador") { CollatorHistoryView(navController = navController) }
+                        composable("orders") { OrderListView(navController = navController) }
 
                         // Campanhas
                         composable("campaigns") { CampaignsView(navController = navController) }

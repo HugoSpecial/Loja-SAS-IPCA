@@ -214,6 +214,34 @@ fun ColaboratorHomeView(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- BOTÃO 5: VER PEDIDOS ---
+        OutlinedButton(
+            onClick = { navController.navigate("orders") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.List,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "Ver Pedidos",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(50.dp)) // Espaço final para scroll
     }
 }
