@@ -1,10 +1,14 @@
 package ipca.project.lojasas.ui.colaborator.campaigns
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -12,14 +16,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Donation
 import java.text.SimpleDateFormat
 import java.util.Locale
+
+val IpcaGreen = Color(0xFF438C58)
+val BackgroundColor = Color(0xFFF5F6F8)
+val TextDark = Color(0xFF2D2D2D)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,14 +42,12 @@ fun CampaignDetailsView(
     val uiState = viewModel.uiState.value
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
-    // ESTADO PARA CONTROLAR O DIÁLOGO
     var selectedDonation by remember { mutableStateOf<Donation?>(null) }
 
     LaunchedEffect(campaignId) {
         viewModel.initialize(campaignId)
     }
 
-    // --- MOSTRAR DIÁLOGO SE UMA DOAÇÃO FOR SELECIONADA ---
     if (selectedDonation != null) {
         DonationProductsDialog(
             donation = selectedDonation!!,
@@ -46,22 +55,45 @@ fun CampaignDetailsView(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Detalhes da Campanha") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
-                    }
-                }
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundColor)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Voltar",
+                    tint = IpcaGreen,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 48.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo_sas),
+                    contentDescription = "Cabeçalho IPCA SAS",
+                    modifier = Modifier.heightIn(max = 55.dp).align(Alignment.Center),
+                    contentScale = ContentScale.Fit
+                )
+            }
         }
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
 
+        Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IpcaGreen)
             }
             else if (uiState.campaign != null) {
                 val campaign = uiState.campaign
@@ -69,71 +101,55 @@ fun CampaignDetailsView(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(horizontal = 20.dp)
+                        .verticalScroll(rememberScrollState())
                 ) {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- CABEÇALHO DA CAMPANHA ---
-                    Text(
-                        text = campaign.name,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text("Tipo: ${campaign.campaignType.name}")
+                    SectionTitle("Detalhes da Campanha")
+                    InfoRow("Nome:", campaign.name)
+                    InfoRow("Tipo:", campaign.campaignType.name)
 
                     val startStr = campaign.startDate?.let { dateFormat.format(it) } ?: "N/A"
                     val endStr = campaign.endDate?.let { dateFormat.format(it) } ?: "N/A"
 
-                    Text("Início: $startStr")
-                    Text("Fim: $endStr")
+                    InfoRow("Início:", startStr)
+                    InfoRow("Fim:", endStr)
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- CABEÇALHO DA LISTA ---
-                    Text(
-                        text = "Doações Recebidas (${uiState.donations.size})",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    SectionTitle("Doações Recebidas (${uiState.donations.size})")
+                    InfoRow("Total angariado:", "${uiState.totalCollected} un")
 
-                    Text(
-                        text = "Total angariado: ${uiState.totalCollected} un",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // --- LISTA DE DOAÇÕES ---
                     if (uiState.donations.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Ainda não existem doações nesta campanha.", color = Color.Gray)
-                        }
+                        Text(
+                            text = "Ainda não existem doações nesta campanha.",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
                     } else {
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             items(uiState.donations) { donation ->
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
                                     elevation = CardDefaults.cardElevation(2.dp),
-                                    // CLIQUE PARA ABRIR DETALHES
                                     modifier = Modifier.clickable { selectedDonation = donation }
                                 ) {
                                     Row(
-                                        modifier = Modifier
-                                            .padding(12.dp)
-                                            .fillMaxWidth(),
+                                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column {
                                             Text(
                                                 text = if (donation.anonymous) "Anónimo" else (donation.name ?: "Sem Nome"),
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextDark
                                             )
                                             donation.donationDate?.let { date ->
                                                 Text(
@@ -142,23 +158,22 @@ fun CampaignDetailsView(
                                                     color = Color.Gray
                                                 )
                                             }
-                                            // Pequena indicação para clicar
                                             Text(
                                                 text = "Ver produtos...",
                                                 fontSize = 10.sp,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = IpcaGreen
                                             )
                                         }
 
                                         Surface(
-                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            color = IpcaGreen.copy(alpha = 0.15f),
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
                                             Text(
                                                 text = "+${donation.quantity}",
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                color = IpcaGreen
                                             )
                                         }
                                     }
@@ -166,12 +181,14 @@ fun CampaignDetailsView(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
             else if (uiState.error != null) {
                 Text(
                     text = "Erro: ${uiState.error}",
-                    color = MaterialTheme.colorScheme.error,
+                    color = Color.Red,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
@@ -179,7 +196,6 @@ fun CampaignDetailsView(
     }
 }
 
-// --- NOVO COMPONENTE: DIÁLOGO DE PRODUTOS DA DOAÇÃO ---
 @Composable
 fun DonationProductsDialog(
     donation: Donation,
@@ -187,54 +203,51 @@ fun DonationProductsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Produtos Doados",
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        },
+        title = { Text("Produtos Doados", fontWeight = FontWeight.Bold, color = IpcaGreen) },
         text = {
             Column {
-                Text(
-                    text = "Doador: ${if (donation.anonymous) "Anónimo" else donation.name}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
+                Text("Doador: ${if (donation.anonymous) "Anónimo" else donation.name}", fontSize = 14.sp, color = Color.Gray)
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // LISTA DE PRODUTOS DENTRO DA DOAÇÃO
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 300.dp), // Altura máxima para não ocupar o ecrã todo
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(donation.products) { product ->
-                        // Calcula o total deste produto específico (soma dos lotes)
                         val prodQty = product.batches.sumOf { it.quantity }
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("• ${product.name}", fontWeight = FontWeight.SemiBold)
-                            Text("$prodQty un", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                            Text("$prodQty un", fontWeight = FontWeight.Bold, color = IpcaGreen)
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                // Total geral da doação
-                Text(
-                    text = "Total da Doação: ${donation.quantity} itens",
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.End)
-                )
+                Text("Total da Doação: ${donation.quantity} itens", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.End))
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Fechar")
-            }
+            TextButton(onClick = onDismiss) { Text("Fechar") }
         }
     )
+}
+
+@Composable
+private fun SectionTitle(title: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = IpcaGreen)
+        Spacer(modifier = Modifier.height(4.dp))
+        Divider(color = Color.LightGray, thickness = 1.dp)
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(label, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.Black, modifier = Modifier.width(140.dp))
+        Text(value.ifEmpty { "-" }, fontSize = 15.sp, color = TextDark, modifier = Modifier.weight(1f))
+    }
 }
