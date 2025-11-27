@@ -1,6 +1,7 @@
 package ipca.project.lojasas.ui.benefeciary.newBasket
 
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -20,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,8 +34,10 @@ import androidx.navigation.compose.rememberNavController
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Date
 import java.util.Locale
 
 // --- Cores ---
@@ -65,6 +70,8 @@ fun NewBasketView(
 
     // --- ESTADO LOCAL DAS QUANTIDADES ---
     val productQuantities = remember { mutableStateMapOf<String, Int>() }
+
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -127,7 +134,7 @@ fun NewBasketView(
         Spacer(modifier = Modifier.height(40.dp))
 
         SectionHeader("Produtos", "Escolha os produtos disponíveis para o cabaz.")
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         if (uiState.isLoading) {
             CircularProgressIndicator(color = CabazGreen)
@@ -193,6 +200,41 @@ fun NewBasketView(
                             }
                         }
                     }
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        val dateConverted = Date.from(
+                            selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                        )
+                        val finalProducts = productQuantities.filter { it.value > 0 }
+                        viewModel.createOrder(dateConverted, finalProducts)
+                        { success ->
+                            if (success) {
+                                Toast.makeText(context, "Pedido Enviado!", Toast.LENGTH_LONG).show()
+                                navController.navigate("home") {
+                                    popUpTo("solicitation") { inclusive = true }
+                                }
+                            }
+                        }
+                        },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.List,
+                        contentDescription = "Enviar Pedido",
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = "Enviar Pedidos",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }

@@ -29,7 +29,7 @@ class NewBasketViewModel : ViewModel() {
     private val auth = Firebase.auth
 
     // Inicializa e carrega produtos
-    fun initialize() {
+    init{
         uiState.value = uiState.value.copy(isLoading = true)
         fetchProducts()
     }
@@ -62,8 +62,8 @@ class NewBasketViewModel : ViewModel() {
     // Cria um novo pedido com os produtos selecionados
     fun createOrder(
         selectedDate: Date,
-        selectedTime: String,
-        selectedProducts: Map<String, Int>
+        selectedProducts: Map<String, Int>,
+        onSubmitResult: (Boolean) -> Unit
     ) {
         val orderProducts = selectedProducts.filter { it.value > 0 }
         if (orderProducts.isEmpty()) {
@@ -86,9 +86,11 @@ class NewBasketViewModel : ViewModel() {
             .add(newOrder)
             .addOnSuccessListener {
                 uiState.value = uiState.value.copy(orderCreated = true)
+                onSubmitResult(true)
             }
             .addOnFailureListener { e ->
                 uiState.value = uiState.value.copy(error = e.message)
+                onSubmitResult(false)
             }
     }
 }

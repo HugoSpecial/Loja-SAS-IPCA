@@ -479,7 +479,7 @@ fun CandidatureView(
                     onClick = {
                         viewModel.submitCandidature { success ->
                             if (success) {
-                                Toast.makeText(context, "candidature enviada!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Candidatura Enviada!", Toast.LENGTH_LONG).show()
                                 navController.navigate("await-candidature") {
                                     popUpTo("candidature") { inclusive = true }
                                 }
