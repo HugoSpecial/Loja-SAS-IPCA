@@ -1,6 +1,7 @@
 package ipca.project.lojasas.ui.benefeciary.newBasket
 
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -56,8 +57,14 @@ fun NewBasketView(
     viewModel: NewBasketViewModel = viewModel()
 ) {
     val scrollState = rememberScrollState()
-
     val uiState = viewModel.uiState.value
+
+    // --- Recupera produtos selecionados da HomeView ---
+    val savedProducts = navController.previousBackStackEntry
+        ?.savedStateHandle
+        ?.get<List<String>>("selectedProducts") ?: emptyList()
+
+    val selectedProductList = uiState.products.filter { savedProducts.contains(it.docId) }
 
     // --- ESTADO DE DATA E HORA ---
     var selectedDate by remember { mutableStateOf(LocalDate.now().plusDays(1)) }
@@ -70,6 +77,14 @@ fun NewBasketView(
 
     // --- ESTADO LOCAL DAS QUANTIDADES ---
     val productQuantities = remember { mutableStateMapOf<String, Int>() }
+
+    LaunchedEffect(uiState.products, savedProducts) {
+        uiState.products.forEach { product ->
+            if (savedProducts.contains(product.docId) && productQuantities[product.docId] == null) {
+                productQuantities[product.docId] = 1
+            }
+        }
+    }
 
     val context = LocalContext.current
 
@@ -136,14 +151,11 @@ fun NewBasketView(
         SectionHeader("Produtos", "Escolha os produtos disponíveis para o cabaz.")
         Spacer(modifier = Modifier.height(10.dp))
 
-        if (uiState.isLoading) {
-            CircularProgressIndicator(color = CabazGreen)
-        } else if (!uiState.error.isNullOrEmpty()) {
+        if (!uiState.error.isNullOrEmpty()) {
             Text("Erro: ${uiState.error}", color = Color.Red)
         } else {
             Column {
-                uiState.products.filter { it.batches.any { batch -> batch.quantity > 0 } }
-                    .forEach { product ->
+                selectedProductList.forEach { product ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -216,7 +228,7 @@ fun NewBasketView(
                                 }
                             }
                         }
-                        },
+                    },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -228,9 +240,8 @@ fun NewBasketView(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-
                     Text(
-                        text = "Enviar Pedidos",
+                        text = "Enviar Pedido",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -267,14 +278,10 @@ fun DynamicCalendarView(
     val daysOfWeek = listOf("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb")
     val today = LocalDate.now()
     val currentMonth = YearMonth.now()
-
     val daysInMonth = displayedYearMonth.lengthOfMonth()
     val firstDayOfWeekValue = displayedYearMonth.atDay(1).dayOfWeek.value
     val startOffset = firstDayOfWeekValue % 7
-
-    val monthName = displayedYearMonth.month
-        .getDisplayName(TextStyle.FULL, Locale("pt", "PT"))
-        .uppercase()
+    val monthName = displayedYearMonth.month.getDisplayName(TextStyle.FULL, Locale("pt", "PT")).uppercase()
     val year = displayedYearMonth.year
 
     Column(
@@ -289,7 +296,6 @@ fun DynamicCalendarView(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             val canGoBack = displayedYearMonth.isAfter(currentMonth)
-
             IconButton(
                 onClick = { if (canGoBack) onMonthChange(displayedYearMonth.minusMonths(1)) },
                 enabled = canGoBack
@@ -345,14 +351,12 @@ fun DynamicCalendarView(
                 for (c in 0..6) {
                     val dayNumber = (r * 7 + c) - startOffset + 1
                     val isValidDay = dayNumber in 1..daysInMonth
-
                     Box(modifier = Modifier.width(40.dp).height(40.dp), contentAlignment = Alignment.Center) {
                         if (isValidDay) {
                             val cellDate = displayedYearMonth.atDay(dayNumber)
                             val isWeekend = c == 0 || c == 6
                             val isPastOrToday = !cellDate.isAfter(today)
                             val isDisabled = isWeekend || isPastOrToday
-
                             DayCell(
                                 day = dayNumber,
                                 isSelected = selectedDate.isEqual(cellDate),
@@ -376,7 +380,6 @@ fun DayCell(day: Int, isSelected: Boolean, isDisabled: Boolean, onClick: () -> U
     }
     val borderColor = if (isSelected) CabazGreen else Color.Transparent
     val textColor = if (isDisabled) TextGray else TextDark
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -403,7 +406,6 @@ fun TimeDropdownSelector(selectedTime: String, onTimeSelected: (String) -> Unit)
         slots
     }
     var expanded by remember { mutableStateOf(false) }
-
     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -433,7 +435,6 @@ fun TimeDropdownSelector(selectedTime: String, onTimeSelected: (String) -> Unit)
     }
 }
 
-// Preview para testares visualmente (mock do NavController)
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
