@@ -1,4 +1,4 @@
-package ipca.project.lojasas.ui.benefeciary.home
+package ipca.project.lojasas.ui.beneficiary.home
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf

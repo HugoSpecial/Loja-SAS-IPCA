@@ -1,4 +1,4 @@
-package ipca.project.lojasas.ui.benefeciary.newBasket
+package ipca.project.lojasas.ui.beneficiary.newBasket
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf

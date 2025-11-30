@@ -1,4 +1,4 @@
-package ipca.project.lojasas.ui.benefeciary.home
+package ipca.project.lojasas.ui.beneficiary.home
 
 import android.graphics.BitmapFactory
 import android.util.Base64

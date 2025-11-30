@@ -1,7 +1,6 @@
-package ipca.project.lojasas.ui.benefeciary.newBasket
+package ipca.project.lojasas.ui.beneficiary.newBasket
 
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background

@@ -1,11 +1,11 @@
-package ipca.project.lojasas.ui.benefeciary.notifications
+package ipca.project.lojasas.ui.beneficiary.history
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 
 @Composable
-fun NotificationView(
+fun HistoryView(
     modifier: Modifier = Modifier,
     navController: NavController,
 ){

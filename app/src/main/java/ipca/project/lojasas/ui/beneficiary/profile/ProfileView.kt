@@ -1,4 +1,4 @@
-package ipca.project.lojasas.ui.benefeciary.profile
+package ipca.project.lojasas.ui.beneficiary.profile
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

@@ -29,11 +29,11 @@ import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
 import ipca.project.lojasas.ui.candidature.CandidatureView
 import ipca.project.lojasas.ui.collaborator.candidature.CandidatureDetailsView
 import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
-import ipca.project.lojasas.ui.benefeciary.history.HistoryView
-import ipca.project.lojasas.ui.benefeciary.home.HomeView
-import ipca.project.lojasas.ui.benefeciary.newBasket.NewBasketView
-import ipca.project.lojasas.ui.benefeciary.notifications.NotificationView
-import ipca.project.lojasas.ui.benefeciary.profile.ProfileView
+import ipca.project.lojasas.ui.beneficiary.history.HistoryView
+import ipca.project.lojasas.ui.beneficiary.home.HomeView
+import ipca.project.lojasas.ui.beneficiary.newBasket.NewBasketView
+import ipca.project.lojasas.ui.beneficiary.notifications.NotificationView
+import ipca.project.lojasas.ui.beneficiary.profile.ProfileView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
 import ipca.project.lojasas.ui.collaborator.campaigns.NewCampaignView
