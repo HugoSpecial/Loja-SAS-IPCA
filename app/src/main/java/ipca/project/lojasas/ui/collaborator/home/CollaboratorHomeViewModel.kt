@@ -8,10 +8,13 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Candidature
 import ipca.project.lojasas.models.CandidatureState
+import ipca.project.lojasas.models.Order
+import ipca.project.lojasas.models.OrderState
 
 data class CollaboratorHomeState(
     val candidatures: List<Candidature> = emptyList(),
     val pendingCount: Int = 0,
+    val pendingSolicitationsCount: Int = 0,
     val userName: String = "",
     val isLoading: Boolean = false,
     val error: String? = null
@@ -58,6 +61,8 @@ class CollaboratorHomeViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
+                //Candidatura
+
                 val list = mutableListOf<Candidature>()
 
                 for (doc in value?.documents ?: emptyList()) {
@@ -65,7 +70,7 @@ class CollaboratorHomeViewModel : ViewModel() {
                         val c = Candidature()
                         c.docId = doc.id
 
-                        val estadoStr = doc.getString("state") ?: doc.getString("estado")
+                        val estadoStr = doc.getString("state")
 
                         if (estadoStr != null) {
                             try {
@@ -80,7 +85,10 @@ class CollaboratorHomeViewModel : ViewModel() {
                     }
                 }
 
+
                 val count = list.count { it.state == CandidatureState.PENDENTE }
+
+
 
                 uiState.value = uiState.value.copy(
                     candidatures = list,
@@ -88,6 +96,45 @@ class CollaboratorHomeViewModel : ViewModel() {
                     isLoading = false,
                     error = null
                 )
+            }
+        db.collection("orders")
+
+            .addSnapshotListener { value, error ->
+                if (error != null) {
+                    uiState.value = uiState.value.copy(isLoading = false, error = error.message)
+                    return@addSnapshotListener
+                }
+                //Pedidos
+                val solicitationsList = mutableListOf<Order>()
+
+                for (doc in value?.documents ?: emptyList()) {
+                    try {
+                        val o = Order()
+                        o.docId = doc.id
+
+                        val estadoStr = doc.getString("accept")
+
+                        if (estadoStr != null) {
+                            try {
+                                o.accept = OrderState.valueOf(estadoStr)
+                            } catch (e: Exception) {
+                                o.accept = OrderState.PENDENTE
+                            }
+                        }
+                        solicitationsList.add(o)
+                    } catch (e: Exception) {
+                        Log.e("HomeViewModel", "Erro ao ler doc", e)
+                    }
+                }
+
+                val solicitationsCount = solicitationsList.count { it.accept == OrderState.PENDENTE }
+
+                uiState.value = uiState.value.copy(
+                    pendingSolicitationsCount = solicitationsCount,
+                    isLoading = false,
+                    error = null
+                )
+
             }
     }
 }

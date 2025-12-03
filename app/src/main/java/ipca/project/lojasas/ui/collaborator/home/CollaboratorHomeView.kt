@@ -92,6 +92,14 @@ fun CollaboratorHomeView(
 
         Spacer(modifier = Modifier.height(30.dp))
 
+        // --- INFO CARD ---
+        HomeInfoCard(
+            title = "Pedidos Pendentes",
+            count = state.pendingSolicitationsCount.toString()
+        )
+
+        Spacer(modifier = Modifier.height(30.dp))
+
         // --- ACESSO RÁPIDO ---
         Text(
             text = "Gestão",
