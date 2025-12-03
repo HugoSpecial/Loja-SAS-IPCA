@@ -83,6 +83,7 @@ fun CandidatureDetailsView(
     if (showRejectDialog) {
         RejectDialog(
             reason = rejectReason,
+            text = "Rejeitar candidatura",
             onReasonChange = { rejectReason = it },
             onDismiss = { showRejectDialog = false },
             onConfirm = {
@@ -418,13 +419,14 @@ private fun FileListItem(attachment: DocumentAttachment, onClick: () -> Unit) {
 @Composable
 fun RejectDialog(
     reason: String,
+    text: String,
     onReasonChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rejeitar Candidatura") },
+        title = { Text(text) },
         text = {
             Column {
                 Text("Motivo da rejeição:")

@@ -42,6 +42,7 @@ import ipca.project.lojasas.ui.collaborator.donation.DonationView
 import ipca.project.lojasas.ui.collaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
 import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificationView
+import ipca.project.lojasas.ui.collaborator.orders.OrderDetailView
 import ipca.project.lojasas.ui.collaborator.orders.OrderListView
 import ipca.project.lojasas.ui.collaborator.profile.ProfileCollaboratorView
 import ipca.project.lojasas.ui.collaborator.stock.StockView
@@ -110,6 +111,15 @@ class MainActivity : ComponentActivity() {
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) } // Usa a view correta
                         composable("history-collaborador") { CollatorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
+                        composable(
+                            route = "order_details/{orderId}",
+                            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val orderId = backStackEntry.arguments?.getString("orderId")
+                            if (orderId != null) {
+                                OrderDetailView(navController = navController, orderId = orderId)
+                            }
+                        }
 
                         // Campanhas
                         composable("campaigns") { CampaignsView(navController = navController) }
