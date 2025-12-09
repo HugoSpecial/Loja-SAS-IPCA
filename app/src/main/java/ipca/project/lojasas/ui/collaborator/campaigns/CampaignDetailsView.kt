@@ -25,6 +25,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Donation
+import ipca.project.lojasas.ui.components.InfoRow
+import ipca.project.lojasas.ui.components.SectionTitle
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -230,24 +232,4 @@ fun DonationProductsDialog(
             TextButton(onClick = onDismiss) { Text("Fechar") }
         }
     )
-}
-
-@Composable
-private fun SectionTitle(title: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = IpcaGreen)
-        Spacer(modifier = Modifier.height(4.dp))
-        Divider(color = Color.LightGray, thickness = 1.dp)
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(label, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.Black, modifier = Modifier.width(140.dp))
-        Text(value.ifEmpty { "-" }, fontSize = 15.sp, color = TextDark, modifier = Modifier.weight(1f))
-    }
 }

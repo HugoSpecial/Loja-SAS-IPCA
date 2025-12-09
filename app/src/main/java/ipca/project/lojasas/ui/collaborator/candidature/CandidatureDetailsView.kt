@@ -38,6 +38,9 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.CandidatureState
 import ipca.project.lojasas.models.DocumentAttachment
+import ipca.project.lojasas.ui.components.InfoRow
+import ipca.project.lojasas.ui.components.SectionTitle
+import ipca.project.lojasas.ui.components.StatusBadge
 import java.io.File
 import java.io.FileOutputStream
 
@@ -151,7 +154,7 @@ fun CandidatureDetailsView(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Badge de Estado (Alinhado à esquerda)
-                    StatusBadgeDetails(state = cand.state)
+                    CandidatureStatusBadge(state = cand.state)
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -307,44 +310,6 @@ fun CandidatureDetailsView(
 // ----------------------------------------------------
 
 @Composable
-private fun SectionTitle(title: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = IpcaGreen
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Divider(color = Color.LightGray, thickness = 1.dp)
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(
-            text = label,
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
-            color = Color.Black,
-            modifier = Modifier.width(140.dp) // Largura fixa para alinhar valores
-        )
-        Text(
-            text = value.ifEmpty { "-" },
-            fontSize = 15.sp,
-            color = TextDark,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
 private fun BooleanStatusRow(label: String, isChecked: Boolean) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -376,21 +341,13 @@ private fun BooleanStatusRow(label: String, isChecked: Boolean) {
 }
 
 @Composable
-private fun StatusBadgeDetails(state: CandidatureState) {
-    val (backgroundColor, contentColor) = when (state) {
-        CandidatureState.PENDENTE -> Pair(Color(0xFFFFE0B2), Color(0xFFEF6C00))
-        CandidatureState.ACEITE -> Pair(Color(0xFFC8E6C9), Color(0xFF2E7D32))
-        CandidatureState.REJEITADA -> Pair(Color(0xFFFFCDD2), Color(0xFFC62828))
+private fun CandidatureStatusBadge(state: CandidatureState) {
+    val (bg, color) = when (state) {
+        CandidatureState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
+        CandidatureState.ACEITE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
+        CandidatureState.REJEITADA -> Color(0xFFFFCDD2) to Color(0xFFC62828)
     }
-    Surface(color = backgroundColor, shape = RoundedCornerShape(4.dp)) {
-        Text(
-            text = state.name,
-            color = contentColor,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
 }
 
 @Composable

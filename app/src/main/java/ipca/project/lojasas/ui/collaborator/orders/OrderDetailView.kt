@@ -30,6 +30,9 @@ import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.ProductTest
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.collaborator.candidature.IpcaGreen
+import ipca.project.lojasas.ui.components.InfoRow
+import ipca.project.lojasas.ui.components.SectionTitle
+import ipca.project.lojasas.ui.components.StatusBadge
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.LocalTime
@@ -128,7 +131,7 @@ fun OrderDetailView(
                     ) {
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        StatusBadgeDetails(state = order.accept)
+                        OrderStatusBadge(state = order.accept)
 
                         if (order.accept == OrderState.REJEITADA && !order.rejectReason.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -280,49 +283,20 @@ fun OrderDetailView(
 }
 
 // --- Componentes auxiliares ---
-@Composable
-fun SectionTitle(title: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = IpcaGreen)
-        Spacer(modifier = Modifier.height(4.dp))
-        Divider(color = Color.LightGray, thickness = 1.dp)
-    }
-}
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.width(140.dp))
-        Text(value.ifEmpty { "-" }, color = Color.DarkGray)
+private fun OrderStatusBadge(state: OrderState) {
+    val (bg, color) = when (state) {
+        OrderState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
+        OrderState.ACEITE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
+        OrderState.REJEITADA -> Color(0xFFFFCDD2) to Color(0xFFC62828)
     }
-}
-
-@Composable
-private fun StatusBadgeDetails(state: OrderState) {
-    val (backgroundColor, contentColor) = when (state) {
-        OrderState.PENDENTE -> Pair(Color(0xFFFFE0B2), Color(0xFFEF6C00))
-        OrderState.ACEITE -> Pair(Color(0xFFC8E6C9), Color(0xFF2E7D32))
-        OrderState.REJEITADA -> Pair(Color(0xFFFFCDD2), Color(0xFFC62828))
-    }
-    Surface(color = backgroundColor, shape = RoundedCornerShape(4.dp)) {
-        Text(
-            text = state.name,
-            color = contentColor,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
 }
 
 // --- Produtos ---
 @Composable
-fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<ProductTest>) {
+private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<ProductTest>) {
     val itemsByCategory = allProducts.groupBy { it.category }
 
     itemsByCategory.forEach { (category, productsInCategory) ->
