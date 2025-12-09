@@ -25,11 +25,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
+import ipca.project.lojasas.ui.beneficiary.history.BeneficiaryHistoryView
 import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
 import ipca.project.lojasas.ui.candidature.CandidatureView
 import ipca.project.lojasas.ui.collaborator.candidature.CandidatureDetailsView
 import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
-import ipca.project.lojasas.ui.beneficiary.history.HistoryView
 import ipca.project.lojasas.ui.beneficiary.home.HomeView
 import ipca.project.lojasas.ui.beneficiary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.beneficiary.notifications.NotificationView
@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
                         composable("home") { HomeView(navController = navController) }
                         composable("notification") { NotificationView(navController = navController) }
                         composable("newbasket") { NewBasketView(navController = navController) }
-                        composable("history") { HistoryView(navController = navController) }
+                        composable("history") { BeneficiaryHistoryView(navController = navController) }
                         composable("profile") { ProfileView(navController = navController) }
                     }
                 }
