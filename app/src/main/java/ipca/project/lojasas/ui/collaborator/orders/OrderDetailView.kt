@@ -1,5 +1,7 @@
 package ipca.project.lojasas.ui.collaborator.orders
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -26,14 +28,21 @@ import ipca.project.lojasas.R
 import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.ProductTest
+import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.collaborator.candidature.IpcaGreen
-import ipca.project.lojasas.ui.collaborator.candidature.RejectDialog
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.YearMonth
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Date
 import java.util.Locale
 
 val BackgroundColor = Color(0xFFF5F6F8)
-val TextDark = Color(0xFF2D2D2D)
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderDetailView(
@@ -46,6 +55,9 @@ fun OrderDetailView(
     var showRejectDialog by remember { mutableStateOf(false) }
     var rejectReason by remember { mutableStateOf("") }
     var showReasonError by remember { mutableStateOf(false) }
+
+    var isDateChange by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(orderId) { viewModel.fetchOrder(orderId) }
 
@@ -151,15 +163,19 @@ fun OrderDetailView(
                         InfoRow(
                             "Data do pedido",
                             order.orderDate?.let {
-                                SimpleDateFormat("d 'de' MMM 'de' yyyy, HH:mm", Locale("pt", "PT"))
-                                    .format(it)
+                                SimpleDateFormat(
+                                    "d 'de' MMM 'de' yyyy, HH:mm",
+                                    Locale("pt", "PT")
+                                ).format(it)
                             } ?: "-"
                         )
                         InfoRow(
                             "Data da entrega",
                             order.surveyDate?.let {
-                                SimpleDateFormat("d 'de' MMM 'de' yyyy", Locale("pt", "PT"))
-                                    .format(it)
+                                SimpleDateFormat(
+                                    "d 'de' MMM 'de' yyyy",
+                                    Locale("pt", "PT")
+                                ).format(it)
                             } ?: "-"
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -170,8 +186,10 @@ fun OrderDetailView(
                         InfoRow(
                             "Data da avaliação:",
                             order.evaluationDate?.let {
-                                SimpleDateFormat("d 'de' MMM 'de' yyyy, HH:mm", Locale("pt", "PT"))
-                                    .format(it)
+                                SimpleDateFormat(
+                                    "d 'de' MMM 'de' yyyy, HH:mm",
+                                    Locale("pt", "PT")
+                                ).format(it)
                             } ?: "-"
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -220,40 +238,48 @@ fun OrderDetailView(
     }
 
     if (showRejectDialog) {
-        RejectDialog(
+        RejectDialogWithDate(
             reason = rejectReason,
-            text = "Rejeitar pedido",
+            isDateChange = isDateChange,
+            selectedDate = selectedDate,
             onReasonChange = {
                 rejectReason = it
-                if (it.isNotBlank()) showReasonError = false
+                showReasonError = false
             },
+            onDateChangeToggle = { isDateChange = it },
+            onDateSelected = { selectedDate = it },
             onDismiss = {
                 showRejectDialog = false
                 showReasonError = false
             },
             onConfirm = {
-                if (rejectReason.isNotBlank()) {
-                    viewModel.rejectOrder(orderId, rejectReason)
-                    showRejectDialog = false
-                    showReasonError = false
-                } else {
+                if (!isDateChange && rejectReason.isBlank()) {
                     showReasonError = true
+                    return@RejectDialogWithDate
                 }
+
+                viewModel.rejectOrProposeDate(
+                    orderId = orderId,
+                    reason = if (isDateChange) "" else rejectReason,
+                    proposedDate = selectedDate?.let { Date(it) }
+                )
+
+                showRejectDialog = false
             }
         )
+    }
 
-        if (showReasonError) {
-            Text(
-                text = "É obrigatório inserir um motivo para rejeição",
-                color = Color.Red,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-            )
-        }
+    if (showReasonError) {
+        Text(
+            text = "É obrigatório inserir um motivo para rejeição",
+            color = Color.Red,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+        )
     }
 }
 
-// --- Componentes visuais ---
+// --- Componentes auxiliares ---
 @Composable
 fun SectionTitle(title: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -272,7 +298,7 @@ private fun InfoRow(label: String, value: String) {
         verticalAlignment = Alignment.Top
     ) {
         Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.width(140.dp))
-        Text(value.ifEmpty { "-" }, color = TextDark)
+        Text(value.ifEmpty { "-" }, color = Color.DarkGray)
     }
 }
 
@@ -294,6 +320,7 @@ private fun StatusBadgeDetails(state: OrderState) {
     }
 }
 
+// --- Produtos ---
 @Composable
 fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<ProductTest>) {
     val itemsByCategory = allProducts.groupBy { it.category }
@@ -355,4 +382,94 @@ fun ProductStockRow(orderItem: OrderItem, product: ProductTest) {
 
         Icon(icon, contentDescription = null, tint = iconColor)
     }
+}
+
+// --- Diálogo de rejeição com calendário ---
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RejectDialogWithDate(
+    reason: String,
+    isDateChange: Boolean,
+    selectedDate: Long?,
+    onReasonChange: (String) -> Unit,
+    onDateChangeToggle: (Boolean) -> Unit,
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    var displayedYearMonth by remember {
+        mutableStateOf(
+            selectedDate?.let {
+                Date(it).toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                    .let { ld -> YearMonth.of(ld.year, ld.monthValue) }
+            } ?: YearMonth.now()
+        )
+    }
+
+    var selectedLocalDate by remember {
+        mutableStateOf(
+            selectedDate?.let {
+                Date(it).toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+            } ?: LocalDate.now()
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                val millis = if (isDateChange) {
+                    Date.from(selectedLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant()).time
+                } else null
+                onDateSelected(millis)
+                onConfirm()
+            }) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        },
+        text = {
+            Column {
+                Text("Motivo da rejeição", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = onReasonChange,
+                    placeholder = { Text("Escreva o motivo...") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = isDateChange,
+                        onCheckedChange = onDateChangeToggle
+                    )
+                    Text("É para propor nova data?")
+                }
+
+                if (isDateChange) {
+                    Spacer(Modifier.height(12.dp))
+
+                    DynamicCalendarView(
+                        displayedYearMonth = displayedYearMonth,
+                        selectedDate = selectedLocalDate,
+                        onMonthChange = { displayedYearMonth = it },
+                        onDateSelected = { date ->
+                            selectedLocalDate = date
+                        }
+                    )
+                }
+            }
+        }
+    )
 }
