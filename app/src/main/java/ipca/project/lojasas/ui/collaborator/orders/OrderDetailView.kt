@@ -35,11 +35,8 @@ import ipca.project.lojasas.ui.components.SectionTitle
 import ipca.project.lojasas.ui.components.StatusBadge
 import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Date
 import java.util.Locale
 
@@ -156,7 +153,7 @@ fun OrderDetailView(
                                 fontWeight = FontWeight.Bold
                             )
                         } else {
-                            ProductCategoryList(order.items, state.products)
+                            ProductCategoryList(order.items, state.products, order.accept != OrderState.PENDENTE)
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -249,7 +246,10 @@ fun OrderDetailView(
                 rejectReason = it
                 showReasonError = false
             },
-            onDateChangeToggle = { isDateChange = it },
+            onDateChangeToggle = {
+                isDateChange = it
+                if (it) rejectReason = ""
+            },
             onDateSelected = { selectedDate = it },
             onDismiss = {
                 showRejectDialog = false
@@ -296,7 +296,7 @@ private fun OrderStatusBadge(state: OrderState) {
 
 // --- Produtos ---
 @Composable
-private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<ProductTest>) {
+private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<ProductTest>, isFinal: Boolean) {
     val itemsByCategory = allProducts.groupBy { it.category }
 
     itemsByCategory.forEach { (category, productsInCategory) ->
@@ -305,60 +305,47 @@ private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<P
         }
         if (requested.isEmpty()) return@forEach
 
-        val categoryIcon = if (requested.isNotEmpty()) Icons.Default.Check else null
-        val categoryIconColor = Color(0xFF2E7D32)
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (categoryIcon != null) {
-                Icon(categoryIcon, contentDescription = null, tint = categoryIconColor)
-                Spacer(modifier = Modifier.width(8.dp))
-            }
             Text(category, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         }
 
         requested.forEach { orderItem ->
             val product = productsInCategory.find { it.name == orderItem.name }
-            if (product != null) ProductStockRow(orderItem, product)
+            if (product != null) ProductStockRow(orderItem, product, isFinal)
         }
     }
 }
 
 @Composable
-fun ProductStockRow(orderItem: OrderItem, product: ProductTest) {
-    val totalStock = product.batches.sumOf { it.quantity }
-    val newStock = totalStock - (orderItem.quantity ?: 0)
-
-    val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
-    val iconColor = if (newStock >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
-
+fun ProductStockRow(orderItem: OrderItem, product: ProductTest, isFinal: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 32.dp, bottom = 6.dp),
+            .padding(start = if (isFinal) 16.dp else 32.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)",
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Stock atualizado: $newStock",
-                fontSize = 13.sp,
-                color = Color.DarkGray
-            )
-        }
+            if (isFinal) {
+                Text("${orderItem.quantity}x ${orderItem.name}", fontWeight = FontWeight.Bold)
+            } else {
+                val totalStock = product.batches.sumOf { it.quantity }
+                val newStock = totalStock - (orderItem.quantity ?: 0)
+                val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
+                val iconColor = if (newStock >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
 
-        Icon(icon, contentDescription = null, tint = iconColor)
+                Text("${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)", fontWeight = FontWeight.Bold)
+                Text("Stock atualizado: $newStock", fontSize = 13.sp, color = Color.DarkGray)
+                Icon(icon, contentDescription = null, tint = iconColor)
+            }
+        }
     }
 }
 
-// --- Diálogo de rejeição com calendário ---
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -411,17 +398,17 @@ fun RejectDialogWithDate(
         },
         text = {
             Column {
-                Text("Motivo da rejeição", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = onReasonChange,
-                    placeholder = { Text("Escreva o motivo...") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(16.dp))
+                if (!isDateChange) {
+                    Text("Motivo da rejeição", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = onReasonChange,
+                        placeholder = { Text("Escreva o motivo...") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
@@ -433,14 +420,11 @@ fun RejectDialogWithDate(
 
                 if (isDateChange) {
                     Spacer(Modifier.height(12.dp))
-
                     DynamicCalendarView(
                         displayedYearMonth = displayedYearMonth,
                         selectedDate = selectedLocalDate,
                         onMonthChange = { displayedYearMonth = it },
-                        onDateSelected = { date ->
-                            selectedLocalDate = date
-                        }
+                        onDateSelected = { date -> selectedLocalDate = date }
                     )
                 }
             }

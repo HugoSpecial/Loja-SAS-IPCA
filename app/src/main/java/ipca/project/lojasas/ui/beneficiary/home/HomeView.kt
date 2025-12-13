@@ -201,7 +201,7 @@ fun ProductCardSelectable(
                     .width(120.dp),
                 shape = RoundedCornerShape(6.dp)
             ) {
-                Text(if (isSelected) "Adicionado" else "Adicionar", fontSize = 14.sp)
+                Text(if (isSelected) "Adicionado" else "Adicionar", fontSize = 12.sp)
             }
         }
     }

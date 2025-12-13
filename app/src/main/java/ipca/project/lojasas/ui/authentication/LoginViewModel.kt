@@ -74,7 +74,7 @@ class LoginViewModel : ViewModel() {
 
                 // 4. Lógica de Navegação
                 if (isCollaborator) {
-                    onNavigate("colaborador")
+                    onNavigate("collaborator")
                 } else if (isBeneficiary) {
                     onNavigate("home")
                 } else {
