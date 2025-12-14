@@ -46,6 +46,7 @@ class OrderViewModel : ViewModel() {
 
                         // Campos básicos
                         o.userId = doc.getString("userId") ?: "--"
+                        o.userName = doc.getString("userName") ?: "--"
 
                         // Datas
                         o.orderDate = doc.getTimestamp("orderDate")?.toDate()

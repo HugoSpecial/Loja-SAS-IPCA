@@ -11,7 +11,7 @@ import ipca.project.lojasas.models.Order
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.Product
-import java.util.*
+import java.util.Date
 
 data class NewBasketState(
     val products: List<Product> = emptyList(),
@@ -29,14 +29,13 @@ class NewBasketViewModel : ViewModel() {
     private val auth = Firebase.auth
 
     // Inicializa e carrega produtos
-    init{
+    init {
         uiState.value = uiState.value.copy(isLoading = true)
         fetchProducts()
     }
 
     private fun fetchProducts() {
-        db.collection("products")
-            .orderBy("name", Query.Direction.ASCENDING)
+        db.collection("products").orderBy("name", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("NewBasketVM", "Erro ao carregar produtos", error)
@@ -55,15 +54,14 @@ class NewBasketViewModel : ViewModel() {
                     }
                 }
 
-                uiState.value = uiState.value.copy(products = productList, isLoading = false, error = null)
+                uiState.value =
+                    uiState.value.copy(products = productList, isLoading = false, error = null)
             }
     }
 
     // Cria um novo pedido com os produtos selecionados
     fun createOrder(
-        selectedDate: Date,
-        selectedProducts: Map<String, Int>,
-        onSubmitResult: (Boolean) -> Unit
+        selectedDate: Date, selectedProducts: Map<String, Int>, onSubmitResult: (Boolean) -> Unit
     ) {
         val orderProducts = selectedProducts.filter { it.value > 0 }
         if (orderProducts.isEmpty()) {
@@ -71,26 +69,52 @@ class NewBasketViewModel : ViewModel() {
             return
         }
 
-        val newOrder = Order(
-            docId = null,
-            orderDate = Date(),
-            surveyDate = selectedDate,
-            accept = OrderState.PENDENTE,
-            items = orderProducts.map { (productId, quantity) ->
-                OrderItem(name = uiState.value.products.find { it.docId == productId }?.name, quantity = quantity)
-            }.toMutableList(),
-            userId = auth.currentUser?.uid
-        )
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            uiState.value = uiState.value.copy(error = "Utilizador não autenticado")
+            onSubmitResult(false)
+            return
+        }
 
-        db.collection("orders")
-            .add(newOrder)
-            .addOnSuccessListener {
+        fetchUserName(userId = userId, onResult = { userName ->
+
+            val newOrder = Order(
+                docId = null,
+                orderDate = Date(),
+                surveyDate = selectedDate,
+                accept = OrderState.PENDENTE,
+                userId = userId,
+                userName = userName,
+                items = orderProducts.map { (productId, quantity) ->
+                    OrderItem(
+                        name = uiState.value.products.find { it.docId == productId }?.name,
+                        quantity = quantity
+                    )
+                }.toMutableList()
+            )
+
+            db.collection("orders").add(newOrder).addOnSuccessListener {
                 uiState.value = uiState.value.copy(orderCreated = true)
                 onSubmitResult(true)
-            }
-            .addOnFailureListener { e ->
+            }.addOnFailureListener { e ->
                 uiState.value = uiState.value.copy(error = e.message)
                 onSubmitResult(false)
             }
+        }, onError = { errorMsg ->
+            uiState.value = uiState.value.copy(error = errorMsg)
+            onSubmitResult(false)
+        })
+    }
+
+    private fun fetchUserName(
+        userId: String, onResult: (String) -> Unit, onError: (String) -> Unit
+    ) {
+        db.collection("users").document(userId).get().addOnSuccessListener { snapshot ->
+            val name = snapshot.getString("name") ?: "Sem nome"
+            onResult(name)
+        }.addOnFailureListener { e ->
+            Log.e("NewBasketVM", "Erro ao buscar nome do utilizador", e)
+            onError(e.message ?: "Erro ao buscar utilizador")
+        }
     }
 }

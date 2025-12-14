@@ -231,7 +231,7 @@ fun OrderCard(order: Order, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Beneficiário: ${order.userId ?: "--"}",
+                text = "Beneficiário: ${order.userName ?: "--"}",
                 style = MaterialTheme.typography.bodyMedium
             )
 

@@ -19,6 +19,7 @@ data class Order (
     var accept: OrderState = OrderState.PENDENTE,
     var items: MutableList<OrderItem> = mutableListOf(), // List of items and quantities
     var userId: String? = null,
+    var userName: String? = null,
     var evaluatedBy: String? = null, // Collaborator id that evaluated the order
     var evaluationDate: Date? = null,
     var rejectReason: String? = null,
