@@ -33,6 +33,7 @@ import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
 import ipca.project.lojasas.ui.beneficiary.home.HomeView
 import ipca.project.lojasas.ui.beneficiary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.beneficiary.notifications.NotificationView
+import ipca.project.lojasas.ui.beneficiary.orders.BeneficiaryOrderDetailView
 import ipca.project.lojasas.ui.beneficiary.profile.ProfileView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
@@ -164,6 +165,15 @@ class MainActivity : ComponentActivity() {
                         composable("newbasket") { NewBasketView(navController = navController) }
                         composable("history") { BeneficiaryHistoryView(navController = navController) }
                         composable("profile") { ProfileView(navController = navController) }
+                        composable(
+                            route = "beneficiary_order_details/{orderId}",
+                            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val orderId = backStackEntry.arguments?.getString("orderId")
+                            if (orderId != null) {
+                                BeneficiaryOrderDetailView(navController = navController, orderId = orderId)
+                            }
+                        }
                     }
                 }
 

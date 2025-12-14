@@ -2,12 +2,15 @@ package ipca.project.lojasas.ui.beneficiary.history
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +25,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Order
+import ipca.project.lojasas.models.OrderState
+import ipca.project.lojasas.ui.components.StatusBadge
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -61,19 +66,32 @@ fun BeneficiaryHistoryView(
                 .padding(top = 16.dp, bottom = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Voltar",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
             Box(
-                modifier = Modifier
-                    .weight(1f)
+                modifier = Modifier.weight(1f)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
                     contentDescription = "Cabeçalho IPCA SAS",
-                    modifier = Modifier.heightIn(max = 55.dp)
+                    modifier = Modifier
+                        .heightIn(max = 55.dp)
                         .align(Alignment.Center),
                     contentScale = ContentScale.Fit
                 )
             }
         }
+
 
         // --- TÍTULO ---
         Text(
@@ -110,7 +128,9 @@ fun BeneficiaryHistoryView(
         // --- LISTA DE HISTÓRICO ---
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                state.isLoading -> CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
                 state.error != null -> Text(
                     text = state.error ?: "Erro",
                     color = Color.Red,
@@ -125,8 +145,10 @@ fun BeneficiaryHistoryView(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    items(filteredHistory) { entry ->
-                        HistoryCard(entry)
+                    items(filteredHistory) { order ->
+                        HistoryCard(order) {
+                            navController.navigate("beneficiary_order_details/${order.docId}")
+                        }
                     }
                 }
             }
@@ -160,10 +182,11 @@ fun FilterChipButton(
 }
 
 @Composable
-fun HistoryCard(order: Order) {
+fun HistoryCard(order: Order, onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -183,6 +206,19 @@ fun HistoryCard(order: Order) {
                 fontSize = 12.sp,
                 color = TextGray
             )
+
+            Spacer(modifier = Modifier.height(6.dp))
+            OrderStatusBadge(order.accept)
         }
     }
+}
+
+@Composable
+private fun OrderStatusBadge(state: OrderState) {
+    val (bg, color) = when (state) {
+        OrderState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
+        OrderState.ACEITE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
+        OrderState.REJEITADA -> Color(0xFFFFCDD2) to Color(0xFFC62828)
+    }
+    StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
 }
