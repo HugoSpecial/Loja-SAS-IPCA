@@ -1,5 +1,6 @@
 package ipca.project.lojasas.ui.collaborator.donation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,16 +13,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Donation
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Reutiliza as mesmas cores do CandidatureView
+val BackgroundGray = Color(0xFFF5F6F8)
+val TextGray = Color(0xFF8C8C8C)
+
 @Composable
 fun DonationListView(
     navController: NavController,
@@ -29,44 +36,103 @@ fun DonationListView(
 ) {
     val state = viewModel.uiState.value
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Histórico de Doações") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundGray)
+    ) {
+
+        // --- CABEÇALHO (Seta + Logótipo) ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Voltar",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
                 )
-            )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 48.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo_sas),
+                    contentDescription = "Cabeçalho IPCA SAS",
+                    modifier = Modifier
+                        .heightIn(max = 55.dp)
+                        .align(Alignment.Center),
+                    contentScale = ContentScale.Fit
+                )
+            }
         }
-    ) { paddingValues ->
-        Box(
+
+        // --- CONTEÚDO ---
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFFAFAFA))
-                .padding(paddingValues)
+                .padding(horizontal = 20.dp)
         ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (state.donations.isEmpty()) {
-                Text(
-                    text = "Ainda não há doações registadas.",
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(state.donations) { donation ->
-                        DonationCard(donation)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // TÍTULO
+            Text(
+                text = "Histórico de Doações",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 26.sp
+                ),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // SUBTÍTULO
+            Text(
+                text = "Aqui pode consultar todas as doações registadas.",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                color = TextGray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- LISTA ---
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    state.donations.isEmpty() -> {
+                        Text(
+                            text = "Ainda não há doações registadas.",
+                            color = Color.Gray,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(bottom = 24.dp)
+                        ) {
+                            items(state.donations) { donation ->
+                                DonationCard(donation)
+                            }
+                        }
                     }
                 }
             }
@@ -76,7 +142,7 @@ fun DonationListView(
 
 @Composable
 fun DonationCard(donation: Donation) {
-    // Calcula o total de itens somando a quantidade de cada produto na lista
+
     val totalItems = donation.products.sumOf { product ->
         product.batches.sumOf { it.quantity }
     }
@@ -84,12 +150,16 @@ fun DonationCard(donation: Donation) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .fillMaxWidth()
+        ) {
 
-            // --- CABEÇALHO: Doador e Data ---
+            // --- CABEÇALHO ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -97,12 +167,11 @@ fun DonationCard(donation: Donation) {
             ) {
                 Column {
                     Text(
-                        text = "Doador:",
+                        text = "Doador",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = TextGray
                     )
                     Text(
-                        // CORREÇÃO: 'name' em vez de 'donorName'
                         text = if (donation.anonymous) "Anónimo" else (donation.name ?: "Sem Nome"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
@@ -110,80 +179,69 @@ fun DonationCard(donation: Donation) {
                     )
                 }
 
-                // Data da Doação
                 val dateStr = donation.donationDate?.let {
                     SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it)
-                } ?: "Data N/D"
+                } ?: "--"
 
                 Text(
                     text = dateStr,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextGray
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = Color.LightGray.copy(alpha = 0.5f))
+            Divider(color = Color(0xFFEEEEEE))
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- LISTA DE PRODUTOS DOADOS ---
+            // --- PRODUTOS ---
             Text(
-                text = "Produtos Doados:",
+                text = "Produtos doados",
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 4.dp)
+                color = TextGray
             )
 
-            if (donation.products.isEmpty()) {
-                Text("Sem produtos registados.", style = MaterialTheme.typography.bodyMedium)
-            } else {
-                // CORREÇÃO: Iterar sobre a lista de produtos em vez de tentar aceder a 'productName' direto
-                donation.products.forEach { product ->
-                    val productQty = product.batches.sumOf { it.quantity }
+            Spacer(modifier = Modifier.height(4.dp))
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            donation.products.forEach { product ->
+                val qty = product.batches.sumOf { it.quantity }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "• ${product.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
-                            text = "• ${product.name}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.DarkGray
+                            text = "$qty",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-
-                        Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = "+$productQty",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
                     }
                 }
             }
 
-            // Rodapé com Total
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = "Total itens: $totalItems",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+
+            Text(
+                text = "Total de itens: $totalItems",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }
