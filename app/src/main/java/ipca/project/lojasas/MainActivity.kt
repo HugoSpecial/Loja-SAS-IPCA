@@ -35,12 +35,12 @@ import ipca.project.lojasas.ui.beneficiary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.beneficiary.notifications.NotificationView
 import ipca.project.lojasas.ui.beneficiary.orders.BeneficiaryOrderDetailView
 import ipca.project.lojasas.ui.beneficiary.profile.ProfileView
+import ipca.project.lojasas.ui.colaborator.history.CollaboratorHistoryView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
 import ipca.project.lojasas.ui.collaborator.campaigns.NewCampaignView
 import ipca.project.lojasas.ui.collaborator.donation.DonationListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationView
-import ipca.project.lojasas.ui.collaborator.history.CollatorHistoryView
 import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
 import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificationView
 import ipca.project.lojasas.ui.collaborator.orders.OrderDetailView
@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
                         composable("donations_list") { DonationListView(navController = navController) }
                         composable("stock") { StockView(navController = navController) }
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) } // Usa a view correta
-                        composable("history-collaborador") { CollatorHistoryView(navController = navController) }
+                        composable("history-collaborador") { CollaboratorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
                         composable(
                             route = "order_details/{orderId}",
