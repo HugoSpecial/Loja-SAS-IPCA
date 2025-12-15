@@ -124,7 +124,7 @@ fun CandidatureView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "candidature",
+                        text = "Candidatura",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
@@ -495,7 +495,7 @@ fun CandidatureView(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                     } else {
-                        Text("Submeter candidature", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Submeter Candidatura", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

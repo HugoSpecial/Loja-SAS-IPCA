@@ -192,8 +192,10 @@ fun AwaitCandidatureView(
 
                             // Timeline
                             val currentStep = when(currentState) {
-                                CandidatureState.PENDENTE -> 1
-                                else -> 2
+                                CandidatureState.PENDENTE -> 2
+                                CandidatureState.ACEITE -> 3
+                                CandidatureState.REJEITADA -> 3
+                                else -> 1
                             }
                             MinimalHorizontalTimeline(activeColor = statusColor, currentStep = currentStep)
 
