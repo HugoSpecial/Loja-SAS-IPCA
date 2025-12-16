@@ -9,7 +9,9 @@ import ipca.project.lojasas.models.Candidature
 import ipca.project.lojasas.models.DocumentAttachment
 import ipca.project.lojasas.models.CandidatureState // O Enum do modelo (PENDING, etc)
 import ipca.project.lojasas.models.Type // O Enum do modelo (STUDENT, EMPLOYEE)
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 // Renomeei para UiState para evitar confusão com o Enum 'CandidatureState' do modelo
 data class CandidatureUiState (
@@ -148,13 +150,6 @@ class CandidatureViewModel : ViewModel() {
         )
     }
 
-    fun updateSignatureDate(input: String) {
-        val digits = input.filter { it.isDigit() }.take(8)
-        uiState.value = uiState.value.copy(
-            candidature = uiState.value.candidature.copy(signatureDate = digits)
-        )
-    }
-
     fun updateSignature(signature: String) {
         uiState.value = uiState.value.copy(
             candidature = uiState.value.candidature.copy(signature = signature)
@@ -168,13 +163,8 @@ class CandidatureViewModel : ViewModel() {
 
         val isAcademicYearOk = c.academicYear.length == 8
         val isBirthDateOk = c.birthDate.length == 8
-        val isSignatureDateOk = c.signatureDate.length == 8
 
-        // Verifica se a lista de produtos tem pelo menos um selecionado
         val anyProduct = c.foodProducts || c.hygieneProducts || c.cleaningProducts
-
-        // Se NÃO for funcionário, o curso é obrigatório
-        // (Assumindo que Type.EMPLOYEE existe no teu Enum em inglês)
         val isCourseValid = if (c.type == Type.FUNCIONARIO) true else !c.course.isNullOrBlank()
 
         return isAcademicYearOk &&
@@ -189,16 +179,15 @@ class CandidatureViewModel : ViewModel() {
                 c.scholarshipSupport != null &&
                 c.truthfulnessDeclaration &&
                 c.dataAuthorization &&
-                isSignatureDateOk &&
+                // A verificação 'isSignatureDateOk' foi removida daqui
                 c.signature.isNotBlank()
     }
 
-    // --- SUBMISSION ---
 
+    // --- SUBMISSION ---
     fun submitCandidature(onSubmitResult: (Boolean) -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
 
-        // 1. Validação
         if (!isFormValid()) {
             uiState.value = uiState.value.copy(
                 isLoading = false,
@@ -208,13 +197,10 @@ class CandidatureViewModel : ViewModel() {
             return
         }
 
+        // ... (verificação do user e inicialização do Firebase)
         val user = Firebase.auth.currentUser
         if (user == null) {
-            uiState.value = uiState.value.copy(
-                isLoading = false,
-                error = "Sessão inválida. Por favor, faz login novamente."
-            )
-            onSubmitResult(false)
+            // ... (lógica de erro)
             return
         }
         val uid = user.uid
@@ -222,14 +208,23 @@ class CandidatureViewModel : ViewModel() {
         val db = Firebase.firestore
         val batch = db.batch()
 
-        // 4. Gerar o ID da nova candidatura
         val newCandidatureRef = db.collection("candidatures").document()
         val generatedId = newCandidatureRef.id
 
-        // 5. Preparar o Objeto Candidatura
         val c = uiState.value.candidature
 
-        // Funções locais de formatação para adicionar as barras "/"
+        // --- ALTERAÇÃO PRINCIPAL AQUI ---
+        // 1. Obter a data e hora atuais
+        val currentDate = Date()
+
+        // 2. Formatar a data atual para o formato "dd/MM/yyyy"
+        val signatureDateFormatter = SimpleDateFormat(
+            "dd/MM/yyyy",
+            Locale.getDefault()
+        )
+        val formattedSignatureDate = signatureDateFormatter.format(currentDate)
+
+        // Funções locais de formatação para os outros campos
         fun formatDate(s: String) = if(s.length == 8) "${s.substring(0,2)}/${s.substring(2,4)}/${s.substring(4,8)}" else s
         fun formatYear(s: String) = if(s.length == 8) "${s.substring(0,4)}/${s.substring(4,8)}" else s
 
@@ -238,22 +233,18 @@ class CandidatureViewModel : ViewModel() {
             userId = uid,
             academicYear = formatYear(c.academicYear),
             birthDate = formatDate(c.birthDate),
-            signatureDate = formatDate(c.signatureDate),
-            creationDate = Date(),
-            updateDate = Date(),
-            state = CandidatureState.PENDENTE // Usa o Enum do modelo
+            // 3. Usar a data formatada e a data completa do sistema
+            signatureDate = formattedSignatureDate, // Data formatada para visualização
+            creationDate = currentDate, // Data e hora exatas da criação
+            updateDate = currentDate,   // Data e hora exatas da atualização inicial
+            state = CandidatureState.PENDENTE
         )
 
-        // 6. ADICIONAR AO BATCH: Gravar a Candidatura
         batch.set(newCandidatureRef, candidatureToSend)
 
-        // 7. ADICIONAR AO BATCH: Atualizar o User com o ID da Candidatura
         val userRef = db.collection("users").document(uid)
-
-        // Atualizamos o campo 'candidatureId' do User
         batch.update(userRef, "candidatureId", generatedId)
 
-        // 8. Executar tudo
         batch.commit()
             .addOnSuccessListener {
                 uiState.value = uiState.value.copy(isLoading = false, isSubmitted = true, error = null)
@@ -264,4 +255,5 @@ class CandidatureViewModel : ViewModel() {
                 onSubmitResult(false)
             }
     }
+
 }

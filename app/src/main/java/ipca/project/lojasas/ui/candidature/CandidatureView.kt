@@ -144,8 +144,8 @@ fun CandidatureView(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Icon(ImageVector.vectorResource(id = R.drawable.outline_user), null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                            Text(" Logout", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                            Text(" Logout", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -451,17 +451,6 @@ fun CandidatureView(
                 SectionHeader("Finalização")
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // SIGNATURE DATE
-                    AppTextField(
-                        value = uiState.candidature.signatureDate,
-                        onValueChange = { viewModel.updateSignatureDate(it) },
-                        label = "Data",
-                        icon = ImageVector.vectorResource(id = R.drawable.calendar_outline),
-                        modifier = Modifier.weight(1f),
-                        keyboardType = KeyboardType.Number,
-                        placeholder = "DD/MM/AAAA",
-                        visualTransformation = DateVisualTransformation()
-                    )
                     // SIGNATURE
                     AppTextField(
                         value = uiState.candidature.signature,

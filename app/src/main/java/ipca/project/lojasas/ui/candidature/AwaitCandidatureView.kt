@@ -37,7 +37,7 @@ fun AwaitCandidatureView(
     viewModelData: AwaitCandidatureViewModel = viewModel()
 ) {
     val uiState = viewModelData.uiState.value
-    val candidature = uiState.candidature // Alterado de 'candidatura' para 'candidature'
+    val candidature = uiState.candidature
     val isLoading = uiState.isLoading
     val errorMessage = uiState.error
 
@@ -264,8 +264,8 @@ fun AwaitCandidatureView(
                             .widthIn(max = 400.dp)
                             .height(50.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.tertiary),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
                     ) {
                         Icon(Icons.Default.ExitToApp, null)
                         Spacer(modifier = Modifier.width(8.dp))
