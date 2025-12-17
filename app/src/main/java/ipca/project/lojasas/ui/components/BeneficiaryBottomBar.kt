@@ -98,7 +98,7 @@ fun BeneficiaryBottomBar(
                 icon = {
                     Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
-                label = { Text(text = BottomBarItem.Notification.title, fontSize = 11.sp) },
+                label = { Text(text = BottomBarItem.Notification.title, fontSize = 10.sp) },
                 colors = navItemColors(),
                 modifier = Modifier.weight(1f)
             )

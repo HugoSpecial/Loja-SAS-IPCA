@@ -98,6 +98,8 @@ fun HomeView(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
+                }else{
+                    Text("No momento não existem produtos disponiveis")
                 }
 
                 if (index < categories.lastIndex) {
