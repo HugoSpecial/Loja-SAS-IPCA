@@ -10,7 +10,7 @@ import android.util.Base64
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
-import com.google.firebase.firestore.FieldValue // <--- IMPORTANTE
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Campaign
 import ipca.project.lojasas.models.Donation
@@ -22,9 +22,14 @@ import java.util.Date
 
 data class DonationState(
     var currentName: String = "",
+    var currentCategory: String = "", // <--- NOVA VARIÁVEL
     var currentQuantity: String = "",
     var currentValidity: Date? = null,
     var currentImageBase64: String? = null,
+
+    // Lista de categorias disponíveis
+    val categories: List<String> = listOf("Alimentos", "Higiene", "Limpeza"),
+
     var productsToAdd: MutableList<Product> = mutableListOf(),
     var isAnonymous: Boolean = false,
     var donorName: String = "",
@@ -77,6 +82,7 @@ class DonationViewModel : ViewModel() {
                 val item = doc.toObject(Product::class.java)
                 uiState.value = uiState.value.copy(
                     currentName = item?.name ?: "",
+                    currentCategory = item?.category ?: "", // Carrega a categoria se existir
                     currentImageBase64 = item?.imageUrl,
                     isLoading = false
                 )
@@ -93,9 +99,14 @@ class DonationViewModel : ViewModel() {
         uiState.value = uiState.value.copy(currentName = text, filteredProducts = filtered)
     }
 
+    fun onCategoryChange(category: String) {
+        uiState.value = uiState.value.copy(currentCategory = category)
+    }
+
     fun onProductSelected(product: Product) {
         uiState.value = uiState.value.copy(
             currentName = product.name,
+            currentCategory = product.category, // Preenche a categoria automaticamente
             currentImageBase64 = product.imageUrl,
             filteredProducts = emptyList()
         )
@@ -120,22 +131,38 @@ class DonationViewModel : ViewModel() {
 
     fun addProductToList() {
         val state = uiState.value
+
+        // Validação
         if (state.currentName.isBlank() || state.currentQuantity.isBlank()) {
             uiState.value = uiState.value.copy(error = "Preencha nome e quantidade.")
             return
         }
+        if (state.currentCategory.isBlank()) {
+            uiState.value = uiState.value.copy(error = "Selecione a categoria do produto.")
+            return
+        }
+
         val qty = state.currentQuantity.toInt()
         val validDate = state.currentValidity ?: Date()
+
         val newProduct = Product(
             name = state.currentName,
+            category = state.currentCategory, // Adiciona a categoria ao produto
             imageUrl = state.currentImageBase64 ?: "",
             batches = mutableListOf(ProductBatch(validity = validDate, quantity = qty))
         )
         val currentList = state.productsToAdd.toMutableList()
         currentList.add(newProduct)
+
+        // Limpa os campos para o próximo produto
         uiState.value = uiState.value.copy(
             productsToAdd = currentList,
-            currentName = "", currentQuantity = "", currentValidity = null, currentImageBase64 = null, error = null
+            currentName = "",
+            currentCategory = "", // Limpa categoria
+            currentQuantity = "",
+            currentValidity = null,
+            currentImageBase64 = null,
+            error = null
         )
     }
 
@@ -151,7 +178,7 @@ class DonationViewModel : ViewModel() {
     fun onAnonymousChange(isAnonymous: Boolean) { uiState.value = uiState.value.copy(isAnonymous = isAnonymous, donorName = if(isAnonymous) "" else uiState.value.donorName) }
     fun onDonorNameChange(text: String) { uiState.value = uiState.value.copy(donorName = text) }
 
-    // --- LÓGICA DE GUARDAR (Atualizada) ---
+    // --- LÓGICA DE GUARDAR ---
     fun saveDonation(onSuccess: () -> Unit) {
         val state = uiState.value
 
@@ -182,15 +209,11 @@ class DonationViewModel : ViewModel() {
             .addOnSuccessListener { docRef ->
                 val newDonationId = docRef.id
 
-                // 2. SE TIVER CAMPANHA, ATUALIZAR A LISTA DA CAMPANHA NA BD
+                // 2. Atualizar Campanha
                 val campaignId = state.selectedCampaign?.docId
                 if (!campaignId.isNullOrEmpty()) {
                     db.collection("campaigns").document(campaignId)
                         .update("donations", FieldValue.arrayUnion(newDonationId))
-                        .addOnFailureListener { e ->
-                            // Apenas logar o erro, não impede o sucesso da doação
-                            println("Erro ao atualizar campanha: ${e.message}")
-                        }
                 }
 
                 // 3. Atualizar Stock de Produtos
@@ -210,8 +233,9 @@ class DonationViewModel : ViewModel() {
             val date = product.batches[0].validity
             val img = product.imageUrl
             val name = product.name
+            val cat = product.category // Obtém a categoria
 
-            updateSingleProductStock(name, qty, date, img) {
+            updateSingleProductStock(name, cat, qty, date, img) {
                 processedCount++
                 if (processedCount == products.size) {
                     uiState.value = uiState.value.copy(isLoading = false, isSuccess = true)
@@ -221,10 +245,11 @@ class DonationViewModel : ViewModel() {
         }
     }
 
-    private fun updateSingleProductStock(name: String, qty: Int, date: Date, img: String?, onDone: () -> Unit) {
+    private fun updateSingleProductStock(name: String, category: String, qty: Int, date: Date, img: String?, onDone: () -> Unit) {
         db.collection("products").whereEqualTo("name", name.trim()).get()
             .addOnSuccessListener { docs ->
                 if (!docs.isEmpty) {
+                    // PRODUTO JÁ EXISTE: Atualiza stock
                     val doc = docs.documents[0]
                     val item = doc.toObject(Product::class.java)!!
                     val batches = item.batches
@@ -238,17 +263,26 @@ class DonationViewModel : ViewModel() {
                     if (!found) batches.add(ProductBatch(validity = date, quantity = qty))
 
                     val updates = mutableMapOf<String, Any>("batches" to batches)
+                    // Atualizamos a imagem se a nova não for vazia
                     if (!img.isNullOrEmpty()) updates["imageUrl"] = img
+                    // Opcional: Se quiseres atualizar a categoria de um produto existente, descomenta a linha abaixo
+                    // updates["category"] = category
+
                     doc.reference.update(updates).addOnCompleteListener { onDone() }
                 } else {
+                    // PRODUTO NOVO
                     val newBatch = ProductBatch(validity = date, quantity = qty)
-                    val newItem = Product(name = name, imageUrl = img ?: "", batches = mutableListOf(newBatch))
+                    val newItem = Product(
+                        name = name,
+                        category = category,
+                        imageUrl = img ?: "",
+                        batches = mutableListOf(newBatch)
+                    )
                     db.collection("products").add(newItem).addOnCompleteListener { onDone() }
                 }
             }
     }
 
-    // --- Helpers ---
     private fun isSameDay(date1: Date?, date2: Date?): Boolean {
         if (date1 == null && date2 == null) return true
         if (date1 == null || date2 == null) return false

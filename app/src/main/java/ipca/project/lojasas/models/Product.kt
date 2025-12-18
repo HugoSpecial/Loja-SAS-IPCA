@@ -10,6 +10,7 @@ data class ProductBatch(
 data class Product (
     var docId : String = "",
     var name : String = "",
+    var category: String = "",
     var imageUrl : String = "",
     var batches : MutableList<ProductBatch> = mutableListOf()
 )

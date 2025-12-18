@@ -8,10 +8,11 @@ import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Product
 
 data class StockState(
-    val items: List<Product> = emptyList(), // Lista de Produtos
+    val items: List<Product> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val searchText: String = ""
+    val searchText: String = "",
+    val selectedCategory: String = "Todos" // <--- Novo Estado para a categoria
 )
 
 class StockViewModel : ViewModel() {
@@ -39,10 +40,9 @@ class StockViewModel : ViewModel() {
 
                 for (doc in value?.documents ?: emptyList()) {
                     try {
-                        // Converte diretamente para o objeto Product
                         val item = doc.toObject(Product::class.java)
                         if (item != null) {
-                            item.docId = doc.id // Guarda o ID do documento
+                            item.docId = doc.id
                             stockList.add(item)
                         }
                     } catch (e: Exception) {
@@ -62,18 +62,33 @@ class StockViewModel : ViewModel() {
         uiState.value = uiState.value.copy(searchText = text)
     }
 
+    // --- Nova função para mudar a categoria ---
+    fun onCategoryChange(category: String) {
+        uiState.value = uiState.value.copy(selectedCategory = category)
+    }
+
+    // --- Lógica de Filtro Atualizada ---
     fun getFilteredItems(): List<Product> {
         val query = uiState.value.searchText.lowercase()
-        return if (query.isEmpty()) {
-            uiState.value.items
-        } else {
-            uiState.value.items.filter {
-                it.name.lowercase().contains(query)
+        val currentCategory = uiState.value.selectedCategory
+
+        return uiState.value.items.filter { product ->
+            // 1. Filtra pelo texto de pesquisa
+            val matchesName = product.name.lowercase().contains(query)
+
+            // 2. Filtra pela categoria
+            val matchesCategory = if (currentCategory == "Todos") {
+                true // Se for "Todos", aceita tudo
+            } else {
+                // Compara ignorando maiúsculas/minúsculas (ex: "Alimentos" == "alimentos")
+                product.category.equals(currentCategory, ignoreCase = true)
             }
+
+            // Retorna apenas se corresponder a ambos
+            matchesName && matchesCategory
         }
     }
 
-    // --- APAGAR PRODUTO ---
     fun deleteProduct(docId: String, onSuccess: () -> Unit) {
         if (docId.isEmpty()) return
 

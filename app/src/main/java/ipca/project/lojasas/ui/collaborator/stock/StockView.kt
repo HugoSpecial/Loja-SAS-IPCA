@@ -4,9 +4,11 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -21,19 +23,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.project.lojasas.models.Product // <--- IMPORTANTE: Usa o teu modelo Product
+import ipca.project.lojasas.R
+import ipca.project.lojasas.models.Product
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+// --- CORES DO TEMA ---
+val IpcaGreen = Color(0xFF438F56)
+val BackgroundGray = Color(0xFFF9F9F9) // Ajustado para igualar o HistoryView
+
 @Composable
 fun StockView(
     navController: NavController,
@@ -41,12 +49,12 @@ fun StockView(
 ) {
     val state = viewModel.uiState.value
     val filteredItems = viewModel.getFilteredItems()
-
-    // Agora usamos Product em vez de StockItem
     var selectedItem by remember { mutableStateOf<Product?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    // --- DIÁLOGO DE DETALHES ---
+    val categories = listOf("Todos", "Alimentos", "Higiene", "Limpeza")
+
+    // --- DIÁLOGOS ---
     if (selectedItem != null) {
         ProductBatchesDialog(
             item = selectedItem!!,
@@ -60,7 +68,6 @@ fun StockView(
         )
     }
 
-    // --- DIÁLOGO DE APAGAR ---
     if (showDeleteConfirm && selectedItem != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -81,57 +88,124 @@ fun StockView(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") }
-            }
+            },
+            containerColor = Color.White
         )
     }
 
+    // --- ECRÃ PRINCIPAL ---
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Stock Loja Social", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
-            )
-        },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("product") }, // Criar Novo
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
+                onClick = { navController.navigate("product") },
+                containerColor = IpcaGreen,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(56.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar")
             }
-        }
+        },
+        containerColor = BackgroundGray
     ) { paddingValues ->
 
         Column(
             modifier = Modifier
-                .padding(paddingValues)
+                // .padding(paddingValues) // <--- REMOVIDO: Isto causava o espaço em branco no topo
                 .fillMaxSize()
-                .background(Color(0xFFFAFAFA))
-                .padding(16.dp)
+                // Adicionamos apenas o padding inferior para o conteúdo não ficar escondido atrás da barra de navegação
+                .padding(bottom = paddingValues.calculateBottomPadding())
+                .padding(horizontal = 12.dp)
         ) {
-            // Pesquisa
+            Image(
+                painter = painterResource(id = R.drawable.logo_sas),
+                contentDescription = "Logo IPCA SAS",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                contentScale = ContentScale.Fit // Garante que o logo não fica esticado
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            // ----------------------------------------
+
+            // TÍTULO "Stock"
+            Text(
+                text = "Stock",
+                color = IpcaGreen, // Usando o verde definido (ou Color(0xFF00864F) se preferires o exato do History)
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Subtítulo opcional para manter consistência
+            Text(
+                text = "Gerencie os produtos e validades.",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+            )
+
+            // BARRA DE PESQUISA
             OutlinedTextField(
                 value = state.searchText,
                 onValueChange = { viewModel.onSearchTextChange(it) },
-                label = { Text("Pesquisar produto...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                placeholder = { Text("Pesquisar", color = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.Black
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = IpcaGreen,
+                    unfocusedBorderColor = Color.Gray,
+                    cursorColor = IpcaGreen
+                ),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // FILTROS (CHIPS)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categories) { category ->
+                    val isSelected = category == state.selectedCategory
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSelected) IpcaGreen else Color.Transparent)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) IpcaGreen else Color.Gray,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .clickable { viewModel.onCategoryChange(category) }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = category,
+                            color = if (isSelected) Color.White else Color.Gray,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // GRID DE PRODUTOS
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = IpcaGreen)
                 }
             } else if (filteredItems.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -140,8 +214,9 @@ fun StockView(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(filteredItems) { item ->
                         ProductCard(
@@ -157,21 +232,28 @@ fun StockView(
 
 @Composable
 fun ProductCard(item: Product, onClick: () -> Unit) {
-    // Calcula o total aqui (pois o Product pode não ter o método no modelo)
     val totalQuantity = item.batches.sumOf { it.quantity }
+    val validitiesCount = item.batches.count { it.validity != null }
 
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
-        Column {
-            // Imagem
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // Imagem do Produto
             Box(
-                modifier = Modifier.fillMaxWidth().height(120.dp).background(Color.LightGray)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
             ) {
                 if (item.imageUrl.isNotEmpty()) {
                     val bitmap = remember(item.imageUrl) {
@@ -181,50 +263,65 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
                         } catch (e: Exception) { null }
                     }
                     if (bitmap != null) {
-                        Image(bitmap = bitmap, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 } else {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text("Sem Imagem", color = Color.Gray, fontSize = 12.sp)
-                    }
-                }
-            }
-
-            // Info
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = item.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Total: ", fontSize = 12.sp, color = Color.Gray)
-                    Text(
-                        text = "$totalQuantity un",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
-
-                if (item.batches.size > 1) {
-                    Text(
-                        text = "${item.batches.size} validades",
-                        fontSize = 10.sp,
-                        color = Color.Blue
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Sem imagem",
+                        tint = Color.LightGray,
+                        modifier = Modifier.size(40.dp)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Nome
+            Text(
+                text = item.name,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = IpcaGreen,
+                maxLines = 1
+            )
+            // Categoria
+            Text(
+                text = item.category,
+                fontSize = 10.sp,
+                color = Color.Gray,
+                maxLines = 1
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Total
+            Text(
+                text = "Total: $totalQuantity un",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Validades
+            Text(
+                text = if (validitiesCount > 0) "$validitiesCount validades" else "Sem validade",
+                fontSize = 12.sp,
+                color = if (validitiesCount > 0) IpcaGreen else Color.Gray
+            )
         }
     }
 }
 
 @Composable
 fun ProductBatchesDialog(
-    item: Product, // Recebe Product
+    item: Product,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDeleteRequest: () -> Unit
@@ -240,7 +337,7 @@ fun ProductBatchesDialog(
                 Text(
                     text = item.name,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = IpcaGreen,
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
                 )
@@ -266,10 +363,9 @@ fun ProductBatchesDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.heightIn(max = 300.dp)
                 ) {
-                    // Ordena os lotes pela data
                     items(item.batches.sortedBy { it.validity }) { batch ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                            colors = CardDefaults.cardColors(containerColor = BackgroundGray),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -286,14 +382,14 @@ fun ProductBatchesDialog(
                                 }
 
                                 Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    color = IpcaGreen,
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text(
                                         text = "${batch.quantity} un",
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        color = Color.White
                                     )
                                 }
                             }
@@ -304,8 +400,9 @@ fun ProductBatchesDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Fechar")
+                Text("Fechar", color = IpcaGreen)
             }
-        }
+        },
+        containerColor = Color.White
     )
 }
