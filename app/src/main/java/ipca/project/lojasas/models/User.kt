@@ -9,5 +9,6 @@ data class User (
     var phone : String? = null,
     var email : String? = null,
     var fault : Int = 0,
-    var candidatureId : String? = null
+    var candidatureId : String? = null,
+    var fcmToken : String? = null
 )

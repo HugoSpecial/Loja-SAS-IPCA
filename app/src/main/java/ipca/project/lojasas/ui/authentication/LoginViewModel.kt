@@ -1,7 +1,6 @@
 package ipca.project.lojasas.ui.authentication
 
 import android.util.Log
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,10 +10,10 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging // Importante para as notificações
 import ipca.project.lojasas.TAG
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import androidx.compose.runtime.getValue
 
 data class LoginState (
     var email : String? = null,
@@ -54,19 +53,36 @@ class LoginViewModel : ViewModel() {
             val db = FirebaseFirestore.getInstance()
 
             try {
-                // 2. Autenticação (Login) usando await()
-                // Isto suspende a execução até o login terminar, sem bloquear a thread principal
+                // 2. Autenticação (Login)
                 auth.signInWithEmailAndPassword(email, password).await()
 
-                // Se passou daqui, o login está feito. Agora vamos buscar os dados.
+                // Se passou daqui, o login está feito. Vamos obter o UID.
                 val uid = auth.currentUser?.uid ?: throw Exception("Erro ao obter UID.")
 
-                // 3. Buscar dados extra no Firestore
+                // --- NOVO: Lógica para guardar o Token FCM (Notificações) ---
+                try {
+                    // Pede o token ao serviço de mensagens
+                    val token = FirebaseMessaging.getInstance().token.await()
+
+                    // Guarda o token no documento do utilizador
+                    // Usamos .update() para não apagar os outros dados
+                    db.collection("users").document(uid)
+                        .update("fcmToken", token)
+                        .await()
+
+                    Log.d(TAG, "Token FCM atualizado com sucesso: $token")
+                } catch (e: Exception) {
+                    // Se falhar o token, NÃO bloqueamos o login. Apenas registamos o erro.
+                    Log.e(TAG, "Aviso: Não foi possível guardar o token de notificação.", e)
+                }
+                // --- FIM DA LÓGICA DO TOKEN ---
+
+                // 3. Buscar dados extra no Firestore (Roles)
                 val userDoc = db.collection("users").document(uid).get().await()
 
-                // Leitura segura dos campos (evita crashes se o campo não existir)
+                // Leitura segura dos campos
                 val isBeneficiary = userDoc.getBoolean("isBeneficiary") ?: false
-                val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false
+                val isCollaborator = userDoc.getBoolean("isCollaborator") ?: false // Nota: Verifica se na BD está 'isCollaborator' ou 'isColaborator'
                 val candidatureId = userDoc.getString("candidatureId")
 
                 // Sucesso! Parar loading
@@ -94,9 +110,10 @@ class LoginViewModel : ViewModel() {
                 uiState.value =
                     uiState.value.copy(isLoading = false, error = "Email ou password incorretos.")
             } catch (e: Exception) {
-                // Outros erros (ex: Sem internet)
+                // Outros erros
                 uiState.value =
                     uiState.value.copy(isLoading = false, error = e.message ?: "Erro desconhecido.")
+                Log.e(TAG, "Erro no login", e)
             }
         }
     }
