@@ -1,17 +1,32 @@
-const functions = require("firebase-functions/v1"); 
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 
 exports.notificarNovaCandidatura = functions.firestore
-  .document('candidatures/{docId}')
+  .document('candidatures/{candidaturaId}') 
   .onCreate(async (snap, context) => {
     
-    const dados = snap.data();
-    const nome = dados.nome || "Um beneficiário"; 
+    const dadosCandidatura = snap.data();
+    const candidaturaId = context.params.candidaturaId;
+    
+    let nomeDoAluno = "Interessado"; 
 
     try {
-      // Procura Colaboradores
+      if (dadosCandidatura.userId) {
+        const userDoc = await admin.firestore().collection('users').doc(dadosCandidatura.userId).get();
+        
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          nomeDoAluno = userData.name || userData.nome || "Aluno desconhecido";
+        }
+      } else {
+        nomeDoAluno = dadosCandidatura.name || dadosCandidatura.nome || "Um aluno";
+      }
+
+      console.log(`Nova candidatura de: ${nomeDoAluno}`);
+
+      // --- PASSO 2: ENCONTRAR COLABORADORES ---
       const querySnapshot = await admin.firestore()
         .collection('users')
         .where('isCollaborator', '==', true) 
@@ -22,37 +37,55 @@ exports.notificarNovaCandidatura = functions.firestore
         return null;
       }
 
-      // Junta tokens
-      const tokens = [];
+      const batch = admin.firestore().batch();
+      const tokensParaEnvio = [];
+
+      // --- PASSO 3: PREPARAR NOTIFICAÇÕES ---
       querySnapshot.forEach(doc => {
-        const userData = doc.data();
-        if (userData.fcmToken) {
-          tokens.push(userData.fcmToken);
+        const adminData = doc.data();
+        const adminId = doc.id;
+
+        if (adminData.fcmToken) {
+          tokensParaEnvio.push(adminData.fcmToken);
         }
+
+        // Criar registo na coleção 'notifications'
+        const notifRef = admin.firestore().collection('notifications').doc();
+
+        batch.set(notifRef, {
+          recipientId: adminId,
+          title: "Nova Candidatura",
+          // AQUI ESTÁ A MUDANÇA: O corpo da mensagem agora tem o nome real
+          body: `${nomeDoAluno} submeteu um nova candidatura.`,
+          date: admin.firestore.FieldValue.serverTimestamp(),
+          read: false,
+          type: "candidatura_nova",
+          relatedId: candidaturaId,
+          forCollaborator: true 
+        });
       });
 
-      if (tokens.length === 0) {
-        console.log('Sem tokens para enviar.');
-        return null;
+      // Gravar histórico
+      await batch.commit();
+
+      // --- PASSO 4: ENVIAR PUSH PARA O TELEMÓVEL ---
+      if (tokensParaEnvio.length > 0) {
+        const message = {
+          notification: {
+            title: "Nova Candidatura",
+            // O nome também aparece no telemóvel
+            body: `${nomeDoAluno} submeteu um nova candidatura.`
+          },
+          tokens: tokensParaEnvio
+        };
+
+        await admin.messaging().sendEachForMulticast(message);
       }
 
-      // Prepara mensagem
-      const message = {
-        notification: {
-          title: "Nova Candidatura Recebida",
-          body: `${nome} enviou um novo pedido.`
-        },
-        tokens: tokens
-      };
-
-      // Envia
-      const response = await admin.messaging().sendEachForMulticast(message);
-      console.log('Sucesso:', response.successCount);
-      
       return null;
 
     } catch (error) {
-      console.error("Erro:", error);
+      console.error("Erro ao processar notificação:", error);
       return null;
     }
   });
