@@ -4,448 +4,320 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 
 // ==================================================================
-// FUNÇÃO 1: AVISA COLABORADORES DE NOVA CANDIDATURA (onCreate)
+// 1. NOVA CANDIDATURA (Ação do INTERESSADO -> Avisa COLABORADOR)
 // ==================================================================
 exports.notificarNovaCandidatura = functions.firestore
   .document('candidatures/{candidaturaId}') 
   .onCreate(async (snap, context) => {
     
-    const dadosCandidatura = snap.data();
+    const dados = snap.data();
     const candidaturaId = context.params.candidaturaId;
     let nomeDoAluno = "Interessado"; 
 
     try {
-      if (dadosCandidatura.userId) {
-        const userDoc = await admin.firestore().collection('users').doc(dadosCandidatura.userId).get();
+      if (dados.userId) {
+        const userDoc = await admin.firestore().collection('users').doc(dados.userId).get();
         if (userDoc.exists) {
           const userData = userDoc.data();
           nomeDoAluno = userData.name || userData.nome || "Aluno desconhecido";
         }
       } else {
-        nomeDoAluno = dadosCandidatura.name || dadosCandidatura.nome || "Um aluno";
+        nomeDoAluno = dados.name || dados.nome || "Um aluno";
       }
 
-      console.log(`Nova candidatura de: ${nomeDoAluno}`);
-
+      // Procurar Colaboradores
       const querySnapshot = await admin.firestore()
         .collection('users')
         .where('isCollaborator', '==', true) 
         .get();
 
-      if (querySnapshot.empty) {
-        console.log('Nenhum colaborador encontrado.');
-        return null;
-      }
+      if (querySnapshot.empty) return null;
 
       const batch = admin.firestore().batch();
-      const tokensParaEnvio = [];
+      const tokens = [];
 
       querySnapshot.forEach(doc => {
         const adminData = doc.data();
-        const adminId = doc.id;
-
-        if (adminData.fcmToken) {
-          tokensParaEnvio.push(adminData.fcmToken);
-        }
+        if (adminData.fcmToken) tokens.push(adminData.fcmToken);
 
         const notifRef = admin.firestore().collection('notifications').doc();
-
         batch.set(notifRef, {
-          recipientId: adminId,
-          title: "Nova Candidatura 📄",
-          body: `${nomeDoAluno} submeteu uma nova candidatura.`,
+          recipientId: doc.id,
+          title: "Nova Candidatura",
+          body: `${nomeDoAluno} submeteu um novo pedido.`,
           date: admin.firestore.FieldValue.serverTimestamp(),
           read: false,
           type: "candidatura_nova",
           relatedId: candidaturaId,
-          forCollaborator: true // Para o ADMIN ver
+          targetProfile: "COLABORADOR" 
         });
       });
 
       await batch.commit();
 
-      if (tokensParaEnvio.length > 0) {
-        const message = {
-          notification: {
-            title: "Nova Candidatura 📄",
-            body: `${nomeDoAluno} submeteu uma nova candidatura.`
+      if (tokens.length > 0) {
+        await admin.messaging().sendEachForMulticast({
+          notification: { 
+            title: "Nova Candidatura", 
+            body: `${nomeDoAluno} submeteu um novo pedido.` 
           },
-          tokens: tokensParaEnvio
-        };
-        await admin.messaging().sendEachForMulticast(message);
+          tokens: tokens
+        });
       }
-
       return null;
-
-    } catch (error) {
-      console.error("Erro ao processar notificação nova:", error);
-      return null;
+    } catch (error) { 
+      console.error("Erro nova candidatura:", error);
+      return null; 
     }
   });
 
+
 // ==================================================================
-// FUNÇÃO 2: AVISA O ALUNO QUANDO O ESTADO DA CANDIDATURA MUDA (onUpdate)
+// 2. MUDANÇA ESTADO CANDIDATURA (Ação do COLABORADOR -> Avisa INTERESSADO)
 // ==================================================================
 exports.notificarMudancaEstado = functions.firestore
   .document('candidatures/{candidaturaId}')
   .onUpdate(async (change, context) => {
     
-    // Pegar dados de ANTES e DEPOIS da mudança
     const dadosNovos = change.after.data();
     const dadosAntigos = change.before.data();
     const candidaturaId = context.params.candidaturaId;
 
-    // Se o estado não mudou, não fazemos nada (evita loops infinitos)
-    if (dadosNovos.state === dadosAntigos.state) {
-      return null;
-    }
+    if (dadosNovos.state === dadosAntigos.state) return null;
+    if (!dadosNovos.userId) return null;
 
-    const novoEstado = dadosNovos.state; // Ex: 'ACEITE', 'REJEITADA'
-    const alunoId = dadosNovos.userId;
+    let titulo = "";
+    let corpo = "";
 
-    // Verifica se temos ID do aluno para enviar
-    if (!alunoId) {
-      console.log("Candidatura sem userId, impossível notificar aluno.");
+    if (dadosNovos.state === "ACEITE") {
+      titulo = "Candidatura Aceite";
+      corpo = "A sua candidatura foi aceite. Bem-vindo!";
+    } else if (dadosNovos.state === "RECUSADA") {
+      titulo = "Candidatura Recusada";
+      corpo = "Verifique os motivos na aplicacao.";
+    } else {
       return null;
     }
 
     try {
-      // 1. Definir Título e Mensagem com base no Estado
-      let titulo = "";
-      let corpo = "";
+      const userDoc = await admin.firestore().collection('users').doc(dadosNovos.userId).get();
+      const userToken = userDoc.exists ? userDoc.data().fcmToken : null;
 
-      if (novoEstado === "ACEITE") {
-        titulo = "Candidatura Aceite ✅";
-        corpo = "Boas notícias! A sua candidatura foi validada pela equipa.";
-      } else if (novoEstado === "REJEITADA") {
-        titulo = "Atualização da Candidatura ⚠️";
-        corpo = "O estado da sua candidatura foi alterado para REJEITADA. Verifique os detalhes.";
-      } else {
-        // Se mudou para outra coisa qualquer (ex: PENDENTE novamente), ignoramos
-        return null;
-      }
-
-      // 2. Buscar o Token do Aluno
-      const userDoc = await admin.firestore().collection('users').doc(alunoId).get();
-      
-      if (!userDoc.exists) {
-        console.log("Utilizador não encontrado na BD.");
-        return null;
-      }
-
-      const userData = userDoc.data();
-      const alunoToken = userData.fcmToken;
-
-      // 3. Guardar no Histórico (Firestore)
-      // Nota: Aqui não usamos batch porque é só para UMA pessoa
       await admin.firestore().collection('notifications').add({
-        recipientId: alunoId,
+        recipientId: dadosNovos.userId,
         title: titulo,
         body: corpo,
         date: admin.firestore.FieldValue.serverTimestamp(),
         read: false,
         type: "candidatura_estado",
         relatedId: candidaturaId,
-        forCollaborator: false // FALSE = Para o beneficiário ver
+        targetProfile: "INTERESSADO"
       });
 
-      console.log(`Notificação de estado (${novoEstado}) salva para o aluno.`);
-
-      // 4. Enviar Push Notification (se tiver token)
-      if (alunoToken) {
-        const message = {
-          notification: {
-            title: titulo,
-            body: corpo
-          },
-          token: alunoToken // Note: aqui é 'token' (singular) porque é send() simples, não multicast
-        };
-
-        await admin.messaging().send(message);
-        console.log("Push enviado para o aluno.");
-      } else {
-        console.log("Aluno sem token, apenas histórico salvo.");
+      if (userToken) {
+        await admin.messaging().send({
+          notification: { title: titulo, body: corpo },
+          token: userToken
+        });
       }
-
       return null;
+    } catch (error) { 
+      console.error("Erro estado candidatura:", error);
+      return null; 
+    }
+  });
 
-    } catch (error) {
-      console.error("Erro ao notificar mudança de estado:", error);
+
+// ==================================================================
+// 3. NOVO PEDIDO CABAZ (Ação do BENEFICIARIO -> Avisa COLABORADOR)
+// ==================================================================
+exports.notificarNovoPedido = functions.firestore
+  .document('orders/{orderId}')
+  .onCreate(async (snap, context) => {
+    
+    const dados = snap.data();
+    const nomeAluno = dados.userName || "Um beneficiario";
+    const orderId = context.params.orderId;
+
+    try {
+      const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
+      if (colabs.empty) return null;
+
+      const batch = admin.firestore().batch();
+      const tokens = [];
+
+      colabs.forEach(doc => {
+        const d = doc.data();
+        if (d.fcmToken) tokens.push(d.fcmToken);
+
+        const notifRef = admin.firestore().collection('notifications').doc();
+        batch.set(notifRef, {
+          recipientId: doc.id,
+          title: "Novo Cabaz Pedido",
+          body: `${nomeAluno} pediu um cabaz.`,
+          date: admin.firestore.FieldValue.serverTimestamp(),
+          read: false,
+          type: "pedido_novo",
+          relatedId: orderId,
+          targetProfile: "COLABORADOR"
+        });
+      });
+
+      await batch.commit();
+
+      if (tokens.length > 0) {
+        await admin.messaging().sendEachForMulticast({
+          notification: { 
+            title: "Novo Cabaz Pedido", 
+            body: `${nomeAluno} pediu um cabaz.` 
+          },
+          tokens: tokens
+        });
+      }
       return null;
+    } catch (e) { 
+      console.error("Erro novo pedido:", e);
+      return null; 
     }
   });
 
 // ==================================================================
-// 3. ENCOMENDAS (CABAZES) - NOVO PEDIDO (onCreate)
-// Avisa os Colaboradores que um aluno pediu um cabaz
-// ==================================================================
-exports.notificarNovoPedido = functions.firestore
-.document('orders/{orderId}')
-.onCreate(async (snap, context) => {
-  
-  const dados = snap.data();
-  const orderId = context.params.orderId;
-  // Tenta apanhar o nome do user que vem na encomenda, ou usa genérico
-  const nomeAluno = dados.userName || "Um beneficiário";
-
-  try {
-    // Procurar Colaboradores
-    const querySnapshot = await admin.firestore()
-      .collection('users')
-      .where('isCollaborator', '==', true) 
-      .get();
-
-    if (querySnapshot.empty) return null;
-
-    const batch = admin.firestore().batch();
-    const tokens = [];
-
-    querySnapshot.forEach(doc => {
-      const adminData = doc.data();
-      if (adminData.fcmToken) tokens.push(adminData.fcmToken);
-
-      // Histórico
-      const notifRef = admin.firestore().collection('notifications').doc();
-      batch.set(notifRef, {
-        recipientId: doc.id,
-        title: "Novo Pedido de Cabaz",
-        body: `${nomeAluno} fez um novo pedido de cabaz.`,
-        date: admin.firestore.FieldValue.serverTimestamp(),
-        read: false,
-        type: "pedido_novo",
-        relatedId: orderId,
-        forCollaborator: true
-      });
-    });
-
-    await batch.commit();
-
-    if (tokens.length > 0) {
-      await admin.messaging().sendEachForMulticast({
-        notification: {
-          title: "Novo Pedido de Cabaz",
-          body: `${nomeAluno} fez um novo pedido de cabaz.`
-        },
-        tokens: tokens
-      });
-    }
-    return null;
-  } catch (error) {
-    console.error("Erro novo pedido:", error);
-    return null;
-  }
-});
-
-// ==================================================================
-// 4. ENCOMENDAS - ATUALIZAÇÃO DE ESTADO/DATA (onUpdate)
-// Gere Aceitação, Rejeição e Agendamento de Levantamento
+// 4. ATUALIZAÇÃO PEDIDO (Ação do COLABORADOR -> Avisa BENEFICIARIO)
 // ==================================================================
 exports.notificarAtualizacaoPedido = functions.firestore
   .document('orders/{orderId}')
   .onUpdate(async (change, context) => {
     
-    const dadosNovos = change.after.data();
-    const dadosAntigos = change.before.data();
-    const orderId = context.params.orderId;
+    const novos = change.after.data();
+    const antigos = change.before.data();
+    const userId = novos.userId;
     
-    const novoEstado = dadosNovos.accept;     
-    const novaData = dadosNovos.surveyDate;   
-    const userId = dadosNovos.userId;
-
     if (!userId) return null;
 
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    const userToken = userDoc.exists ? userDoc.data().fcmToken : null;
-
-    const batch = admin.firestore().batch();
-    
     let titulo = "";
     let corpo = "";
-    let enviarParaAluno = false;
-    let enviarParaColabs = false;
-
-    // A: REJEITADO
-    if (dadosAntigos.accept !== "REJEITADA" && novoEstado === "REJEITADA") {
-      titulo = "Pedido de Cabaz Rejeitado";
-      corpo = "O seu pedido de cabaz não pôde ser aceite. Verifique o motivo na app.";
-      enviarParaAluno = true;
-    }
-
-    // B: ACEITE / DATA DEFINIDA
-    else if (novoEstado === "ACEITE" && (dadosAntigos.accept !== "ACEITE" || novaData !== dadosAntigos.surveyDate)) {
-      
-      let dataLegivel = "brevemente";
-      if (novaData) {
-        const dateObj = novaData.toDate ? novaData.toDate() : new Date(novaData);
-        // CORREÇÃO: Apenas Dia, Mês e Ano
-        dataLegivel = dateObj.toLocaleDateString('pt-PT', { 
-          day: '2-digit', 
-          month: '2-digit',
-          year: 'numeric' 
-        });
+    
+    // REJEITADO
+    if (antigos.accept !== "REJEITADA" && novos.accept === "REJEITADA") {
+      titulo = "Pedido Recusado";
+      corpo = "O seu pedido de cabaz foi recusado.";
+    } 
+    // ACEITE / AGENDADO
+    else if (novos.accept === "ACEITE" && (antigos.accept !== "ACEITE" || novos.surveyDate !== antigos.surveyDate)) {
+      let dataStr = "brevemente";
+      if (novos.surveyDate) {
+         const d = novos.surveyDate.toDate ? novos.surveyDate.toDate() : new Date(novos.surveyDate);
+         dataStr = d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
       }
-
       titulo = "Levantamento Agendado";
-      corpo = `O seu cabaz foi aceite! Deve ser levantado em: ${dataLegivel}.`;
-      enviarParaAluno = true;
-      enviarParaColabs = true; 
+      corpo = `Levante o cabaz em: ${dataStr}`;
     }
 
     if (!titulo) return null;
 
     try {
-      // 1. Notificar ALUNO
-      if (enviarParaAluno) {
-        const refAluno = admin.firestore().collection('notifications').doc();
-        batch.set(refAluno, {
-          recipientId: userId,
-          title: titulo,
-          body: corpo,
-          date: admin.firestore.FieldValue.serverTimestamp(),
-          read: false,
-          type: "pedido_estado",
-          relatedId: orderId,
-          forCollaborator: false
+      const uDoc = await admin.firestore().collection('users').doc(userId).get();
+      const token = uDoc.exists ? uDoc.data().fcmToken : null;
+
+      // Avisar Beneficiário
+      await admin.firestore().collection('notifications').add({
+        recipientId: userId,
+        title: titulo,
+        body: corpo,
+        date: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        type: "pedido_estado",
+        relatedId: context.params.orderId,
+        targetProfile: "BENEFICIARIO"
+      });
+
+      if (token) {
+        await admin.messaging().send({
+          notification: { title: titulo, body: corpo },
+          token: token
         });
-
-        if (userToken) {
-          await admin.messaging().send({
-            notification: { title: titulo, body: corpo },
-            token: userToken
-          });
-        }
       }
-
-      // 2. Notificar COLABORADORES
-      if (enviarParaColabs) {
-        const colabsSnapshot = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
-        const colabTokens = [];
-
-        colabsSnapshot.forEach(doc => {
-          const cData = doc.data();
-          if (cData.fcmToken) colabTokens.push(cData.fcmToken);
-
-          const refColab = admin.firestore().collection('notifications').doc();
-          batch.set(refColab, {
-            recipientId: doc.id,
-            title: "Agendamento de Entrega",
-            body: `Cabaz para ${dadosNovos.userName || "aluno"} agendado para ${novaData ? dataLegivel : "brevemente"}.`,
-            date: admin.firestore.FieldValue.serverTimestamp(),
-            read: false,
-            type: "pedido_agendado",
-            relatedId: orderId,
-            forCollaborator: true
-          });
-        });
-
-        if (colabTokens.length > 0) {
-          await admin.messaging().sendEachForMulticast({
-            notification: { 
-              title: "Agendamento de Entrega", 
-              body: `Cabaz pronto para entrega a ${dadosNovos.userName}.` 
-            },
-            tokens: colabTokens
-          });
-        }
-      }
-
-      await batch.commit();
       return null;
-
-    } catch (erro) {
-      console.error("Erro update pedido:", erro);
-      return null;
+    } catch (e) { 
+      console.error("Erro update pedido:", e);
+      return null; 
     }
   });
 
 // ==================================================================
-// 5. VERIFICAR VALIDADES (Agendado / Cron Job)
-// Corre todos os dias às 09:00 da manhã
+// 5. VALIDADES (Cron Job -> Avisa COLABORADOR)
 // ==================================================================
 exports.verificarValidades = functions.pubsub
-.schedule('every 24 hours') // Podes mudar para 'every day 09:00'
-.timeZone('Europe/Lisbon')
-.onRun(async (context) => {
-  
-  const hoje = new Date();
-  // Definir alerta para produtos que acabam nos próximos 7 dias
-  const diasAlerta = 7; 
-  const dataLimite = new Date();
-  dataLimite.setDate(hoje.getDate() + diasAlerta);
-
-  try {
-    // Buscar todos os produtos
-    const snapshot = await admin.firestore().collection('products').get();
+  .schedule('every 24 hours')
+  .timeZone('Europe/Lisbon')
+  .onRun(async (context) => {
     
-    let produtosAExpirar = [];
+    const hoje = new Date();
+    const diasAlerta = 7; 
+    const dataLimite = new Date();
+    dataLimite.setDate(hoje.getDate() + diasAlerta);
 
-    snapshot.forEach(doc => {
-      const produto = doc.data();
-      const lotes = produto.batches || []; // Array de ProductBatch
+    try {
+      // Nota: Verifica se a coleção é 'product' ou 'products' na tua BD
+      const snapshot = await admin.firestore().collection('product').get();
+      let produtosAExpirar = [];
 
-      lotes.forEach(lote => {
-        if (lote.validity) {
-          // Converter Timestamp para Date
-          const dataValidade = lote.validity.toDate ? lote.validity.toDate() : new Date(lote.validity);
-          
-          // Verifica se a validade é no futuro mas antes do limite (ex: próx 7 dias)
-          if (dataValidade > hoje && dataValidade <= dataLimite) {
-            produtosAExpirar.push(`${produto.name} (Qtd: ${lote.quantity})`);
+      snapshot.forEach(doc => {
+        const produto = doc.data();
+        const lotes = produto.batches || [];
+
+        lotes.forEach(lote => {
+          if (lote.validity) {
+            const dataValidade = lote.validity.toDate ? lote.validity.toDate() : new Date(lote.validity);
+            
+            if (dataValidade > hoje && dataValidade <= dataLimite) {
+              produtosAExpirar.push(`${produto.name} (Qtd: ${lote.quantity})`);
+            }
           }
-        }
+        });
       });
-    });
 
-    // Se não houver nada a estragar-se, não faz nada
-    if (produtosAExpirar.length === 0) {
-      console.log("Nenhum produto próximo da validade.");
+      if (produtosAExpirar.length === 0) return null;
+
+      const listaResumida = produtosAExpirar.slice(0, 3).join(", ");
+      const maisOutros = produtosAExpirar.length > 3 ? ` e mais ${produtosAExpirar.length - 3}` : "";
+      const corpoMsg = `Atencao! Produtos a expirar em breve: ${listaResumida}${maisOutros}.`;
+
+      const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
+      const tokens = [];
+      const batch = admin.firestore().batch();
+
+      colabs.forEach(doc => {
+        const d = doc.data();
+        if (d.fcmToken) tokens.push(d.fcmToken);
+
+        const ref = admin.firestore().collection('notifications').doc();
+        batch.set(ref, {
+          recipientId: doc.id,
+          title: "Alerta de Validade",
+          body: corpoMsg,
+          date: admin.firestore.FieldValue.serverTimestamp(),
+          read: false,
+          type: "validade_alerta",
+          targetProfile: "COLABORADOR"
+        });
+      });
+
+      await batch.commit();
+
+      if (tokens.length > 0) {
+        await admin.messaging().sendEachForMulticast({
+          notification: {
+            title: "Alerta de Validade",
+            body: corpoMsg
+          },
+          tokens: tokens
+        });
+      }
+      return null;
+
+    } catch (erro) {
+      console.error("Erro validades:", erro);
       return null;
     }
-
-    // Criar a mensagem (junta os 3 primeiros nomes para não ficar gigante)
-    const listaResumida = produtosAExpirar.slice(0, 3).join(", ");
-    const maisOutros = produtosAExpirar.length > 3 ? ` e mais ${produtosAExpirar.length - 3}` : "";
-    
-    const corpoMsg = `Atenção! Produtos a expirar em breve: ${listaResumida}${maisOutros}.`;
-
-    // Notificar Colaboradores
-    const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
-    const tokens = [];
-    const batch = admin.firestore().batch();
-
-    colabs.forEach(doc => {
-      const d = doc.data();
-      if (d.fcmToken) tokens.push(d.fcmToken);
-
-      const ref = admin.firestore().collection('notifications').doc();
-      batch.set(ref, {
-        recipientId: doc.id,
-        title: "Alerta de Validade",
-        body: corpoMsg,
-        date: admin.firestore.FieldValue.serverTimestamp(),
-        read: false,
-        type: "validade_alerta",
-        forCollaborator: true
-      });
-    });
-
-    await batch.commit();
-
-    if (tokens.length > 0) {
-      await admin.messaging().sendEachForMulticast({
-        notification: {
-          title: "Alerta de Validade",
-          body: corpoMsg
-        },
-        tokens: tokens
-      });
-    }
-
-    console.log("Alerta de validades enviado.");
-    return null;
-
-  } catch (erro) {
-    console.error("Erro validades:", erro);
-    return null;
-  }
-});
+  });

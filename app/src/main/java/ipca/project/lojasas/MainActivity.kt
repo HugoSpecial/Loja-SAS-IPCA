@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,6 +25,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.delay
+
+// --- IMPORTS DAS VIEWS ---
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.beneficiary.history.BeneficiaryHistoryView
@@ -43,6 +48,7 @@ import ipca.project.lojasas.ui.collaborator.donation.DonationListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationView
 import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
 import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificationView
+import ipca.project.lojasas.ui.collaborator.notifications.NotificationsCollaboratorViewModel // <--- IMPORTANTE
 import ipca.project.lojasas.ui.collaborator.orders.OrderDetailView
 import ipca.project.lojasas.ui.collaborator.orders.OrderListView
 import ipca.project.lojasas.ui.collaborator.profile.ProfileCollaboratorView
@@ -51,7 +57,6 @@ import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
 import ipca.project.lojasas.ui.components.SplashView
 import ipca.project.lojasas.ui.theme.LojaSASTheme
-import kotlinx.coroutines.delay
 
 const val TAG = "LojaSAS-IPCA"
 
@@ -68,6 +73,10 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
+
+            // --- NOVO: Inicializar ViewModel de Notificações aqui para estar acessível em toda a app ---
+            val notifViewModel: NotificationsCollaboratorViewModel = viewModel()
+            val notifState by remember { notifViewModel.uiState }
 
             LojaSASTheme {
                 Scaffold(
@@ -90,7 +99,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (showCollaboratorBottomBar) {
-                            CollaboratorBottomBar(navController = navController, currentRoute = currentRoute)
+                            CollaboratorBottomBar(
+                                navController = navController,
+                                currentRoute = currentRoute,
+                                unreadCount = notifState.unreadCount // <--- Passar o contador aqui
+                            )
                         }
                     }
                 ) { innerPadding ->
@@ -106,12 +119,21 @@ class MainActivity : ComponentActivity() {
 
                         // --- ROTAS COLABORADOR ---
                         composable("collaborator") { CollaboratorHomeView(navController = navController) }
-                        composable("notification-collaborador") { CollaboratorNotificationView(navController = navController) }
+
+                        // Passamos o MESMO ViewModel para o ecrã, para partilharem os dados
+                        composable("notification-collaborador") {
+                            CollaboratorNotificationView(
+                                navController = navController,
+                                viewModel = notifViewModel
+                            )
+                        }
+
                         composable("donations_list") { DonationListView(navController = navController) }
                         composable("stock") { StockView(navController = navController) }
-                        composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) } // Usa a view correta
+                        composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) }
                         composable("history-collaborador") { CollaboratorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
+
                         composable(
                             route = "order_details/{orderId}",
                             arguments = listOf(navArgument("orderId") { type = NavType.StringType })
@@ -177,9 +199,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // <--- LÓGICA DE VERIFICAÇÃO INICIAL (SPLASH) --->
+                // <--- LÓGICA DE LOGIN --->
                 LaunchedEffect(Unit) {
-                    delay(1000) // Pequeno delay para o splash ser visível
+                    delay(1000)
 
                     val user = Firebase.auth.currentUser
 
