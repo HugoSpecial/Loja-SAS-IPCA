@@ -236,9 +236,9 @@ fun DeliveryCard(delivery: DeliveryWithUser, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+            val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
             Text(
-                text = "Data: ${delivery.surveyDate?.let { dateFormat.format(it) } ?: "--"}",
+                text = "Data: ${delivery.delivery.surveyDate?.let { dateFormat.format(it) } ?: "--"}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextGray
             )
@@ -252,6 +252,7 @@ fun StatusBadgeOrder(state: DeliveryState) {
         DeliveryState.PENDENTE -> Color(0xFFFFF3E0) to Color(0xFFEF6C00)
         DeliveryState.ENTREGUE -> Color(0xFFE8F5E9) to Color(0xFF2E7D32)
         DeliveryState.CANCELADO -> Color(0xFFFFEBEE) to Color(0xFFC62828)
+        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4) to Color(0xFF3F51B5)
     }
     Surface(
         color = bg,
