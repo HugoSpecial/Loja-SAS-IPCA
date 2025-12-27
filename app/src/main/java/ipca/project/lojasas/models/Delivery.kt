@@ -1,9 +1,12 @@
 package ipca.project.lojasas.models
 
+import java.util.Date
+
 enum class DeliveryState {
     PENDENTE,
     ENTREGUE,
-    CANCELADO
+    CANCELADO,
+    EM_ANALISE
 }
 
 data class Delivery (
@@ -11,5 +14,8 @@ data class Delivery (
     var orderId: String? = null,
     var delivered : Boolean = false,
     var state : DeliveryState = DeliveryState.PENDENTE,
-    var reason : String? = null
+    var reason : String? = null,
+    var surveyDate : Date? = null,
+    var evaluatedBy: String? = null,
+    var evaluationDate: Date? = null,
 )

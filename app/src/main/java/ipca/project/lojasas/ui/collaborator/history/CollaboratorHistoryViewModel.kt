@@ -129,6 +129,7 @@ class CollatorHistoryViewModel : ViewModel() {
             DeliveryState.ENTREGUE -> Triple("ENTREGUE", Color(0xFFB9F6CA), Color(0xFF00C853))
             DeliveryState.CANCELADO -> Triple("NÃO ENTREGUE", Color(0xFFFFCDD2), Color(0xFFD32F2F))
             DeliveryState.PENDENTE -> Triple("PENDENTE", Color(0xFFFFF9C4), Color(0xFFFBC02D))
+            DeliveryState.EM_ANALISE -> Triple("EM ANÁLISE", Color(0xFFCDDC39), Color(0xFFFFC107))
         }
 
         val totalQty = items.sumOf { it.quantity ?: 0 }

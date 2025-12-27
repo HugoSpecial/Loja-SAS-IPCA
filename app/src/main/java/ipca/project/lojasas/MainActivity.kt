@@ -45,6 +45,7 @@ import ipca.project.lojasas.ui.colaborator.history.CollaboratorHistoryView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
 import ipca.project.lojasas.ui.collaborator.campaigns.NewCampaignView
+import ipca.project.lojasas.ui.collaborator.delivery.DeliveryDetailView
 import ipca.project.lojasas.ui.collaborator.delivery.DeliveryListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationView
@@ -139,7 +140,6 @@ class MainActivity : ComponentActivity() {
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) }
                         composable("history-collaborador") { CollaboratorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
-                        composable("deliveries") { DeliveryListView(navController = navController) }
                         composable(
                             route = "order_details/{orderId}",
                             arguments = listOf(navArgument("orderId") { type = NavType.StringType })
@@ -149,6 +149,17 @@ class MainActivity : ComponentActivity() {
                                 OrderDetailView(navController = navController, orderId = orderId)
                             }
                         }
+                        composable("deliveries") { DeliveryListView(navController = navController) }
+                        composable(
+                            route = "delivery_details/{deliveryId}",
+                            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val deliveryId = backStackEntry.arguments?.getString("deliveryId")
+                            if (deliveryId != null) {
+                                DeliveryDetailView(navController = navController, deliveryId = deliveryId)
+                            }
+                        }
+
                         composable("campaigns") { CampaignsView(navController = navController) }
                         composable("new-campaign") { NewCampaignView(navController = navController) }
                         composable(

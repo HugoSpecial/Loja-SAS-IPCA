@@ -12,7 +12,6 @@ import java.util.Date
 data class DeliveryWithUser (
     val delivery: Delivery,
     val userName: String? = null,
-    val surveyDate: Date? = null
 )
 
 data class DeliveryListState(
@@ -55,7 +54,10 @@ class DeliveryViewModel : ViewModel() {
                         reason = doc.getString("reason"),
                         state = DeliveryState.valueOf(
                             doc.getString("state") ?: "PENDENTE"
-                        )
+                        ),
+                        surveyDate = doc.getDate("surveyDate"),
+                        evaluationDate = doc.getDate("evaluationDate"),
+                        evaluatedBy = doc.getString("evaluatedBy")
                     )
 
                     val orderId = delivery.orderId ?: continue
@@ -66,13 +68,11 @@ class DeliveryViewModel : ViewModel() {
                         .addOnSuccessListener { orderDoc ->
 
                             val userName = orderDoc.getString("userName")
-                            val surveyDate = orderDoc.getDate("surveyDate");
 
                             resultList.add(
                                 DeliveryWithUser(
                                     delivery = delivery,
                                     userName = userName,
-                                    surveyDate = surveyDate
                                 )
                             )
 

@@ -150,7 +150,10 @@ class OrderDetailViewModel : ViewModel() {
                             orderId = orderId,
                             delivered = false,
                             state = DeliveryState.PENDENTE,
-                            reason = null
+                            reason = null,
+                            surveyDate = currentOrder.surveyDate,
+                            evaluatedBy = null,
+                            evaluationDate = null
                         )
                     )
                     .addOnSuccessListener {
