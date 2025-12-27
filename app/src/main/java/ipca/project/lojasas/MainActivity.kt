@@ -27,7 +27,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.delay
 
-// --- IMPORTS DAS VIEWS ---
+// IMPORTS
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.beneficiary.history.BeneficiaryHistoryView
@@ -38,6 +38,7 @@ import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
 import ipca.project.lojasas.ui.beneficiary.home.HomeView
 import ipca.project.lojasas.ui.beneficiary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.beneficiary.notifications.NotificationView
+import ipca.project.lojasas.ui.beneficiary.notifications.NotificationsBeneficiaryViewModel // IMPORTANTE
 import ipca.project.lojasas.ui.beneficiary.orders.BeneficiaryOrderDetailView
 import ipca.project.lojasas.ui.beneficiary.profile.ProfileView
 import ipca.project.lojasas.ui.colaborator.history.CollaboratorHistoryView
@@ -48,7 +49,7 @@ import ipca.project.lojasas.ui.collaborator.donation.DonationListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationView
 import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
 import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificationView
-import ipca.project.lojasas.ui.collaborator.notifications.NotificationsCollaboratorViewModel // <--- IMPORTANTE
+import ipca.project.lojasas.ui.collaborator.notifications.NotificationsCollaboratorViewModel
 import ipca.project.lojasas.ui.collaborator.orders.OrderDetailView
 import ipca.project.lojasas.ui.collaborator.orders.OrderListView
 import ipca.project.lojasas.ui.collaborator.profile.ProfileCollaboratorView
@@ -74,9 +75,12 @@ class MainActivity : ComponentActivity() {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
-            // --- NOVO: Inicializar ViewModel de Notificações aqui para estar acessível em toda a app ---
-            val notifViewModel: NotificationsCollaboratorViewModel = viewModel()
-            val notifState by remember { notifViewModel.uiState }
+            // INICIALIZAÇÃO DOS VIEWMODELS (Global)
+            val collabNotifViewModel: NotificationsCollaboratorViewModel = viewModel()
+            val collabNotifState by remember { collabNotifViewModel.uiState }
+
+            val beneficiaryNotifViewModel: NotificationsBeneficiaryViewModel = viewModel()
+            val beneficiaryNotifState by remember { beneficiaryNotifViewModel.uiState }
 
             LojaSASTheme {
                 Scaffold(
@@ -95,14 +99,18 @@ class MainActivity : ComponentActivity() {
                         )
 
                         if (showBeneficiaryBottomBar) {
-                            BeneficiaryBottomBar(navController = navController, currentRoute = currentRoute)
+                            BeneficiaryBottomBar(
+                                navController = navController,
+                                currentRoute = currentRoute,
+                                unreadCount = beneficiaryNotifState.unreadCount // Passa a contagem para a barra
+                            )
                         }
 
                         if (showCollaboratorBottomBar) {
                             CollaboratorBottomBar(
                                 navController = navController,
                                 currentRoute = currentRoute,
-                                unreadCount = notifState.unreadCount // <--- Passar o contador aqui
+                                unreadCount = collabNotifState.unreadCount
                             )
                         }
                     }
@@ -113,27 +121,23 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     ) {
 
-                        // --- ECRA INICIAL ---
+                        // --- SPLASH & LOGIN ---
                         composable("splash") { SplashView() }
                         composable("login") { LoginView(navController = navController) }
 
                         // --- ROTAS COLABORADOR ---
                         composable("collaborator") { CollaboratorHomeView(navController = navController) }
-
-                        // Passamos o MESMO ViewModel para o ecrã, para partilharem os dados
                         composable("notification-collaborador") {
                             CollaboratorNotificationView(
                                 navController = navController,
-                                viewModel = notifViewModel
+                                viewModel = collabNotifViewModel
                             )
                         }
-
                         composable("donations_list") { DonationListView(navController = navController) }
                         composable("stock") { StockView(navController = navController) }
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) }
                         composable("history-collaborador") { CollaboratorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
-
                         composable(
                             route = "order_details/{orderId}",
                             arguments = listOf(navArgument("orderId") { type = NavType.StringType })
@@ -143,8 +147,6 @@ class MainActivity : ComponentActivity() {
                                 OrderDetailView(navController = navController, orderId = orderId)
                             }
                         }
-
-                        // Campanhas
                         composable("campaigns") { CampaignsView(navController = navController) }
                         composable("new-campaign") { NewCampaignView(navController = navController) }
                         composable(
@@ -156,8 +158,6 @@ class MainActivity : ComponentActivity() {
                                 CampaignDetailsView(navController = navController, campaignId = campaignId)
                             }
                         }
-
-                        // Candidaturas
                         composable("candidature_list") { CandidatureListView(navController = navController) }
                         composable("candidature_details/{candidatureId}") { backStackEntry ->
                             val id = backStackEntry.arguments?.getString("candidatureId")
@@ -165,8 +165,6 @@ class MainActivity : ComponentActivity() {
                                 CandidatureDetailsView(navController = navController, candidatureId = id)
                             }
                         }
-
-                        // Produtos / Doações
                         composable(
                             route = "product?productId={productId}",
                             arguments = listOf(navArgument("productId") {
@@ -183,7 +181,15 @@ class MainActivity : ComponentActivity() {
                         composable("candidature") { CandidatureView(navController = navController) }
                         composable("await-candidature") { AwaitCandidatureView(navController = navController) }
                         composable("home") { HomeView(navController = navController) }
-                        composable("notification") { NotificationView(navController = navController) }
+
+                        // Passa o ViewModel do Beneficiário para a View
+                        composable("notification") {
+                            NotificationView(
+                                navController = navController,
+                                viewModel = beneficiaryNotifViewModel
+                            )
+                        }
+
                         composable("newbasket") { NewBasketView(navController = navController) }
                         composable("history") { BeneficiaryHistoryView(navController = navController) }
                         composable("profile") { ProfileView(navController = navController) }
@@ -199,7 +205,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // <--- LÓGICA DE LOGIN --->
+                // LÓGICA DE LOGIN
                 LaunchedEffect(Unit) {
                     delay(1000)
 

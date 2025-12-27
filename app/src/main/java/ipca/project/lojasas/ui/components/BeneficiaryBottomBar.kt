@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -41,6 +43,7 @@ sealed class BottomBarItem(val title: String, val route: String) {
 fun BeneficiaryBottomBar(
     navController: NavController,
     currentRoute: String? = null,
+    unreadCount: Int = 0
 ) {
     val items = listOf(
         BottomBarItem.Home,
@@ -57,24 +60,19 @@ fun BeneficiaryBottomBar(
         }
     }
 
-    // Container principal - Altura suficiente para o botão flutuar
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp), // Altura total (Barra + Espaço para o botão sair)
+            .height(100.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-
-        // 1. A BARRA BRANCA (Fica no fundo)
         NavigationBar(
             modifier = Modifier
-                .height(150.dp) // A barra em si tem 80dp
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)), // Cantos arredondados
-            containerColor = Color.White, // Fundo branco como na imagem
+                .height(80.dp)
+                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+            containerColor = Color.White,
             tonalElevation = 10.dp
         ) {
-
-            // --- ESQUERDA ---
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Home,
                 onClick = {
@@ -89,6 +87,7 @@ fun BeneficiaryBottomBar(
                 modifier = Modifier.weight(1f)
             )
 
+            // ITEM NOTIFICAÇÕES COM BADGE
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Notification,
                 onClick = {
@@ -96,17 +95,27 @@ fun BeneficiaryBottomBar(
                     navController.navigate(BottomBarItem.Notification.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
+                    if (unreadCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge(containerColor = Color.Red, contentColor = Color.White) {
+                                    Text("$unreadCount")
+                                }
+                            }
+                        ) {
+                            Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
+                        }
+                    } else {
+                        Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
+                    }
                 },
                 label = { Text(text = BottomBarItem.Notification.title, fontSize = 10.sp) },
                 colors = navItemColors(),
                 modifier = Modifier.weight(1f)
             )
 
-            // --- ESPAÇO VAZIO (BURACO) NO MEIO ---
             Box(modifier = Modifier.weight(1f))
 
-            // --- DIREITA ---
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.History,
                 onClick = {
@@ -114,7 +123,6 @@ fun BeneficiaryBottomBar(
                     navController.navigate(BottomBarItem.History.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    // Tenta usar o outline_watch, senão usa um ícone default
                     Icon(painter = painterResource(id = R.drawable.outline_watch), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
                 label = { Text(text = BottomBarItem.History.title, fontSize = 11.sp) },
@@ -129,7 +137,6 @@ fun BeneficiaryBottomBar(
                     navController.navigate(BottomBarItem.Profile.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    // Tenta usar o outline_watch, senão usa um ícone default
                     Icon(painter = painterResource(id = R.drawable.outline_user), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
                 label = { Text(text = BottomBarItem.Profile.title, fontSize = 11.sp) },
@@ -138,8 +145,6 @@ fun BeneficiaryBottomBar(
             )
         }
 
-        // 2. O BOTÃO FLUTUANTE (CARRINHO)
-        // Usamos Surface para conseguir colocar a borda branca facilmente
         Surface(
             onClick = { navController.navigate("newbasket") },
             shape = CircleShape,
@@ -162,13 +167,11 @@ fun BeneficiaryBottomBar(
     }
 }
 
-// Cores ajustadas para parecerem com a imagem (Verde quando selecionado, Cinza escuro quando não)
 @Composable
 fun navItemColors() = NavigationBarItemDefaults.colors(
-    selectedIconColor = MaterialTheme.colorScheme.primary, // Ícone fica verde
-    selectedTextColor = MaterialTheme.colorScheme.primary, // Texto fica verde
-    unselectedIconColor = Color(0xFF4A4A4A), // Cinza escuro
-    unselectedTextColor = Color(0xFF4A4A4A), // Cinza escuro
-    indicatorColor = Color.Transparent // Remove a "bolha" de fundo ao selecionar
+    selectedIconColor = MaterialTheme.colorScheme.primary,
+    selectedTextColor = MaterialTheme.colorScheme.primary,
+    unselectedIconColor = Color(0xFF4A4A4A),
+    unselectedTextColor = Color(0xFF4A4A4A),
+    indicatorColor = Color.Transparent
 )
-
