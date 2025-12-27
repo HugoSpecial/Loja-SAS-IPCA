@@ -35,6 +35,8 @@ val IpcaGreen = Color(0xFF00864F)
 val IpcaDarkTeal = Color(0xFF005A49)
 val IpcaOlive = Color(0xFF689F38)
 val IpcaBlueGray = Color(0xFF455A64)
+
+val IpcaBlackGreen = Color(0xFF1B2E25)
 val BgLight = Color(0xFFF2F4F3)
 
 @Composable
@@ -86,12 +88,35 @@ fun CollaboratorHomeView(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ){
+            SummaryCard(
+                title = "Entregas para Hoje",
+                count = state.deliveriesTodayCount.toString(),
+                icon = ImageVector.vectorResource(id = R.drawable.delivery),
+                iconColor = IpcaDarkTeal,
+                modifier = Modifier.weight(1f)
+            )
+
+            SummaryCard(
+                title = "Campanhas Ativas",
+                count = state.activeCampaignsCount.toString(),
+                icon = ImageVector.vectorResource(id = R.drawable.megaphone),
+                iconColor = IpcaDarkTeal,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SummaryCard(
                 title = "Candidaturas Pendentes",
                 count = state.pendingCount.toString(),
                 icon = ImageVector.vectorResource(id = R.drawable.file_dock),
-                iconColor = IpcaGreen,
+                iconColor = IpcaDarkTeal,
                 modifier = Modifier.weight(1f)
             )
 
@@ -103,7 +128,6 @@ fun CollaboratorHomeView(
                 modifier = Modifier.weight(1f)
             )
         }
-
         Spacer(modifier = Modifier.height(32.dp))
 
         // --- 4. ÁREA DE GESTÃO ---
@@ -118,13 +142,14 @@ fun CollaboratorHomeView(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             // LINHA 1
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+
                 ActionCard(
-                    title = "Candidaturas",
-                    subtitle = "Gestão de Candidaturas",
-                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
-                    backgroundColor = IpcaGreen,
+                    title = "Entregas",
+                    subtitle = "Gestão de Entregas",
+                    icon = ImageVector.vectorResource(id = R.drawable.delivery),
+                    backgroundColor = IpcaOlive,
                     modifier = Modifier.weight(1f),
-                    onClick = { navController.navigate("candidature_list") }
+                    onClick = { navController.navigate("deliveries") }
                 )
 
                 ActionCard(
@@ -140,23 +165,35 @@ fun CollaboratorHomeView(
             // LINHA 2
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 ActionCard(
-                    title = "Campanhas",
-                    subtitle = "Gestão de Campanhas",
-                    icon = Icons.Default.Star,
-                    backgroundColor = IpcaOlive,
-                    modifier = Modifier.weight(1f),
-                    onClick = { navController.navigate("campaigns") }
-                )
-
-                ActionCard(
                     title = "Doações",
                     subtitle = "Gestão de Doações",
-                    icon = Icons.Default.DateRange,
+                    icon = ImageVector.vectorResource(id = R.drawable.donate),
                     backgroundColor = IpcaBlueGray,
                     modifier = Modifier.weight(1f),
                     onClick = { navController.navigate("donations_list") }
                 )
+
+                ActionCard(
+                    title = "Candidaturas",
+                    subtitle = "Gestão de Candidaturas",
+                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
+                    backgroundColor = IpcaGreen,
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate("candidature_list") }
+                )
             }
+
+            // LINHA 3
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                 ActionCard(
+                     title = "Campanhas",
+                     subtitle = "Gestão de Campanhas",
+                     icon = ImageVector.vectorResource(id = R.drawable.megaphone),
+                     backgroundColor = IpcaBlackGreen,
+                     modifier = Modifier.weight(1f),
+                     onClick = { navController.navigate("campaigns") }
+                 )
+             }
         }
 
         Spacer(modifier = Modifier.height(100.dp))
