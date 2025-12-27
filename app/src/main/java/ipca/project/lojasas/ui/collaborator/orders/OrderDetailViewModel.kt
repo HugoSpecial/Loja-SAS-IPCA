@@ -144,6 +144,22 @@ class OrderDetailViewModel : ViewModel() {
                 )
             )
             .addOnSuccessListener {
+                db.collection("delivery").document(orderId)
+                    .set(
+                        Delivery(
+                            orderId = orderId,
+                            delivered = false,
+                            state = DeliveryState.PENDENTE,
+                            reason = null
+                        )
+                    )
+                    .addOnSuccessListener {
+                        fetchOrder(orderId)
+                    }
+                    .addOnFailureListener { e ->
+                        uiState.value = uiState.value.copy(error = e.message)
+                    }
+
                 uiState.value = uiState.value.copy(
                     order = currentOrder.copy(
                         accept = OrderState.ACEITE,
