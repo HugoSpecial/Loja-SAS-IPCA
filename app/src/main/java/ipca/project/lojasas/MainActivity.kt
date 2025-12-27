@@ -45,6 +45,7 @@ import ipca.project.lojasas.ui.colaborator.history.CollaboratorHistoryView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
 import ipca.project.lojasas.ui.collaborator.campaigns.NewCampaignView
+import ipca.project.lojasas.ui.collaborator.delivery.DeliveryListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationView
 import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
@@ -138,6 +139,7 @@ class MainActivity : ComponentActivity() {
                         composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) }
                         composable("history-collaborador") { CollaboratorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
+                        composable("deliveries") { DeliveryListView(navController = navController) }
                         composable(
                             route = "order_details/{orderId}",
                             arguments = listOf(navArgument("orderId") { type = NavType.StringType })
