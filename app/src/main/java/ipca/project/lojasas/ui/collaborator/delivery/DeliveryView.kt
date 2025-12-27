@@ -27,7 +27,6 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Delivery
 import ipca.project.lojasas.models.DeliveryState
-import ipca.project.lojasas.ui.collaborator.orders.TextGray
 import java.text.SimpleDateFormat
 import java.util.Locale
 

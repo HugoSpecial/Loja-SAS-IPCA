@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Order
+import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.OrderState
 
 data class OrderListState(
@@ -59,6 +60,26 @@ class OrderViewModel : ViewModel() {
                         } catch (e: Exception) {
                             o.accept = OrderState.PENDENTE
                         }
+
+                        // --- NOVA PARTE: LER ITENS (ARRAY) ---
+                        // O Firestore devolve arrays como List<HashMap>
+                        val itemsRaw = doc.get("items") as? List<Map<String, Any>>
+
+                        if (itemsRaw != null) {
+                            for (itemMap in itemsRaw) {
+                                val name = itemMap["name"] as? String
+                                // No Firestore, números costumam vir como Long, por isso fazemos o cast seguro
+                                val quantityLong = itemMap["quantity"] as? Long
+                                val quantity = quantityLong?.toInt() ?: 0
+
+                                val item = OrderItem(
+                                    name = name,
+                                    quantity = quantity
+                                )
+                                o.items.add(item)
+                            }
+                        }
+                        // -------------------------------------
 
                         list.add(o)
 
