@@ -27,17 +27,26 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
         private set
 
     init {
+        // Tenta carregar ao iniciar, mas pode falhar se o login não estiver pronto.
+        // Por isso chamamos novamente na View.
         fetchNotifications()
     }
 
-    private fun fetchNotifications() {
+    // --- ALTERAÇÃO: Removido 'private' para poder ser chamado pela View ---
+    fun fetchNotifications() {
         val userId = auth.currentUser?.uid
+
+        // Se o user for null, limpamos a lista e mostramos erro/aviso
         if (userId == null) {
-            uiState.value = uiState.value.copy(error = "Utilizador não autenticado")
+            uiState.value = uiState.value.copy(
+                error = "Utilizador não autenticado",
+                isLoading = false,
+                notifications = emptyList()
+            )
             return
         }
 
-        uiState.value = uiState.value.copy(isLoading = true)
+        uiState.value = uiState.value.copy(isLoading = true, error = null)
 
         // Usa o índice: recipientId ASC, date DESC
         db.collection("notifications")
@@ -69,7 +78,7 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
 
                 val naoLidas = list.count { !it.read }
 
-                // Quando os dados chegam, reaplica o filtro que estiver selecionado (ou mostra tudo)
+                // Quando os dados chegam, reaplica o filtro que estiver selecionado
                 val currentFilter = uiState.value.selectedFilter
                 val filteredList = applyFilterLogic(list, currentFilter)
 
@@ -83,7 +92,7 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
             }
     }
 
-    // --- LÓGICA DE FILTRO CORRIGIDA ---
+    // --- LÓGICA DE FILTRO ---
     fun filterByType(category: String?) {
         val masterList = uiState.value.allNotifications
         val newList = applyFilterLogic(masterList, category)
@@ -94,31 +103,18 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
         )
     }
 
-    // Função auxiliar para centralizar a lógica de filtragem
     private fun applyFilterLogic(list: List<Notification>, category: String?): List<Notification> {
         return when (category) {
             null -> list // Mostrar Tudo
-
-            // ABA PEDIDOS:
-            // Mostra tudo o que for "pedido_novo" OU "pedido_estado" (aceite/rejeitado).
-            // (Opcional: && !it.title.contains("Levantamento", ignoreCase = true) se quiseres esconder os levantamentos daqui)
             "cat_pedidos" -> list.filter {
                 it.type == "pedido_novo" || it.type == "pedido_estado"
             }
-
-            // ABA LEVANTAMENTOS:
-            // Como o backend manda "pedido_estado" ou "pedido_agendado", mas o título diz "Levantamento",
-            // filtramos pelo título para garantir que apanhamos o agendamento.
             "cat_levantamentos" -> list.filter {
                 it.title.contains("Levantamento", ignoreCase = true) || it.type == "pedido_agendado"
             }
-
-            // ABA CANDIDATURAS:
-            // Tudo o que começa por "candidatura" (nova, estado, etc.)
             "cat_candidaturas" -> list.filter {
                 it.type.startsWith("candidatura")
             }
-
             else -> list
         }
     }

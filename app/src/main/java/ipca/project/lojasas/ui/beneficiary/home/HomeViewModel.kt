@@ -7,12 +7,12 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Candidature
-import ipca.project.lojasas.models.ProductTest
+import ipca.project.lojasas.models.Product
 import java.util.Date
 
 data class BeneficiaryHomeState(
-    val products: List<ProductTest> = emptyList(),
-    val allowedCategories: List<String> = emptyList(), // Lista das categorias permitidas
+    val products: List<Product> = emptyList(),
+    val allowedCategories: List<String> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -38,7 +38,6 @@ class BeneficiaryHomeViewModel : ViewModel() {
             return
         }
 
-        // Busca a candidatura apenas para ver as permissões (Booleans)
         db.collection("candidatures")
             .whereEqualTo("userId", userId)
             .limit(1)
@@ -46,22 +45,17 @@ class BeneficiaryHomeViewModel : ViewModel() {
             .addOnSuccessListener { documents ->
                 if (!documents.isEmpty) {
                     val candidature = documents.documents[0].toObject(Candidature::class.java)
-
                     if (candidature != null) {
                         val categoriesToShow = mutableListOf<String>()
-
-                        // Mapeia os teus Booleans para os nomes das Categorias no Firebase
-                        // NOTA: Estes nomes ("Alimentos", etc.) têm de ser iguais ao campo 'category' dos produtos
+                        // Garante que estas strings são iguais às do Firebase (campo category)
                         if (candidature.foodProducts) categoriesToShow.add("Alimentos")
                         if (candidature.hygieneProducts) categoriesToShow.add("Higiene")
                         if (candidature.cleaningProducts) categoriesToShow.add("Limpeza")
 
-                        // Atualiza as categorias permitidas e carrega os produtos
                         uiState.value = uiState.value.copy(allowedCategories = categoriesToShow)
                         fetchProducts()
                     }
                 } else {
-                    // Se não tiver candidatura (estranho se já passou a validação anterior), paramos o load
                     uiState.value = uiState.value.copy(isLoading = false, error = "Candidatura não encontrada.")
                 }
             }
@@ -79,14 +73,13 @@ class BeneficiaryHomeViewModel : ViewModel() {
                 }
 
                 val today = Date()
-                val list = mutableListOf<ProductTest>()
+                val list = mutableListOf<Product>()
 
                 for (doc in snapshot?.documents ?: emptyList()) {
                     try {
-                        val product = doc.toObject(ProductTest::class.java) ?: continue
+                        val product = doc.toObject(Product::class.java) ?: continue
                         product.docId = doc.id
-
-                        // Valida se tem stock e se a validade é boa
+                        // Filtra produtos com stock e validade
                         if (product.batches.any { it.quantity > 0 && it.validity >= today }) {
                             list.add(product)
                         }
@@ -95,11 +88,7 @@ class BeneficiaryHomeViewModel : ViewModel() {
                     }
                 }
 
-                uiState.value = uiState.value.copy(
-                    products = list,
-                    isLoading = false,
-                    error = null
-                )
+                uiState.value = uiState.value.copy(products = list, isLoading = false, error = null)
             }
     }
 }

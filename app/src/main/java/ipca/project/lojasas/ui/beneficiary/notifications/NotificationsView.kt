@@ -1,5 +1,6 @@
 package ipca.project.lojasas.ui.beneficiary.notifications
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,6 +49,14 @@ fun NotificationView(
     viewModel: NotificationsBeneficiaryViewModel = viewModel()
 ) {
     val state by remember { viewModel.uiState }
+
+    // --- CORREÇÃO FUNDAMENTAL ---
+    // Isto garante que a busca é feita SEMPRE que entras neste ecrã.
+    // Resolve o problema de o ViewModel ter sido criado antes do Login estar pronto.
+    LaunchedEffect(Unit) {
+        viewModel.fetchNotifications()
+    }
+    // ----------------------------
 
     Column(
         modifier = modifier
@@ -98,7 +108,7 @@ fun NotificationView(
             modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
 
-        // --- 3. FILTROS (Agora com as categorias corretas) ---
+        // --- 3. FILTROS ---
         BeneficiaryFilterSection(
             selectedFilter = state.selectedFilter,
             onFilterSelected = { category -> viewModel.filterByType(category) }
@@ -115,6 +125,8 @@ fun NotificationView(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
+                // Mostramos erro apenas se não for "Utilizador não autenticado" (para evitar piscar na transição)
+                // ou podes deixar assim para debug
                 state.error != null -> {
                     Text(
                         text = state.error ?: "Ocorreu um erro.",
@@ -123,7 +135,6 @@ fun NotificationView(
                     )
                 }
                 state.notifications.isEmpty() -> {
-                    // Mensagem personalizada consoante o filtro
                     val msg = when(state.selectedFilter) {
                         "cat_pedidos" -> "Sem notificações de pedidos."
                         "cat_candidaturas" -> "Sem notificações de candidatura."
@@ -149,11 +160,10 @@ fun NotificationView(
                                         viewModel.markAsRead(notification.docId)
                                     }
 
-                                    // Navegação baseada no tipo ou conteúdo
+                                    // Navegação
                                     if (notification.type.startsWith("candidatura")) {
                                         navController.navigate("await-candidature")
                                     } else {
-                                        // Pedidos ou Levantamentos
                                         navController.navigate("beneficiary_order_details/${notification.relatedId}")
                                     }
                                 }
@@ -169,7 +179,6 @@ fun NotificationView(
 // --- ÍCONES ---
 @Composable
 fun getBeneficiaryIconForType(notification: Notification): ImageVector {
-    // Lógica visual para decidir o ícone
     return when {
         notification.type.startsWith("candidatura") -> Icons.Default.AccountBox
         notification.title.contains("Levantamento", ignoreCase = true) -> Icons.Default.DateRange
@@ -185,7 +194,6 @@ fun BeneficiaryFilterSection(
     selectedFilter: String?,
     onFilterSelected: (String?) -> Unit
 ) {
-    // Definimos as chaves de categoria que o ViewModel está à espera
     val filters = listOf(
         null to "Tudo",
         "cat_pedidos" to "Pedidos",
@@ -206,7 +214,7 @@ fun BeneficiaryFilterSection(
                     containerColor = if (isSelected) PrimaryGreen else Color.White,
                     contentColor = if (isSelected) Color.White else TextGray
                 ),
-                border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
+                border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                 modifier = Modifier.height(36.dp)
@@ -254,7 +262,7 @@ fun BeneficiaryNotificationCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = getBeneficiaryIconForType(notification), // Passamos a notificação inteira para decidir melhor
+                        imageVector = getBeneficiaryIconForType(notification),
                         contentDescription = null,
                         tint = PrimaryGreen,
                         modifier = Modifier.size(24.dp)

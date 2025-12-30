@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,7 +40,7 @@ import java.util.*
 val BackgroundGray = Color(0xFFF9F9F9)
 val PrimaryGreen = Color(0xFF00864F)
 val TextGray = Color(0xFF8C8C8C)
-val LightGreenBg = Color(0xFFE8F5E9) // Fundo clarinho para os ícones
+val LightGreenBg = Color(0xFFE8F5E9)
 
 @Composable
 fun CollaboratorNotificationView(
@@ -48,6 +49,12 @@ fun CollaboratorNotificationView(
     viewModel: NotificationsCollaboratorViewModel = viewModel()
 ) {
     val state by remember { viewModel.uiState }
+
+    // --- CORREÇÃO: LaunchedEffect para garantir o carregamento ---
+    LaunchedEffect(Unit) {
+        viewModel.fetchNotifications()
+    }
+    // ------------------------------------------------------------
 
     Column(
         modifier = modifier
@@ -142,7 +149,12 @@ fun CollaboratorNotificationView(
                                     if (!notification.read) {
                                         viewModel.markAsRead(notification.docId)
                                     }
-                                    // Navegação...
+
+                                    // Adiciona aqui a navegação do colaborador se necessário
+                                    // Exemplo:
+                                    // if (notification.type == "pedido_novo") {
+                                    //     navController.navigate("orderDetails/${notification.relatedId}")
+                                    // }
                                 }
                             )
                         }
@@ -157,11 +169,11 @@ fun CollaboratorNotificationView(
 @Composable
 fun getIconForType(type: String): ImageVector {
     return when (type) {
-        "candidatura_nova" -> Icons.Default.AccountBox      // Ícone de adicionar pessoa
-        "pedido_novo" -> ImageVector.vectorResource(id = R.drawable.shopping_cart)     // Ícone de cesto
-        "pedido_agendado" -> Icons.Default.DateRange       // Ícone de calendário
-        "validade_alerta" -> Icons.Default.Warning         // Ícone de aviso
-        else -> Icons.Default.Notifications                // Ícone genérico
+        "candidatura_nova" -> Icons.Default.AccountBox
+        "pedido_novo" -> ImageVector.vectorResource(id = R.drawable.shopping_cart)
+        "pedido_agendado" -> Icons.Default.DateRange
+        "validade_alerta" -> Icons.Default.Warning
+        else -> Icons.Default.Notifications
     }
 }
 
@@ -229,14 +241,10 @@ fun NotificationCard(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically // Alinha tudo ao centro verticalmente
+            verticalAlignment = Alignment.CenterVertically
         ) {
-
-            // --- NOVO: ÍCONE COM BADGE DE "NÃO LIDO" ---
-            Box(
-                modifier = Modifier.size(48.dp) // Tamanho da área do ícone
-            ) {
-                // Fundo circular do ícone
+            // Ícone com Badge
+            Box(modifier = Modifier.size(48.dp)) {
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -253,7 +261,6 @@ fun NotificationCard(
                     )
                 }
 
-                // Bolinha Vermelha se não lido (canto superior direito do ícone)
                 if (isUnread) {
                     Box(
                         modifier = Modifier
@@ -267,7 +274,7 @@ fun NotificationCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // --- CONTEÚDO DE TEXTO ---
+            // Textos
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -298,7 +305,7 @@ fun NotificationCard(
                     text = notification.body,
                     fontSize = 14.sp,
                     color = if (isUnread) Color.DarkGray else TextGray,
-                    maxLines = 2, // Limitei a 2 linhas para ficar mais arrumado com o ícone
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 20.sp
                 )

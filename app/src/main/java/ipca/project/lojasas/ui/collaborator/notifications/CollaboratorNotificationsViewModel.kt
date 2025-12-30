@@ -10,10 +10,10 @@ import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Notification
 
 data class NotificationListState(
-    val notifications: List<Notification> = emptyList(), // Lista visivel (filtrada por tipo)
-    val allNotifications: List<Notification> = emptyList(), // Cache de todas as do colaborador
+    val notifications: List<Notification> = emptyList(), // Lista visível (filtrada)
+    val allNotifications: List<Notification> = emptyList(), // Cache de todas
     val unreadCount: Int = 0,
-    val selectedFilter: String? = null, // null = Tudo, "candidatura_nova", etc.
+    val selectedFilter: String? = null,
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -27,21 +27,26 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         private set
 
     init {
+        // Tenta carregar no início (pode falhar se o login não estiver pronto)
         fetchNotifications()
     }
 
-    private fun fetchNotifications() {
+    // --- CORREÇÃO: Função pública (sem 'private') ---
+    fun fetchNotifications() {
         val userId = auth.currentUser?.uid
+
         if (userId == null) {
-            uiState.value = uiState.value.copy(error = "Utilizador nao autenticado")
+            uiState.value = uiState.value.copy(
+                error = "Utilizador não autenticado",
+                isLoading = false,
+                notifications = emptyList()
+            )
             return
         }
 
-        uiState.value = uiState.value.copy(isLoading = true)
+        uiState.value = uiState.value.copy(isLoading = true, error = null)
 
-        // ESTRATEGIA SEM INDICE:
-        // 1. Pedimos todas as notificacoes deste utilizador, ordenadas por data.
-        // 2. Filtramos manualmente no for-loop as que sao "COLABORADOR".
+        // Query: Todas as notificações do user, ordenadas por data
         db.collection("notifications")
             .whereEqualTo("recipientId", userId)
             .orderBy("date", Query.Direction.DESCENDING)
@@ -59,7 +64,7 @@ class NotificationsCollaboratorViewModel : ViewModel() {
                     try {
                         val n = doc.toObject(Notification::class.java)
 
-                        // FILTRO MANUAL: So aceitamos se for para COLABORADOR
+                        // FILTRO MANUAL: Só aceitamos se for para COLABORADOR
                         if (n != null && n.targetProfile == "COLABORADOR") {
                             n.docId = doc.id
                             list.add(n)
@@ -69,10 +74,10 @@ class NotificationsCollaboratorViewModel : ViewModel() {
                     }
                 }
 
-                // Contar nao lidas
+                // Contar não lidas
                 val naoLidas = list.count { !it.read }
 
-                // Aplicar o filtro de botoes (Tudo vs Candidaturas vs Pedidos...)
+                // Aplicar o filtro atual (se houver) aos novos dados
                 val currentFilter = uiState.value.selectedFilter
 
                 val filteredList = if (currentFilter == null) {

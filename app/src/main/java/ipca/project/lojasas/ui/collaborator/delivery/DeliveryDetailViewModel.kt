@@ -16,7 +16,7 @@ data class DeliveryDetailState(
     val userPhone: String? = null,
     val userNotes: String? = null,
     val evaluatorName: String? = null,
-    val products: List<ProductTest> = emptyList(),
+    val products: List<Product> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val operationSuccess: Boolean = false,
@@ -114,7 +114,7 @@ class DeliveryDetailViewModel : ViewModel() {
     fun fetchProducts() {
         db.collection("products")
             .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(ProductTest::class.java) } ?: emptyList()
+                val list = snapshot?.documents?.mapNotNull { it.toObject(Product::class.java) } ?: emptyList()
                 uiState.value = uiState.value.copy(products = list)
             }
     }

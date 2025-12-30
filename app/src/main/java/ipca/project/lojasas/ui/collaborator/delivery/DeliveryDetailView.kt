@@ -243,7 +243,7 @@ private fun DeliveryStatusBadge(state: DeliveryState) {
 @Composable
 private fun ProductCategoryList(
     orderItems: List<OrderItem>,
-    allProducts: List<ProductTest>,
+    allProducts: List<Product>,
     isFinal: Boolean
 ) {
     val itemsByCategory = allProducts.groupBy { it.category }
@@ -271,7 +271,7 @@ private fun ProductCategoryList(
 }
 
 @Composable
-fun ProductStockRow(orderItem: OrderItem, product: ProductTest, isFinal: Boolean) {
+fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

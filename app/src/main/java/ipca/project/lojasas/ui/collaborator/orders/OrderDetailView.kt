@@ -28,7 +28,7 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.OrderItem
-import ipca.project.lojasas.models.ProductTest
+import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.collaborator.candidature.IpcaGreen
 import ipca.project.lojasas.ui.components.InfoRow
@@ -297,7 +297,7 @@ private fun OrderStatusBadge(state: OrderState) {
 
 // --- Produtos ---
 @Composable
-private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<ProductTest>, isFinal: Boolean) {
+private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<Product>, isFinal: Boolean) {
     val itemsByCategory = allProducts.groupBy { it.category }
 
     itemsByCategory.forEach { (category, productsInCategory) ->
@@ -323,7 +323,7 @@ private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<P
 }
 
 @Composable
-fun ProductStockRow(orderItem: OrderItem, product: ProductTest, isFinal: Boolean) {
+fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

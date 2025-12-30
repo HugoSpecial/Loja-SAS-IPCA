@@ -26,7 +26,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
-import ipca.project.lojasas.models.ProductTest
+import ipca.project.lojasas.models.Product
+import ipca.project.lojasas.ui.beneficiary.CartManager
+
+// Cores dos Botões
+val ButtonAddColor = Color(0xFF4CAF50)
+val ButtonRemoveColor = Color(0xFFE57373)
 
 @Composable
 fun HomeView(
@@ -35,12 +40,10 @@ fun HomeView(
 ) {
     val scrollState = rememberScrollState()
     val uiState = viewModel.uiState.value
-
-    // Mapa para guardar quais produtos foram selecionados (ID -> Boolean)
-    val selectedProducts = remember { mutableStateMapOf<String, Boolean>() }
-
-    // Esta lista vem do ViewModel, filtrada pela Candidatura (ex: só "Alimentos" e "Higiene")
     val categories = uiState.allowedCategories
+
+    // Lemos diretamente do CartManager (Estado Global)
+    val cartItems = CartManager.cartItems
 
     Column(
         modifier = Modifier
@@ -54,126 +57,77 @@ fun HomeView(
         Image(
             painter = painterResource(id = R.drawable.logo_sas),
             contentDescription = "Logo",
-            modifier = Modifier
-                .height(80.dp)
-                .padding(bottom = 16.dp)
+            modifier = Modifier.height(80.dp).padding(bottom = 16.dp)
         )
 
-        // --- GESTÃO DE ESTADOS DE CARREGAMENTO/ERRO ---
+        // --- LOADING / ERRO ---
         if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (!uiState.error.isNullOrEmpty()) {
             Text("Erro: ${uiState.error}", color = Color.Red)
         } else if (categories.isEmpty()) {
-            // Caso o utilizador não tenha categorias atribuídas na candidatura
-            Text(
-                text = "A sua candidatura não possui categorias de produtos atribuídas.",
-                color = Color.Gray,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(top = 24.dp)
-            )
+            Text("A sua candidatura não tem categorias.", color = Color.Gray)
         } else {
-            // --- LOOP PELAS CATEGORIAS PERMITIDAS ---
+            // --- LISTA DE PRODUTOS ---
             categories.forEachIndexed { index, category ->
-
-                // Filtra os produtos daquela categoria (Ignorando Maiúsculas/Minúsculas)
                 val productsByCategory = uiState.products.filter {
                     it.category.trim().equals(category, ignoreCase = true)
                 }
 
-                // Título da Categoria
                 Text(
                     text = "${category.replaceFirstChar { it.uppercase() }}:",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 )
 
                 if (productsByCategory.isNotEmpty()) {
-                    // Divide os produtos em linhas de 2 (Grid)
                     val chunked = productsByCategory.chunked(2)
-
                     chunked.forEach { rowItems ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             rowItems.forEach { product ->
+                                // Verifica se este produto já está no CartManager
+                                val isSelected = cartItems.containsKey(product.docId)
+
                                 ProductCardSelectable(
                                     product = product,
-                                    isSelected = selectedProducts[product.docId] == true,
+                                    isSelected = isSelected,
                                     onClick = {
-                                        val current = selectedProducts[product.docId] ?: false
-                                        selectedProducts[product.docId] = !current
+                                        // Adiciona ou remove instantaneamente do cesto global
+                                        CartManager.toggleProduct(product.docId)
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
                             }
-                            // Se a linha tiver apenas 1 produto, adiciona um espaço vazio para manter o tamanho
-                            if (rowItems.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                            if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 } else {
-                    // Mensagem caso a categoria exista mas não tenha stock
-                    Text(
-                        text = "De momento não existem produtos disponíveis.",
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    Text("Sem produtos.", color = Color.Gray, fontSize = 14.sp)
                 }
 
-                // Espaçamento entre categorias, exceto na última
-                if (index < categories.lastIndex) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
+                if (index < categories.lastIndex) Spacer(modifier = Modifier.height(24.dp))
             }
-
-            // --- BOTÃO CONTINUAR (Só aparece se houver produtos selecionados) ---
-            if (selectedProducts.any { it.value }) {
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = {
-                        // Passa a lista de IDs selecionados para o próximo ecrã
-                        navController.currentBackStackEntry?.savedStateHandle?.set(
-                            "selectedProducts",
-                            selectedProducts.filter { it.value }.keys.toList()
-                        )
-                        navController.navigate("newbasket")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Continuar", fontSize = 18.sp, color = Color.White)
-                }
-                // Espaço extra no final para o scroll não cortar o botão
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            // Espaço final para não cortar conteúdo com a BottomBar
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
 
 @Composable
 fun ProductCardSelectable(
-    product: ProductTest,
+    product: Product,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
-            .height(240.dp) // Altura fixa para uniformidade
+            .height(240.dp)
             .shadow(4.dp, RoundedCornerShape(12.dp))
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
@@ -181,84 +135,47 @@ fun ProductCardSelectable(
     ) {
         Column(
             verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp)
+            modifier = Modifier.fillMaxSize().padding(8.dp)
         ) {
-            // Nome do Produto
             Text(
                 text = product.name,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2, // Limita a 2 linhas para não estragar o layout
+                maxLines = 2,
                 lineHeight = 20.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp)
+                modifier = Modifier.fillMaxWidth()
             )
 
-            // Imagem do Produto (Base64)
             var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-
             LaunchedEffect(product.imageUrl) {
-                try {
-                    // Verifica se a string tem cabeçalho "data:image..." e remove se necessário
-                    val cleanBase64 = if (product.imageUrl.contains(",")) {
-                        product.imageUrl.split(",")[1]
-                    } else {
-                        product.imageUrl
-                    }
-
-                    val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-                    val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                    imageBitmap = bitmap?.asImageBitmap()
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                if (product.imageUrl.isNotEmpty()) {
+                    try {
+                        val cleanBase64 = if (product.imageUrl.contains(",")) product.imageUrl.split(",")[1] else product.imageUrl
+                        val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        imageBitmap = bitmap?.asImageBitmap()
+                    } catch (e: Exception) { e.printStackTrace() }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f) // Ocupa o espaço disponível
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray.copy(alpha = 0.2f)), // Fundo cinza claro enquanto carrega/sem imagem
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(8.dp)).background(Color.LightGray.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
                 if (imageBitmap != null) {
-                    Image(
-                        bitmap = imageBitmap!!,
-                        contentDescription = product.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Image(bitmap = imageBitmap!!, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 } else {
-                    // Placeholder se não houver imagem
                     Text("Sem Imagem", fontSize = 10.sp, color = Color.Gray)
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Botão Adicionar / Adicionado
             Button(
                 onClick = onClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary, // Verde se selecionado
-                    contentColor = Color.White
-                ),
-                contentPadding = PaddingValues(0.dp), // Remove padding interno para caber texto
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .fillMaxWidth()
-                    .height(36.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) ButtonRemoveColor else ButtonAddColor),
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.fillMaxWidth().height(36.dp),
                 shape = RoundedCornerShape(6.dp)
             ) {
-                Text(
-                    text = if (isSelected) "Selecionado" else "Adicionar",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text(text = if (isSelected) "Remover" else "Adicionar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
