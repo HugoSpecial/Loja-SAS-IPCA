@@ -9,10 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,8 +32,10 @@ val IpcaGreen = Color(0xFF00864F)
 val IpcaDarkTeal = Color(0xFF005A49)
 val IpcaOlive = Color(0xFF689F38)
 val IpcaBlueGray = Color(0xFF455A64)
-
 val IpcaBlackGreen = Color(0xFF1B2E25)
+// NOVA COR PARA URGÊNCIA
+val IpcaRed = Color(0xFFB71C1C)
+
 val BgLight = Color(0xFFF2F4F3)
 
 @Composable
@@ -55,7 +54,7 @@ fun CollaboratorHomeView(
             .verticalScroll(scrollState)
     ) {
 
-        // --- 1. CABEÇALHO (LOGO IGUAL AO HISTÓRICO) ---
+        // --- 1. CABEÇALHO ---
         Spacer(modifier = Modifier.height(40.dp))
 
         Image(
@@ -64,11 +63,10 @@ fun CollaboratorHomeView(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(80.dp),
-            contentScale = ContentScale.Fit // Garante que não fica distorcido
+            contentScale = ContentScale.Fit
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-
 
         // --- 2. BOAS-VINDAS ---
         Text(
@@ -183,17 +181,30 @@ fun CollaboratorHomeView(
                 )
             }
 
-            // LINHA 3
+            // LINHA 3 (Inclui o botão de Entrega Urgente)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                 ActionCard(
-                     title = "Campanhas",
-                     subtitle = "Gestão de Campanhas",
-                     icon = ImageVector.vectorResource(id = R.drawable.megaphone),
-                     backgroundColor = IpcaBlackGreen,
-                     modifier = Modifier.weight(1f),
-                     onClick = { navController.navigate("campaigns") }
-                 )
-             }
+                ActionCard(
+                    title = "Campanhas",
+                    subtitle = "Gestão de Campanhas",
+                    icon = ImageVector.vectorResource(id = R.drawable.megaphone),
+                    backgroundColor = IpcaBlackGreen,
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate("campaigns") }
+                )
+
+                // BOTÃO DE ENTREGA URGENTE
+                ActionCard(
+                    title = "Entrega Urgente",
+                    subtitle = "Saída Rápida",
+                    icon = Icons.Default.Warning,
+                    backgroundColor = IpcaRed,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        // AQUI ESTÁ A NAVEGAÇÃO
+                        navController.navigate("urgent_delivery")
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(100.dp))

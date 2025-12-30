@@ -38,20 +38,20 @@ sealed class BottomBarItemCollaborator(val title: String, val route: String) {
     object Home : BottomBarItemCollaborator("Início", "collaborator")
     object Notification : BottomBarItemCollaborator("Notificações", "notification-collaborador")
     object History : BottomBarItemCollaborator("Histórico ", "history-collaborador")
-    object Profile : BottomBarItemCollaborator("Perfil", "profile-collaborator")
+    object BeneficiaryList : BottomBarItemCollaborator("Lista", "list-beneficiary")
 }
 
 @Composable
 fun CollaboratorBottomBar(
     navController: NavController,
     currentRoute: String? = null,
-    unreadCount: Int = 0 // <--- NOVO PARÂMETRO: Recebe o número de notificações por ler
+    unreadCount: Int = 0
 ) {
     val items = listOf(
         BottomBarItemCollaborator.Home,
         BottomBarItemCollaborator.Notification,
         BottomBarItemCollaborator.History,
-        BottomBarItemCollaborator.Profile
+        BottomBarItemCollaborator.BeneficiaryList
     )
 
     var selectedItem by remember { mutableStateOf(items[0]) }
@@ -68,17 +68,14 @@ fun CollaboratorBottomBar(
             .height(100.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-
-        // 1. A BARRA BRANCA
         NavigationBar(
             modifier = Modifier
-                .height(80.dp) // Ajustei para 80dp (150dp era muito alto para a barra base)
+                .height(80.dp)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
             containerColor = Color.White,
             tonalElevation = 10.dp
         ) {
 
-            // --- ITEM 1: HOME ---
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.Home,
                 onClick = {
@@ -93,7 +90,6 @@ fun CollaboratorBottomBar(
                 modifier = Modifier.weight(1f)
             )
 
-            // --- ITEM 2: NOTIFICAÇÕES (COM BADGE) ---
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.Notification,
                 onClick = {
@@ -101,7 +97,6 @@ fun CollaboratorBottomBar(
                     navController.navigate(BottomBarItemCollaborator.Notification.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    // LÓGICA DO PONTO VERMELHO
                     if (unreadCount > 0) {
                         BadgedBox(
                             badge = {
@@ -125,10 +120,8 @@ fun CollaboratorBottomBar(
                 modifier = Modifier.weight(1f)
             )
 
-            // --- ESPAÇO VAZIO NO MEIO ---
             Box(modifier = Modifier.weight(1f))
 
-            // --- ITEM 3: HISTÓRICO ---
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.History,
                 onClick = {
@@ -143,23 +136,21 @@ fun CollaboratorBottomBar(
                 modifier = Modifier.weight(1f)
             )
 
-            // --- ITEM 4: PERFIL ---
             NavigationBarItem(
-                selected = selectedItem == BottomBarItemCollaborator.Profile,
+                selected = selectedItem == BottomBarItemCollaborator.BeneficiaryList,
                 onClick = {
-                    selectedItem = BottomBarItemCollaborator.Profile
-                    navController.navigate(BottomBarItemCollaborator.Profile.route) { launchSingleTop = true; restoreState = true }
+                    selectedItem = BottomBarItemCollaborator.BeneficiaryList
+                    navController.navigate(BottomBarItemCollaborator.BeneficiaryList.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
                     Icon(painter = painterResource(id = R.drawable.outline_user), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
-                label = { Text(text = BottomBarItemCollaborator.Profile.title, fontSize = 11.sp) },
+                label = { Text(text = BottomBarItemCollaborator.BeneficiaryList.title, fontSize = 11.sp) },
                 colors = navItemsColors(),
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // 2. BOTÃO FLUTUANTE
         Surface(
             onClick = { navController.navigate("stock") },
             shape = CircleShape,

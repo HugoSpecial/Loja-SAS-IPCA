@@ -45,7 +45,6 @@ fun BeneficiaryBottomBar(
         }
     }
 
-    // Ler o CartManager
     val cartCount = CartManager.cartItems.count()
 
     Box(
@@ -70,7 +69,6 @@ fun BeneficiaryBottomBar(
                 colors = navItemColors(), modifier = Modifier.weight(1f)
             )
 
-            // 2. NOTIFICAÇÕES
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Notification,
                 onClick = { selectedItem = BottomBarItem.Notification; navController.navigate(BottomBarItem.Notification.route) { launchSingleTop = true; restoreState = true } },
@@ -87,10 +85,8 @@ fun BeneficiaryBottomBar(
                 colors = navItemColors(), modifier = Modifier.weight(1f)
             )
 
-            // ESPAÇO VAZIO NO MEIO
             Box(modifier = Modifier.weight(1f))
 
-            // 3. HISTÓRICO
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.History,
                 onClick = { selectedItem = BottomBarItem.History; navController.navigate(BottomBarItem.History.route) { launchSingleTop = true; restoreState = true } },
@@ -99,7 +95,6 @@ fun BeneficiaryBottomBar(
                 colors = navItemColors(), modifier = Modifier.weight(1f)
             )
 
-            // 4. PERFIL
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Profile,
                 onClick = { selectedItem = BottomBarItem.Profile; navController.navigate(BottomBarItem.Profile.route) { launchSingleTop = true; restoreState = true } },
@@ -109,15 +104,12 @@ fun BeneficiaryBottomBar(
             )
         }
 
-        // --- BOTÃO CENTRAL FLUTUANTE (CARRINHO) ---
-        // Colocamos numa Box para gerir a posição (TopCenter + Offset)
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = (-15).dp)
         ) {
             if (cartCount > 0) {
-                // SE TEM ITENS: O BadgedBox envolve o Surface (Botão)
                 BadgedBox(
                     badge = {
                         Badge(
@@ -146,7 +138,6 @@ fun BeneficiaryBottomBar(
                     }
                 }
             } else {
-                // SE NÃO TEM ITENS: Mostra só o Surface
                 Surface(
                     onClick = { navController.navigate("newbasket") },
                     shape = CircleShape,

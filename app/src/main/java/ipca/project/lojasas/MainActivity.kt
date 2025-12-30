@@ -1,5 +1,6 @@
 package ipca.project.lojasas
 
+// IMPORTS
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,29 +25,27 @@ import androidx.navigation.navArgument
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.delay
-
-// IMPORTS
 import ipca.project.lojasas.ui.authentication.LoginView
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import ipca.project.lojasas.ui.beneficiary.history.BeneficiaryHistoryView
-import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
-import ipca.project.lojasas.ui.candidature.CandidatureView
-import ipca.project.lojasas.ui.collaborator.candidature.CandidatureDetailsView
-import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
 import ipca.project.lojasas.ui.beneficiary.home.HomeView
 import ipca.project.lojasas.ui.beneficiary.newBasket.NewBasketView
 import ipca.project.lojasas.ui.beneficiary.notifications.NotificationView
-import ipca.project.lojasas.ui.beneficiary.notifications.NotificationsBeneficiaryViewModel // IMPORTANTE
+import ipca.project.lojasas.ui.beneficiary.notifications.NotificationsBeneficiaryViewModel
 import ipca.project.lojasas.ui.beneficiary.orders.BeneficiaryOrderDetailView
 import ipca.project.lojasas.ui.beneficiary.profile.ProfileView
+import ipca.project.lojasas.ui.candidature.AwaitCandidatureView
+import ipca.project.lojasas.ui.candidature.CandidatureView
 import ipca.project.lojasas.ui.colaborator.history.CollaboratorHistoryView
+import ipca.project.lojasas.ui.collaborator.beneficiaryList.BeneficiaryListView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignDetailsView
 import ipca.project.lojasas.ui.collaborator.campaigns.CampaignsView
 import ipca.project.lojasas.ui.collaborator.campaigns.NewCampaignView
+import ipca.project.lojasas.ui.collaborator.candidature.CandidatureDetailsView
+import ipca.project.lojasas.ui.collaborator.candidature.CandidatureListView
 import ipca.project.lojasas.ui.collaborator.delivery.DeliveryDetailView
 import ipca.project.lojasas.ui.collaborator.delivery.DeliveryListView
+import ipca.project.lojasas.ui.collaborator.delivery.UrgentDeliveryView
 import ipca.project.lojasas.ui.collaborator.donation.DonationListView
 import ipca.project.lojasas.ui.collaborator.donation.DonationView
 import ipca.project.lojasas.ui.collaborator.home.CollaboratorHomeView
@@ -54,12 +53,13 @@ import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificati
 import ipca.project.lojasas.ui.collaborator.notifications.NotificationsCollaboratorViewModel
 import ipca.project.lojasas.ui.collaborator.orders.OrderDetailView
 import ipca.project.lojasas.ui.collaborator.orders.OrderListView
-import ipca.project.lojasas.ui.collaborator.profile.ProfileCollaboratorView
 import ipca.project.lojasas.ui.collaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
 import ipca.project.lojasas.ui.components.SplashView
 import ipca.project.lojasas.ui.theme.LojaSASTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.tasks.await
 
 const val TAG = "LojaSAS-IPCA"
 
@@ -77,7 +77,6 @@ class MainActivity : ComponentActivity() {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
-            // INICIALIZAÇÃO DOS VIEWMODELS (Global)
             val collabNotifViewModel: NotificationsCollaboratorViewModel = viewModel()
             val collabNotifState by remember { collabNotifViewModel.uiState }
 
@@ -97,14 +96,14 @@ class MainActivity : ComponentActivity() {
                             "stock",
                             "notification-collaborador",
                             "history-collaborador",
-                            "profile-collaborator"
+                            "list-beneficiary"
                         )
 
                         if (showBeneficiaryBottomBar) {
                             BeneficiaryBottomBar(
                                 navController = navController,
                                 currentRoute = currentRoute,
-                                unreadCount = beneficiaryNotifState.unreadCount // Passa a contagem para a barra
+                                unreadCount = beneficiaryNotifState.unreadCount
                             )
                         }
 
@@ -123,11 +122,9 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     ) {
 
-                        // --- SPLASH & LOGIN ---
                         composable("splash") { SplashView() }
                         composable("login") { LoginView(navController = navController) }
 
-                        // --- ROTAS COLABORADOR ---
                         composable("collaborator") { CollaboratorHomeView(navController = navController) }
                         composable("notification-collaborador") {
                             CollaboratorNotificationView(
@@ -137,7 +134,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("donations_list") { DonationListView(navController = navController) }
                         composable("stock") { StockView(navController = navController) }
-                        composable("profile-collaborator") { ProfileCollaboratorView(navController = navController) }
+                        composable("list-beneficiary") { BeneficiaryListView(navController = navController) }
                         composable("history-collaborador") { CollaboratorHistoryView(navController = navController) }
                         composable("orders") { OrderListView(navController = navController) }
                         composable(
@@ -158,6 +155,10 @@ class MainActivity : ComponentActivity() {
                             if (deliveryId != null) {
                                 DeliveryDetailView(navController = navController, deliveryId = deliveryId)
                             }
+                        }
+
+                        composable("urgent_delivery") {
+                            UrgentDeliveryView(navController = navController)
                         }
 
                         composable("campaigns") { CampaignsView(navController = navController) }
@@ -190,12 +191,10 @@ class MainActivity : ComponentActivity() {
                             DonationView(navController, productId)
                         }
 
-                        // --- ROTAS BENEFICIÁRIO ---
                         composable("candidature") { CandidatureView(navController = navController) }
                         composable("await-candidature") { AwaitCandidatureView(navController = navController) }
                         composable("home") { HomeView(navController = navController) }
 
-                        // Passa o ViewModel do Beneficiário para a View
                         composable("notification") {
                             NotificationView(
                                 navController = navController,
@@ -218,7 +217,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // LÓGICA DE LOGIN
                 LaunchedEffect(Unit) {
                     delay(1000)
 
