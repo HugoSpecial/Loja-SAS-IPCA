@@ -233,7 +233,7 @@ fun StockView(
 @Composable
 fun ProductCard(item: Product, onClick: () -> Unit) {
     val totalQuantity = item.batches.sumOf { it.quantity }
-    val validitiesCount = item.batches.count { it.validity != null }
+    val validitiesCount = item.batches.count { it.validity != null && it.quantity > 0 }
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -334,62 +334,94 @@ fun ProductBatchesDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Título Verde
                 Text(
                     text = item.name,
                     fontWeight = FontWeight.Bold,
                     color = IpcaGreen,
+                    fontSize = 24.sp,
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
                 )
 
+                // Botões de Ação
                 Row {
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray)
                     }
                     IconButton(onClick = onDeleteRequest) {
-                        Icon(Icons.Default.Delete, contentDescription = "Apagar", tint = Color.Red)
+                        Icon(Icons.Default.Delete, contentDescription = "Apagar", tint = Color(0xFFD32F2F))
                     }
                 }
             }
         },
         text = {
             Column {
-                Divider()
+                Divider(color = Color.LightGray.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Detalhes por validade:", fontSize = 14.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(8.dp))
 
+                // Subtítulo
+                Text("Detalhes por validade:", fontSize = 14.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Lista de Validades
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.heightIn(max = 300.dp)
                 ) {
-                    items(item.batches.sortedBy { it.validity }) { batch ->
+                    // --- CORREÇÃO AQUI ---
+                    // Filtramos para mostrar apenas lotes com quantidade maior que 0
+                    val batches = item.batches
+                        .filter { it.quantity > 0 } // <--- O BUG ESTAVA AQUI
+                        .sortedBy { it.validity }
+
+                    if (batches.isEmpty()) {
+                        item {
+                            Text(
+                                "Sem stock disponível.",
+                                fontSize = 14.sp,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
+                    items(batches) { batch ->
                         Card(
+                            shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = BackgroundGray),
+                            elevation = CardDefaults.cardElevation(0.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // Data
                                 Column {
-                                    Text("Validade", fontSize = 10.sp, color = Color.Gray)
+                                    Text("Validade", fontSize = 11.sp, color = Color.Gray)
                                     val dateStr = batch.validity?.let {
                                         SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
                                     } ?: "Sem data"
-                                    Text(dateStr, fontWeight = FontWeight.Bold)
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(dateStr, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
                                 }
 
+                                // Quantidade (Badge Verde)
                                 Surface(
                                     color = IpcaGreen,
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text(
                                         text = "${batch.quantity} un",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = Color.White,
+                                        fontSize = 14.sp
                                     )
                                 }
                             }
@@ -400,9 +432,10 @@ fun ProductBatchesDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Fechar", color = IpcaGreen)
+                Text("Fechar", color = IpcaGreen, fontSize = 16.sp)
             }
         },
-        containerColor = Color.White
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
     )
 }
