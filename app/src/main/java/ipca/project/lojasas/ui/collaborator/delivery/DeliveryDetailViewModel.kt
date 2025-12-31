@@ -29,7 +29,6 @@ class DeliveryDetailViewModel : ViewModel() {
     var uiState = mutableStateOf(DeliveryDetailState())
         private set
 
-    /** Buscar detalhes da entrega */
     fun fetchDelivery(deliveryId: String) {
         uiState.value = uiState.value.copy(isLoading = true, error = null)
 
@@ -53,6 +52,7 @@ class DeliveryDetailViewModel : ViewModel() {
 
                         uiState.value = uiState.value.copy(delivery = delivery)
 
+                        // Busca nome do avaliador se existir
                         delivery.evaluatedBy?.let { fetchUser(it, isEvaluator = true) }
 
                         delivery.orderId?.let { orderId ->
@@ -60,8 +60,16 @@ class DeliveryDetailViewModel : ViewModel() {
                                 .get()
                                 .addOnSuccessListener { orderSnapshot ->
                                     val order = orderSnapshot.toObject(Order::class.java)?.apply { docId = orderSnapshot.id }
-                                    uiState.value = uiState.value.copy(order = order, isLoading = false)
 
+                                    // --- CORREÇÃO AQUI ---
+                                    // Preenchemos logo o userName com o que vem da Order para evitar o "N/A"
+                                    uiState.value = uiState.value.copy(
+                                        order = order,
+                                        userName = order?.userName,
+                                        isLoading = false
+                                    )
+
+                                    // Depois buscamos os detalhes extra (Telefone, notas)
                                     order?.userId?.let { fetchUser(it, isEvaluator = false) }
 
                                     fetchProducts()
@@ -86,7 +94,6 @@ class DeliveryDetailViewModel : ViewModel() {
             }
     }
 
-    /** Buscar info de um user */
     private fun fetchUser(userId: String?, isEvaluator: Boolean) {
         if (userId.isNullOrBlank()) return
 
@@ -101,6 +108,7 @@ class DeliveryDetailViewModel : ViewModel() {
                     uiState.value = if (isEvaluator) {
                         uiState.value.copy(evaluatorName = name)
                     } else {
+                        // Atualizamos o resto dos dados, mantendo o nome (ou atualizando se mudou)
                         uiState.value.copy(userName = name, userPhone = phone, userNotes = notes)
                     }
                 }
@@ -110,22 +118,21 @@ class DeliveryDetailViewModel : ViewModel() {
             }
     }
 
-    /** Buscar produtos */
     fun fetchProducts() {
+        // --- MELHORIA ---
+        // Alterado de addSnapshotListener para get() para evitar Memory Leaks
+        // já que não estamos a remover o listener quando saímos do ecrã.
         db.collection("products")
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(Product::class.java) } ?: emptyList()
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val list = snapshot.documents.mapNotNull { it.toObject(Product::class.java) }
                 uiState.value = uiState.value.copy(products = list)
             }
     }
 
-    /** Aprovar entrega */
     fun approveDelivery(deliveryId: String) {
         val currentDelivery = uiState.value.delivery ?: return
-        if (currentDelivery.state != DeliveryState.PENDENTE) {
-            uiState.value = uiState.value.copy(error = "Entrega já finalizada.")
-            return
-        }
+        if (currentDelivery.state != DeliveryState.PENDENTE) return
 
         val collaboratorId = Firebase.auth.currentUser?.uid ?: ""
         val now = Date()
@@ -152,27 +159,21 @@ class DeliveryDetailViewModel : ViewModel() {
                     operationSuccess = true,
                     isLoading = false
                 )
-                // Atualiza o nome do avaliador na UI
-                fetchUser(collaboratorId, isEvaluator = true)
             }
             .addOnFailureListener { e ->
                 uiState.value = uiState.value.copy(isLoading = false, error = e.message)
             }
     }
 
-    /** Rejeitar entrega */
     fun rejectDelivery(deliveryId: String) {
         val currentDelivery = uiState.value.delivery ?: return
-        if (currentDelivery.state != DeliveryState.PENDENTE) {
-            uiState.value = uiState.value.copy(error = "Entrega já finalizada.")
-            return
-        }
+        if (currentDelivery.state != DeliveryState.PENDENTE) return
 
         val collaboratorId = Firebase.auth.currentUser?.uid ?: ""
         val now = Date()
 
         val updates = mapOf(
-            "state" to DeliveryState.EM_ANALISE.name,
+            "state" to DeliveryState.CANCELADO.name, // Atenção: Verifiquei que usas CANCELADO na View
             "evaluationDate" to now,
             "evaluatedBy" to collaboratorId
         )
@@ -184,13 +185,13 @@ class DeliveryDetailViewModel : ViewModel() {
             .addOnSuccessListener {
                 uiState.value = uiState.value.copy(
                     delivery = currentDelivery.copy(
+                        state = DeliveryState.CANCELADO,
                         evaluatedBy = collaboratorId,
                         evaluationDate = now
                     ),
                     operationSuccess = true,
                     isLoading = false
                 )
-                fetchUser(collaboratorId, isEvaluator = true)
             }
             .addOnFailureListener { e ->
                 uiState.value = uiState.value.copy(isLoading = false, error = e.message)
