@@ -38,6 +38,13 @@ class CollaboratorHomeViewModel : ViewModel() {
         fetchUserName()
     }
 
+    // --- LOGOUT ---
+    fun signOut() {
+        auth.signOut()
+        // Opcional: Limpar o estado para evitar dados antigos em cache de memória
+        uiState.value = CollaboratorHomeState()
+    }
+
     private fun fetchUserName() {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -81,7 +88,6 @@ class CollaboratorHomeViewModel : ViewModel() {
 
                 val count = list.count { it.state == CandidatureState.PENDENTE }
 
-                // Atualiza estado e remove loading
                 uiState.value = uiState.value.copy(
                     candidatures = list,
                     pendingCount = count,
@@ -116,21 +122,18 @@ class CollaboratorHomeViewModel : ViewModel() {
                 if (error != null) return@addSnapshotListener
 
                 var countPendenteHoje = 0
-                val hoje = Date() // Data atual do telemóvel
+                val hoje = Date()
 
                 for (doc in value?.documents ?: emptyList()) {
                     try {
-                        // 1. Ler o Estado
                         val estadoStr = doc.getString("state")
                         val state = if (estadoStr != null) {
                             try { DeliveryState.valueOf(estadoStr) } catch (e: Exception) { DeliveryState.PENDENTE }
                         } else DeliveryState.PENDENTE
 
-                        // 2. Ler a Data do campo "surveyDate"
                         val timestamp = doc.getTimestamp("surveyDate")
                         val surveyDate = timestamp?.toDate()
 
-                        // 3. Verificação: É Pendente E é no dia de Hoje (ignora horas)?
                         if (state == DeliveryState.PENDENTE && surveyDate != null) {
                             if (isSameDay(surveyDate, hoje)) {
                                 countPendenteHoje++
@@ -140,7 +143,6 @@ class CollaboratorHomeViewModel : ViewModel() {
                         Log.e("HomeViewModel", "Erro ao ler delivery", e)
                     }
                 }
-
                 uiState.value = uiState.value.copy(deliveriesTodayCount = countPendenteHoje)
             }
 
@@ -148,40 +150,26 @@ class CollaboratorHomeViewModel : ViewModel() {
         db.collection("campaigns")
             .addSnapshotListener { value, error ->
                 if (error != null) return@addSnapshotListener
-
-                val now = Date() // Data e hora atual
+                val now = Date()
                 var activeCount = 0
-
                 for (doc in value?.documents ?: emptyList()) {
                     try {
                         val start = doc.getTimestamp("startDate")?.toDate()
                         val end = doc.getTimestamp("endDate")?.toDate()
-
                         if (start != null && end != null) {
-                            // Verifica se AGORA está entre o inicio e o fim
-                            if (now.after(start) && now.before(end)) {
-                                activeCount++
-                            }
+                            if (now.after(start) && now.before(end)) activeCount++
                         }
-                    } catch (e: Exception) {
-                        Log.e("HomeViewModel", "Erro ao ler campaign", e)
-                    }
+                    } catch (e: Exception) { }
                 }
                 uiState.value = uiState.value.copy(activeCampaignsCount = activeCount)
             }
     }
 
-    /**
-     * Função auxiliar para comparar duas datas ignorando as horas/minutos.
-     * Verifica apenas se o Ano e o Dia do Ano são iguais.
-     */
     private fun isSameDay(date1: Date, date2: Date): Boolean {
         val cal1 = Calendar.getInstance()
         val cal2 = Calendar.getInstance()
-
         cal1.time = date1
         cal2.time = date2
-
         return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                 cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }

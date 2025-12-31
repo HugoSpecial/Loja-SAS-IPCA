@@ -38,7 +38,7 @@ sealed class BottomBarItemCollaborator(val title: String, val route: String) {
     object Home : BottomBarItemCollaborator("Início", "collaborator")
     object Notification : BottomBarItemCollaborator("Notificações", "notification-collaborador")
     object History : BottomBarItemCollaborator("Histórico ", "history-collaborador")
-    object BeneficiaryList : BottomBarItemCollaborator("Lista", "list-beneficiary")
+    object BeneficiaryList : BottomBarItemCollaborator("Benefeciários", "list-beneficiary")
 }
 
 @Composable
@@ -143,9 +143,9 @@ fun CollaboratorBottomBar(
                     navController.navigate(BottomBarItemCollaborator.BeneficiaryList.route) { launchSingleTop = true; restoreState = true }
                 },
                 icon = {
-                    Icon(painter = painterResource(id = R.drawable.outline_user), contentDescription = null, modifier = Modifier.size(28.dp))
+                    Icon(painter = painterResource(id = R.drawable.persons_two), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
-                label = { Text(text = BottomBarItemCollaborator.BeneficiaryList.title, fontSize = 11.sp) },
+                label = { Text(text = BottomBarItemCollaborator.BeneficiaryList.title, fontSize = 9.sp) },
                 colors = navItemsColors(),
                 modifier = Modifier.weight(1f)
             )

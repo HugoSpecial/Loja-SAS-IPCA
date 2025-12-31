@@ -9,9 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,9 +34,7 @@ val IpcaDarkTeal = Color(0xFF005A49)
 val IpcaOlive = Color(0xFF689F38)
 val IpcaBlueGray = Color(0xFF455A64)
 val IpcaBlackGreen = Color(0xFF1B2E25)
-// NOVA COR PARA URGÊNCIA
 val IpcaRed = Color(0xFFB71C1C)
-
 val BgLight = Color(0xFFF2F4F3)
 
 @Composable
@@ -46,6 +45,9 @@ fun CollaboratorHomeView(
     val state = viewModel.uiState.value
     val scrollState = rememberScrollState()
 
+    // ESTADO PARA CONTROLAR O POPUP DE LOGOUT
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -54,7 +56,7 @@ fun CollaboratorHomeView(
             .verticalScroll(scrollState)
     ) {
 
-        // --- 1. CABEÇALHO ---
+        // --- 1. CABEÇALHO (Logótipo apenas) ---
         Spacer(modifier = Modifier.height(40.dp))
 
         Image(
@@ -68,13 +70,33 @@ fun CollaboratorHomeView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- 2. BOAS-VINDAS ---
-        Text(
-            text = "Olá, ${state.userName}",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF1A1A1A)
-        )
+        // --- 2. BOAS-VINDAS + LOGOUT ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Olá, ${state.userName}",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF1A1A1A),
+                modifier = Modifier.weight(1f)
+            )
+
+            // Botão de Logout: AGORA APENAS ABRE O POPUP
+            IconButton(
+                onClick = { showLogoutDialog = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = "Sair",
+                    tint = IpcaRed,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+
         Text(
             text = "Resumo da atividade hoje.",
             fontSize = 16.sp,
@@ -82,7 +104,7 @@ fun CollaboratorHomeView(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // --- 3. RESUMO ---
+        // --- 3. RESUMO (DASHBOARD) ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -140,7 +162,6 @@ fun CollaboratorHomeView(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             // LINHA 1
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-
                 ActionCard(
                     title = "Entregas",
                     subtitle = "Gestão de Entregas",
@@ -149,7 +170,6 @@ fun CollaboratorHomeView(
                     modifier = Modifier.weight(1f),
                     onClick = { navController.navigate("deliveries") }
                 )
-
                 ActionCard(
                     title = "Pedidos",
                     subtitle = "Gestão de Pedidos",
@@ -172,18 +192,6 @@ fun CollaboratorHomeView(
                 )
 
                 ActionCard(
-                    title = "Candidaturas",
-                    subtitle = "Gestão de Candidaturas",
-                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
-                    backgroundColor = IpcaGreen,
-                    modifier = Modifier.weight(1f),
-                    onClick = { navController.navigate("candidature_list") }
-                )
-            }
-
-            // LINHA 3 (Inclui o botão de Entrega Urgente)
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ActionCard(
                     title = "Campanhas",
                     subtitle = "Gestão de Campanhas",
                     icon = ImageVector.vectorResource(id = R.drawable.megaphone),
@@ -191,28 +199,74 @@ fun CollaboratorHomeView(
                     modifier = Modifier.weight(1f),
                     onClick = { navController.navigate("campaigns") }
                 )
+            }
 
-                // BOTÃO DE ENTREGA URGENTE
+            // LINHA 3
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+
+                ActionCard(
+                    title = "Candidaturas",
+                    subtitle = "Gestão de Candidaturas",
+                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
+                    backgroundColor = IpcaGreen,
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate("candidature_list") }
+                )
+
                 ActionCard(
                     title = "Entrega Urgente",
                     subtitle = "Saída Rápida",
                     icon = Icons.Default.Warning,
                     backgroundColor = IpcaRed,
                     modifier = Modifier.weight(1f),
-                    onClick = {
-                        // AQUI ESTÁ A NAVEGAÇÃO
-                        navController.navigate("urgent_delivery")
-                    }
+                    onClick = { navController.navigate("urgent_delivery") }
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(100.dp))
     }
+
+    // --- COMPONENTE DO POPUP DE CONFIRMAÇÃO ---
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(
+                    text = "Terminar Sessão",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("Tem a certeza que pretende sair da aplicação?")
+            },
+            containerColor = Color.White,
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        // Ação de Logout
+                        viewModel.signOut()
+                        navController.navigate("login") {
+                            popUpTo(0)
+                        }
+                    }
+                ) {
+                    Text("Sair", color = IpcaRed, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLogoutDialog = false }
+                ) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            }
+        )
+    }
 }
 
-// --- COMPONENTES AUXILIARES ---
-
+// --- COMPONENTES AUXILIARES (IGUAIS) ---
 @Composable
 fun SummaryCard(
     title: String,
@@ -248,12 +302,8 @@ fun SummaryCard(
                     modifier = Modifier.size(24.dp)
                 )
             }
-
             Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                verticalArrangement = Arrangement.Center
-            ) {
+            Column(verticalArrangement = Arrangement.Center) {
                 Text(
                     text = count,
                     fontSize = 26.sp,
@@ -304,7 +354,6 @@ fun ActionCard(
                     .align(Alignment.TopEnd)
                     .offset(x = 15.dp, y = (-15).dp)
             )
-
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
