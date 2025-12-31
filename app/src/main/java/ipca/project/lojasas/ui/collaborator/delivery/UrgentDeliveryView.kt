@@ -1,32 +1,45 @@
 package ipca.project.lojasas.ui.collaborator.delivery
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
 
-// Cores IPCA (reutilizadas)
-val IpcaGreen = Color(0xFF00864F)
+// --- CORES ---
+val CabazLightBg = Color(0xFFF7F9F8)
+val TextDark = Color(0xFF3E3448)
+val ButtonGreen = Color(0xFF438E63)
+val ButtonGray = Color(0xFFAAB0AD)
+val ButtonRemoveRed = Color(0xFFE57373)
 val IpcaRed = Color(0xFFB71C1C)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,236 +49,371 @@ fun UrgentDeliveryView(
     viewModel: UrgentDeliveryViewModel = viewModel()
 ) {
     val state = viewModel.uiState.value
-    var showProductDialog by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Entrega Urgente", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = IpcaRed, // Vermelho para indicar urgência/atenção
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CabazLightBg)
+        // Removemos o padding horizontal aqui para o header tocar nas bordas,
+        // aplicamos o padding apenas no conteúdo abaixo
+    ) {
+        // --- NOVO CABEÇALHO (Igual ao DeliveryListView) ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Voltar",
+                    tint = TextDark, // Usamos TextDark para contrastar com o fundo claro
+                    modifier = Modifier.size(28.dp)
                 )
-            )
-        }
-    ) { paddingValues ->
+            }
 
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            Column(
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                    .weight(1f)
+                    .padding(end = 48.dp) // Compensação para centrar o logo visualmente
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo_sas),
+                    contentDescription = "Cabeçalho IPCA SAS",
+                    modifier = Modifier
+                        .heightIn(max = 55.dp)
+                        .align(Alignment.Center),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+
+        // --- CONTEÚDO PRINCIPAL (Com padding lateral recuperado) ---
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+        ) {
+
+            Text("Entrega Urgente", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = IpcaRed)
+            Text("Saída rápida de stock.", fontSize = 16.sp, color = TextGray, modifier = Modifier.padding(bottom = 24.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 40.dp)
             ) {
 
-                // --- 1. DADOS DO BENEFICIÁRIO ---
-                Text("Dados da Entrega", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = IpcaRed)
-                Spacer(modifier = Modifier.height(8.dp))
+                // --- SEÇÃO 1: BENEFICIÁRIO ---
+                item {
+                    Text("Quem recebe?", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(bottom = 8.dp))
 
-                OutlinedTextField(
-                    value = state.beneficiaryName,
-                    onValueChange = { viewModel.onBeneficiaryNameChange(it) },
-                    label = { Text("Nome do Beneficiário") },
-                    placeholder = { Text("Ex: João Silva ou Anónimo") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = IpcaRed,
-                        focusedLabelColor = IpcaRed
-                    )
-                )
+                    Box(modifier = Modifier.fillMaxWidth().zIndex(1f)) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                OutlinedTextField(
+                                    value = state.beneficiaryName,
+                                    onValueChange = { viewModel.onBeneficiaryNameChange(it) },
+                                    placeholder = { Text("Nome do Beneficiário") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp),
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        if(state.isSearching) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = IpcaRed)
+                                        else Icon(Icons.Default.Search, null, tint = TextGray)
+                                    },
+                                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = IpcaRed,
+                                        unfocusedBorderColor = Color.LightGray,
+                                        focusedContainerColor = Color.White,
+                                        unfocusedContainerColor = Color.White
+                                    )
+                                )
+                            }
+                        }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // --- 2. LISTA DE PRODUTOS ---
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Produtos a Entregar", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = IpcaRed)
-
-                    // Botão Adicionar Produto
-                    Button(
-                        onClick = { showProductDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen),
-                        contentPadding = PaddingValues(horizontal = 16.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Adicionar")
+                        if (state.searchResults.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .padding(top = 85.dp)
+                                    .fillMaxWidth()
+                                    .heightIn(max = 220.dp),
+                                elevation = CardDefaults.cardElevation(6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                LazyColumn {
+                                    items(state.searchResults) { user ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { viewModel.onUserSelected(user) }
+                                                .padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.Person, null, tint = TextGray, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(user.name ?: "Sem nome", fontWeight = FontWeight.SemiBold, color = TextDark)
+                                        }
+                                        HorizontalDivider(color = CabazLightBg)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // --- SEÇÃO 2: PRODUTOS ---
+                item {
+                    Text("Produtos (${state.cart.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                }
 
                 if (state.cart.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp)
-                            .background(Color(0xFFEEEEEE), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Nenhum produto adicionado.", color = Color.Gray)
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(100.dp).background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Lista vazia.", color = TextGray)
+                        }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f), // Ocupa o espaço disponível
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.cart) { item ->
-                            CartItemRow(item = item, onRemove = { viewModel.removeFromCart(item) })
-                        }
+                    items(state.cart) { item ->
+                        val stock = item.product.batches.sumOf { it.quantity }
+                        ProductCardItem(
+                            product = item.product,
+                            quantity = item.quantity,
+                            stock = stock,
+                            onAdd = { if (item.quantity < stock) viewModel.addToCart(item.product, 1) },
+                            onRemove = {
+                                if (item.quantity == 1) viewModel.removeFromCart(item)
+                                else viewModel.addToCart(item.product, -1)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // --- SEÇÃO 3: AÇÕES ---
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // --- 3. BOTÃO FINALIZAR (Entregar e Marcar Entregue) ---
-                if (state.error != null) {
-                    Text(state.error!!, color = Color.Red, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.submitUrgentDelivery {
-                            navController.popBackStack() // Volta ao menu após sucesso
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = IpcaRed),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !state.isLoading && state.cart.isNotEmpty()
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(Icons.Default.Check, contentDescription = null)
+                    Button(
+                        onClick = { showBottomSheet = true },
+                        modifier = Modifier.fillMaxWidth().height(55.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ButtonGreen)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("FINALIZAR ENTREGA", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Adicionar Produto", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (state.error != null) {
+                        Text(state.error!!, color = IpcaRed, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+
+                    if (state.cart.isNotEmpty()) {
+                        Button(
+                            onClick = { if (!state.isLoading) viewModel.submitUrgentDelivery { navController.popBackStack() } },
+                            modifier = Modifier.fillMaxWidth().height(55.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = IpcaRed)
+                        ) {
+                            if (state.isLoading) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            } else {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Finalizar Entrega", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // --- DIÁLOGO PARA SELECIONAR PRODUTO ---
-    if (showProductDialog) {
-        ProductSelectionDialog(
-            products = state.products,
-            onDismiss = { showProductDialog = false },
-            onConfirm = { product, qty ->
-                viewModel.addToCart(product, qty)
-                showProductDialog = false
-            }
-        )
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            ProductSelectionSheet(
+                products = state.products,
+                onAdd = { p ->
+                    viewModel.addToCart(p, 1)
+                    showBottomSheet = false
+                }
+            )
+        }
     }
 }
 
+// --- COMPONENTES AUXILIARES ---
+
 @Composable
-fun CartItemRow(item: CartItem, onRemove: () -> Unit) {
+fun ProductCardItem(
+    product: Product,
+    quantity: Int,
+    stock: Int,
+    onAdd: () -> Unit,
+    onRemove: () -> Unit
+) {
+    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(product.imageUrl) {
+        if (product.imageUrl.isNotEmpty()) {
+            try {
+                val cleanBase64 = if (product.imageUrl.contains(",")) product.imageUrl.substringAfter(",") else product.imageUrl
+                val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+                imageBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+            } catch (e: Exception) {}
+        }
+    }
+
     Card(
+        modifier = Modifier.fillMaxWidth().height(80.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
-                Text(item.product.name, fontWeight = FontWeight.Bold)
-                Text("${item.quantity} unidades", color = Color.Gray, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)).background(Color.Gray.copy(0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageBitmap != null) {
+                        Image(bitmap = imageBitmap!!, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Text(product.name.take(1).uppercase(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(text = product.name, color = TextDark, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("Stock: $stock", fontSize = 10.sp, color = TextGray)
+                }
             }
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "Remover", tint = Color.Red)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                QuantityButton(
+                    icon = if (quantity == 1) Icons.Default.Delete else ImageVector.vectorResource(id = R.drawable.sub_round),
+                    backgroundColor = if (quantity == 1) ButtonRemoveRed else ButtonGreen,
+                    onClick = onRemove
+                )
+                Text(text = "$quantity", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextDark, modifier = Modifier.padding(horizontal = 12.dp))
+                QuantityButton(icon = Icons.Default.Add, backgroundColor = if (quantity >= stock) ButtonGray else ButtonGreen, onClick = onAdd)
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductSelectionDialog(
-    products: List<Product>,
-    onDismiss: () -> Unit,
-    onConfirm: (Product, Int) -> Unit
-) {
-    var selectedProduct by remember { mutableStateOf<Product?>(null) }
-    var quantityText by remember { mutableStateOf("1") }
+fun QuantityButton(icon: ImageVector, backgroundColor: Color, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(backgroundColor).clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+    }
+}
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Adicionar Produto") },
-        text = {
-            Column {
-                // Lista Simplificada de Produtos (Dropdown seria ideal, mas Lista funciona bem aqui)
-                Text("Selecione o produto:", fontSize = 12.sp, color = Color.Gray)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .background(Color(0xFFF5F5F5), RoundedCornerShape(4.dp))
-                ) {
-                    LazyColumn {
-                        items(products) { product ->
-                            val isSelected = selectedProduct?.docId == product.docId
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { selectedProduct = product }
-                                    .background(if (isSelected) IpcaGreen.copy(alpha = 0.2f) else Color.Transparent)
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(product.name, fontWeight = if(isSelected) FontWeight.Bold else FontWeight.Normal)
-                                // Mostra total em stock
-                                val totalStock = product.batches.sumOf { it.quantity }
-                                Text("$totalStock em stock", fontSize = 10.sp, color = Color.Gray)
-                            }
-                            Divider(color = Color.LightGray.copy(alpha = 0.5f))
-                        }
+@Composable
+fun ProductSelectionSheet(
+    products: List<Product>,
+    onAdd: (Product) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp)) {
+
+        Text("Escolha o Produto", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextDark)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = searchQuery, onValueChange = { searchQuery = it },
+            placeholder = { Text("Pesquisar...") }, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        )
+
+        LazyColumn(modifier = Modifier.heightIn(max = 400.dp).padding(top = 12.dp)) {
+            val filteredList = products.filter { it.name.contains(searchQuery, true) }
+
+            items(filteredList) { p ->
+                var listImage by remember(p.docId) { mutableStateOf<ImageBitmap?>(null) }
+                LaunchedEffect(p.imageUrl) {
+                    if (p.imageUrl.isNotEmpty()) {
+                        try {
+                            val clean = if (p.imageUrl.contains(",")) p.imageUrl.substringAfter(",") else p.imageUrl
+                            val bytes = Base64.decode(clean, Base64.DEFAULT)
+                            listImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                        } catch (e: Exception) {}
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("Quantidade:", fontSize = 12.sp, color = Color.Gray)
-                OutlinedTextField(
-                    value = quantityText,
-                    onValueChange = { if (it.all { char -> char.isDigit() }) quantityText = it },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val qty = quantityText.toIntOrNull() ?: 0
-                    if (selectedProduct != null && qty > 0) {
-                        onConfirm(selectedProduct!!, qty)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onAdd(p) }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Gray.copy(0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (listImage != null) {
+                            Image(
+                                bitmap = listImage!!,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text(p.name.take(1).uppercase(), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                        }
                     }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen),
-                enabled = selectedProduct != null && (quantityText.toIntOrNull() ?: 0) > 0
-            ) {
-                Text("Adicionar")
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(p.name, fontWeight = FontWeight.SemiBold, color = TextDark)
+                        Text(
+                            "${p.batches.sumOf { it.quantity }} un.",
+                            color = ButtonGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                HorizontalDivider(color = CabazLightBg)
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
-    )
+    }
 }
