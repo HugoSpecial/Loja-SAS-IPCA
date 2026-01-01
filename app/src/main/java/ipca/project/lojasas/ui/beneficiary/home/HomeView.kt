@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +23,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,6 +31,7 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.ui.beneficiary.CartManager
+import ipca.project.lojasas.ui.components.EmptyState
 
 // Cores dos Botões
 val ButtonAddColor = Color(0xFF4CAF50)
@@ -42,7 +46,6 @@ fun HomeView(
     val uiState = viewModel.uiState.value
     val categories = uiState.allowedCategories
 
-    // Lemos diretamente do CartManager (Estado Global)
     val cartItems = CartManager.cartItems
 
     Column(
@@ -68,7 +71,13 @@ fun HomeView(
         } else if (!uiState.error.isNullOrEmpty()) {
             Text("Erro: ${uiState.error}", color = Color.Red)
         } else if (categories.isEmpty()) {
-            Text("A sua candidatura não tem categorias.", color = Color.Gray)
+            // UPDATE: EmptyStateView
+            Box(modifier = Modifier.height(300.dp)) {
+                EmptyState(
+                    message = "A sua candidatura não tem produtos atribuídos.",
+                    icon = Icons.Outlined.ShoppingCart
+                )
+            }
         } else {
             // --- LISTA DE PRODUTOS ---
             categories.forEachIndexed { index, category ->
@@ -89,14 +98,12 @@ fun HomeView(
                     chunked.forEach { rowItems ->
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             rowItems.forEach { product ->
-                                // Verifica se este produto já está no CartManager
                                 val isSelected = cartItems.containsKey(product.docId)
 
                                 ProductCardSelectable(
                                     product = product,
                                     isSelected = isSelected,
                                     onClick = {
-                                        // Adiciona ou remove instantaneamente do cesto global
                                         CartManager.toggleProduct(product.docId)
                                     },
                                     modifier = Modifier.weight(1f)
@@ -107,12 +114,11 @@ fun HomeView(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 } else {
-                    Text("Sem produtos.", color = Color.Gray, fontSize = 14.sp)
+                    Text("Sem produtos disponíveis nesta categoria.", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
                 }
 
                 if (index < categories.lastIndex) Spacer(modifier = Modifier.height(24.dp))
             }
-            // Espaço final para não cortar conteúdo com a BottomBar
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
@@ -137,11 +143,13 @@ fun ProductCardSelectable(
             verticalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxSize().padding(8.dp)
         ) {
+            // UPDATE: Ellipsis
             Text(
                 text = product.name,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 lineHeight = 20.sp,
                 modifier = Modifier.fillMaxWidth()
             )

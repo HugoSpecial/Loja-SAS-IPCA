@@ -14,13 +14,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,6 +44,7 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.ui.beneficiary.CartManager
+import ipca.project.lojasas.ui.components.EmptyState
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -81,9 +83,8 @@ fun NewBasketView(
         modifier = Modifier
             .fillMaxSize()
             .background(CabazLightBg)
-        // Retirei o padding geral para controlar melhor o header, aplicamos padding no conteudo
     ) {
-        // --- CABEÇALHO (IGUAL AO ORDER DETAIL) ---
+        // --- CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -105,7 +106,7 @@ fun NewBasketView(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 48.dp) // Compensação para centrar o logo perfeitamente
+                    .padding(end = 48.dp)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
@@ -118,11 +119,11 @@ fun NewBasketView(
             }
         }
 
-        // --- CONTEÚDO COM SCROLL ---
+        // --- CONTEÚDO ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp) // Repomos o padding lateral aqui
+                .padding(horizontal = 24.dp)
                 .verticalScroll(scrollState)
         ) {
             Text(
@@ -147,12 +148,13 @@ fun NewBasketView(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (productsToShow.isEmpty()) {
-                        Text(
-                            text = "O cabaz está vazio.",
-                            color = TextGray,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // UPDATE: EmptyStateView
+                        Box(modifier = Modifier.height(150.dp)) {
+                            EmptyState(
+                                message = "O cabaz está vazio. Volte à Home para adicionar produtos.",
+                                icon = Icons.Outlined.ShoppingCart
+                            )
+                        }
                     } else {
                         productsToShow.forEach { product ->
                             val quantity = cartItems[product.docId] ?: 1
@@ -198,7 +200,7 @@ fun NewBasketView(
     }
 }
 
-// --- Componentes Auxiliares ---
+// --- Componentes Auxiliares (Mantêm-se iguais, só com TextOverflow) ---
 
 @Composable
 fun ProductCardItem(product: Product, quantity: Int, stock: Int, onAdd: () -> Unit, onRemove: () -> Unit) {
@@ -244,12 +246,14 @@ fun ProductCardItem(product: Product, quantity: Int, stock: Int, onAdd: () -> Un
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
+                    // UPDATE: Ellipsis
                     Text(
                         text = product.name,
                         color = TextDark,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text("Stock: $stock", fontSize = 10.sp, color = TextGray)
                 }
