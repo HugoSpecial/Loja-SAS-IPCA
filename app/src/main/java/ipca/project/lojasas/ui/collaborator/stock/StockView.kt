@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,18 +30,20 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
+import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 // --- CORES DO TEMA ---
 val IpcaGreen = Color(0xFF438F56)
-val BackgroundGray = Color(0xFFF9F9F9) // Ajustado para igualar o HistoryView
+val BackgroundGray = Color(0xFFF9F9F9)
 
 @Composable
 fun StockView(
@@ -111,9 +114,7 @@ fun StockView(
 
         Column(
             modifier = Modifier
-                // .padding(paddingValues) // <--- REMOVIDO: Isto causava o espaço em branco no topo
                 .fillMaxSize()
-                // Adicionamos apenas o padding inferior para o conteúdo não ficar escondido atrás da barra de navegação
                 .padding(bottom = paddingValues.calculateBottomPadding())
                 .padding(horizontal = 12.dp)
         ) {
@@ -123,21 +124,19 @@ fun StockView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp),
-                contentScale = ContentScale.Fit // Garante que o logo não fica esticado
+                contentScale = ContentScale.Fit
             )
 
             Spacer(modifier = Modifier.height(24.dp))
-            // ----------------------------------------
 
             // TÍTULO "Stock"
             Text(
                 text = "Stock",
-                color = IpcaGreen, // Usando o verde definido (ou Color(0xFF00864F) se preferires o exato do History)
+                color = IpcaGreen,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold
             )
 
-            // Subtítulo opcional para manter consistência
             Text(
                 text = "Gerencie os produtos e validades.",
                 fontSize = 14.sp,
@@ -208,9 +207,10 @@ fun StockView(
                     CircularProgressIndicator(color = IpcaGreen)
                 }
             } else if (filteredItems.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Nenhum produto encontrado.", color = Color.Gray)
-                }
+                EmptyState(
+                    message = "Nenhum produto encontrado.",
+                    icon = Icons.Outlined.ShoppingCart
+                )
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -282,25 +282,26 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Nome
+            // UPDATE: Textos com Ellipsis
             Text(
                 text = item.name,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 color = IpcaGreen,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            // Categoria
+
             Text(
                 text = item.category,
                 fontSize = 10.sp,
                 color = Color.Gray,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Total
             Text(
                 text = "Total: $totalQuantity un",
                 fontSize = 12.sp,
@@ -309,7 +310,6 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Validades
             Text(
                 text = if (validitiesCount > 0) "$validitiesCount validades" else "Sem validade",
                 fontSize = 12.sp,
@@ -334,17 +334,16 @@ fun ProductBatchesDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Título Verde
                 Text(
                     text = item.name,
                     fontWeight = FontWeight.Bold,
                     color = IpcaGreen,
                     fontSize = 24.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, // UPDATE
                     modifier = Modifier.weight(1f)
                 )
 
-                // Botões de Ação
                 Row {
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray)
@@ -360,19 +359,15 @@ fun ProductBatchesDialog(
                 Divider(color = Color.LightGray.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Subtítulo
                 Text("Detalhes por validade:", fontSize = 14.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Lista de Validades
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.heightIn(max = 300.dp)
                 ) {
-                    // --- CORREÇÃO AQUI ---
-                    // Filtramos para mostrar apenas lotes com quantidade maior que 0
                     val batches = item.batches
-                        .filter { it.quantity > 0 } // <--- O BUG ESTAVA AQUI
+                        .filter { it.quantity > 0 }
                         .sortedBy { it.validity }
 
                     if (batches.isEmpty()) {
@@ -400,7 +395,6 @@ fun ProductBatchesDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Data
                                 Column {
                                     Text("Validade", fontSize = 11.sp, color = Color.Gray)
                                     val dateStr = batch.validity?.let {
@@ -411,7 +405,6 @@ fun ProductBatchesDialog(
                                     Text(dateStr, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
                                 }
 
-                                // Quantidade (Badge Verde)
                                 Surface(
                                     color = IpcaGreen,
                                     shape = RoundedCornerShape(8.dp)

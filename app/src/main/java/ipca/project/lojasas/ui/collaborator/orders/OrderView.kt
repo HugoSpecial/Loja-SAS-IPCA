@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +32,7 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Order
 import ipca.project.lojasas.models.OrderState
+import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -40,7 +42,7 @@ val IpcaDarkTeal = Color(0xFF005A49)
 val BgLight = Color(0xFFF5F7FA)
 val TextDark = Color(0xFF2D3436)
 val TextGray = Color(0xFF95A5A6)
-val BorderColor = Color(0xFFE0E0E0) // Cor para a borda subtil
+val BorderColor = Color(0xFFE0E0E0)
 
 @Composable
 fun OrderListView(
@@ -135,6 +137,11 @@ fun OrderListView(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = IpcaGreen)
                 }
+            } else if (filteredList.isEmpty()) {
+                EmptyState(
+                    message = "Não existem pedidos neste filtro.",
+                    icon = Icons.Outlined.List
+                )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -152,7 +159,6 @@ fun OrderListView(
     }
 }
 
-// --- CARD ATUALIZADO (Mais definição) ---
 @Composable
 fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 
@@ -170,9 +176,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        // 1. ADICIONADO: Sombra leve para profundidade
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        // 2. ADICIONADO: Borda subtil para definição
         border = BorderStroke(1.dp, BorderColor)
     ) {
         Row(
@@ -182,10 +186,8 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // LADO ESQUERDO
             Column(modifier = Modifier.weight(1f)) {
 
-                // Badge de Estado
                 Surface(
                     color = accentColor.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(6.dp)
@@ -201,18 +203,17 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Nome
                 Text(
                     text = order.userName ?: "Anónimo",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextDark,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Data com ícone
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.calendar_outline),
@@ -234,15 +235,13 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                 }
             }
 
-            // 3. ADICIONADO: Divisória Vertical
             Box(
                 modifier = Modifier
                     .width(1.dp)
                     .height(50.dp)
-                    .background(Color(0xFFF0F0F0)) // Cinza muito claro
+                    .background(Color(0xFFF0F0F0))
             )
 
-            // LADO DIREITO: Bolha de Quantidade + Seta
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 12.dp)
@@ -278,7 +277,6 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 4. ADICIONADO: Seta para indicar ação
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
                     contentDescription = null,
@@ -294,17 +292,15 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 fun BubbleFilter(text: String, isSelected: Boolean, onClick: () -> Unit) {
     val bg = if (isSelected) IpcaDarkTeal else Color.White
     val txt = if (isSelected) Color.White else TextGray
-    val border = if (isSelected) null else BorderStroke(1.dp, BorderColor) // Borda no filtro também
+    val border = if (isSelected) null else BorderStroke(1.dp, BorderColor)
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(bg)
             .clickable { onClick() }
-            .then(if (border != null) Modifier.padding(1.dp) else Modifier) // Ajuste fino
+            .then(if (border != null) Modifier.padding(1.dp) else Modifier)
     ) {
-        // Se quiseres borda no filtro não selecionado, usa Surface em vez de Box aqui,
-        // mas para manter simples deixei assim.
         Text(
             text = text,
             color = txt,

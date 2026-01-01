@@ -32,6 +32,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,7 +82,7 @@ fun DonationView(
     )
 
     var campaignExpanded by remember { mutableStateOf(false) }
-    var categoryExpanded by remember { mutableStateOf(false) } // Estado para o menu da categoria
+    var categoryExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -88,7 +90,6 @@ fun DonationView(
             .background(MaterialTheme.colorScheme.background)
     ) {
 
-        // --- CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -123,7 +124,6 @@ fun DonationView(
             }
         }
 
-        // --- CONTEÚDO SCROLLABLE ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -151,7 +151,6 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- 1. DADOS GERAIS DO DOADOR ---
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
@@ -218,7 +217,11 @@ fun DonationView(
                             value = state.donorName,
                             onValueChange = { viewModel.onDonorNameChange(it) },
                             label = { Text("Nome do Doador") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Words,
+                                imeAction = ImeAction.Next
+                            )
                         )
                     }
                 }
@@ -226,7 +229,6 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- 2. ADICIONAR PRODUTO ---
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -270,13 +272,17 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // NOME DO PRODUTO (AUTOCOMPLETE)
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = state.currentName,
                     onValueChange = { viewModel.onNameChange(it) },
                     label = { Text("Nome do Produto") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    // UPDATE: Next
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Next
+                    )
                 )
 
                 if (state.filteredProducts.isNotEmpty()) {
@@ -301,7 +307,6 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- SELETOR DE CATEGORIA (NOVO) ---
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
                 onExpandedChange = { categoryExpanded = !categoryExpanded }
@@ -336,14 +341,17 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // QUANTIDADE E DATA
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = state.currentQuantity,
                     onValueChange = { viewModel.onQuantityChange(it) },
                     label = { Text("Qtd") },
                     modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    // UPDATE: Done
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    )
                 )
 
                 val dateText = state.currentValidity?.let {
@@ -371,7 +379,6 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // BOTÃO ADICIONAR À LISTA
             Button(
                 onClick = { viewModel.addProductToList() },
                 modifier = Modifier.fillMaxWidth(),
@@ -386,7 +393,6 @@ fun DonationView(
             Divider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- 3. LISTA DE PRODUTOS ADICIONADOS ---
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -413,7 +419,6 @@ fun DonationView(
                         ) {
                             Column {
                                 Text(product.name, fontWeight = FontWeight.Bold)
-                                // Mostra a categoria no cartão
                                 Text(product.category, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
 
                                 val batch = product.batches.firstOrNull()
@@ -444,7 +449,6 @@ fun DonationView(
                 )
             }
 
-            // BOTÃO FINALIZAR
             Button(
                 onClick = {
                     viewModel.saveDonation { navController.popBackStack() }

@@ -5,7 +5,7 @@ data class User (
     var name : String? = null,
     var preferences : String? = null,
     var isBeneficiary : Boolean = false,
-    var isColaborator : Boolean = false,
+    var isCollaborator : Boolean = false,
     var phone : String? = null,
     var email : String? = null,
     var fault : Int = 0,

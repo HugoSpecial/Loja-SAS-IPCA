@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,10 +33,10 @@ import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Order
 import ipca.project.lojasas.models.User
 import ipca.project.lojasas.ui.collaborator.beneficiaries.BeneficiaryListViewModel
+import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// Cores (Mantidas)
 val IpcaGreen = Color(0xFF00864F)
 val BgLight = Color(0xFFF2F4F3)
 val FaultRed = Color(0xFFD32F2F)
@@ -59,7 +60,6 @@ fun BeneficiaryListView(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (state.isLoading && state.beneficiaries.isEmpty()) {
-                // Loading inicial apenas se não tiver dados
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IpcaGreen)
             } else {
                 LazyColumn(
@@ -67,10 +67,8 @@ fun BeneficiaryListView(
                     contentPadding = PaddingValues(bottom = 24.dp, start = 24.dp, end = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 1. Cabeçalho
                     item { HeaderContent() }
 
-                    // 2. BARRA DE PESQUISA (NOVA)
                     item {
                         SearchBar(
                             searchText = state.searchText,
@@ -79,16 +77,12 @@ fun BeneficiaryListView(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    // 3. Conteúdo da Lista
                     if (state.beneficiaries.isEmpty()) {
                         item {
                             Spacer(modifier = Modifier.height(20.dp))
-                            Text(
-                                text = if (state.searchText.isEmpty()) "Não existem beneficiários." else "Nenhum resultado encontrado.",
-                                color = Color.Gray,
-                                fontSize = 16.sp,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            EmptyState(
+                                message = if (state.searchText.isEmpty()) "Não existem beneficiários." else "Nenhum resultado encontrado.",
+                                icon = Icons.Outlined.Person
                             )
                         }
                     } else {
@@ -101,7 +95,6 @@ fun BeneficiaryListView(
         }
     }
 
-    // Pop-up de Detalhes
     if (selectedUser != null && !showHistoryDialog) {
         BeneficiaryDetailsDialog(
             user = selectedUser!!,
@@ -115,7 +108,6 @@ fun BeneficiaryListView(
         )
     }
 
-    // Pop-up de Histórico
     if (showHistoryDialog && selectedUser != null) {
         HistoryDialog(
             user = selectedUser!!,
@@ -145,12 +137,11 @@ fun HeaderContent() {
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
             color = TitleBlack,
-            modifier = Modifier.padding(bottom = 16.dp) // Reduzi ligeiramente para caber a pesquisa
+            modifier = Modifier.padding(bottom = 16.dp)
         )
     }
 }
 
-// --- NOVO COMPONENTE: BARRA DE PESQUISA ---
 @Composable
 fun SearchBar(searchText: String, onSearchChange: (String) -> Unit) {
     OutlinedTextField(
@@ -174,9 +165,6 @@ fun SearchBar(searchText: String, onSearchChange: (String) -> Unit) {
     )
 }
 
-// ... Resto dos componentes (BeneficiaryCard, Dialogs, etc.) mantêm-se iguais ao anterior ...
-// Vou incluir apenas os componentes que já existiam abaixo para garantir que o código compila
-
 @Composable
 fun BeneficiaryCard(user: User, onClick: () -> Unit) {
     Card(
@@ -191,16 +179,25 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // UPDATE: Ellipsis e MaxLines
                 Text(
                     text = user.name ?: "Sem Nome",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = TitleBlack,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (user.fault > 0) {
                     Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
-                        Text("${user.fault} Falta(s)", color = FaultRed, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        Text(
+                            "${user.fault} Falta(s)",
+                            color = FaultRed,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
                     }
                 } else {
                     Text("0 Faltas", color = Color.Gray, fontSize = 12.sp)
@@ -209,9 +206,19 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
             if (!user.preferences.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, null, tint = Color(0xFFE65100), modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Default.Info,
+                        null,
+                        tint = Color(0xFFE65100),
+                        modifier = Modifier.size(16.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Possui restrições/preferências", fontSize = 12.sp, color = Color(0xFFE65100), fontWeight = FontWeight.Medium)
+                    Text(
+                        "Possui restrições/preferências",
+                        fontSize = 12.sp,
+                        color = Color(0xFFE65100),
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
@@ -223,41 +230,84 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color.White,
-        title = { Text(text = user.name ?: "Detalhes", fontWeight = FontWeight.Bold, color = TitleBlack) },
+        title = {
+            Text(
+                text = user.name ?: "Detalhes",
+                fontWeight = FontWeight.Bold,
+                color = TitleBlack
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!user.email.isNullOrEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Email, null, tint = IpcaGreen, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Outlined.Email,
+                            null,
+                            tint = IpcaGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(user.email!!, fontSize = 14.sp)
                     }
                 }
                 if (!user.phone.isNullOrEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Phone, null, tint = IpcaGreen, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.Phone,
+                            null,
+                            tint = IpcaGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(user.phone!!, fontSize = 14.sp)
                     }
                 }
                 Divider(color = BgLight)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Warning, null, tint = if (user.fault > 0) FaultRed else IpcaGreen, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Default.Warning,
+                        null,
+                        tint = if (user.fault > 0) FaultRed else IpcaGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Número de Faltas: ${user.fault}", fontSize = 14.sp, fontWeight = if (user.fault > 0) FontWeight.Bold else FontWeight.Normal, color = if (user.fault > 0) FaultRed else TitleBlack)
+                    Text(
+                        "Número de Faltas: ${user.fault}",
+                        fontSize = 14.sp,
+                        fontWeight = if (user.fault > 0) FontWeight.Bold else FontWeight.Normal,
+                        color = if (user.fault > 0) FaultRed else TitleBlack
+                    )
                 }
                 Divider(color = BgLight)
                 if (!user.preferences.isNullOrBlank()) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, null, tint = Color(0xFFE65100)); Spacer(modifier = Modifier.width(8.dp)); Text("Preferências", fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                            Icon(Icons.Default.Info, null, tint = Color(0xFFE65100)); Spacer(
+                            modifier = Modifier.width(8.dp)
+                        ); Text(
+                            "Preferências",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE65100)
+                        )
                         }
                         Text(user.preferences!!, fontSize = 14.sp)
                     }
-                } else { Text("Sem preferências.", color = Color.Gray) }
+                } else {
+                    Text("Sem preferências.", color = Color.Gray)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onViewHistory, colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-                    Icon(Icons.Default.List, null, modifier = Modifier.size(18.dp)); Spacer(modifier = Modifier.width(8.dp)); Text("Ver Histórico")
+                Button(
+                    onClick = onViewHistory,
+                    colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.List,
+                        null,
+                        modifier = Modifier.size(18.dp)
+                    ); Spacer(modifier = Modifier.width(8.dp)); Text("Ver Histórico")
                 }
             }
         },
@@ -270,28 +320,68 @@ fun HistoryDialog(user: User, orders: List<Order>, isLoading: Boolean, onDismiss
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color.White,
-        title = { Column { Text("Histórico", fontWeight = FontWeight.Bold, color = TitleBlack); Text("Beneficiário: ${user.name}", fontSize = 12.sp, color = Color.Gray) } },
-        text = {
-            if (isLoading) Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = IpcaGreen) }
-            else if (orders.isEmpty()) Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { Text("Nenhum registo.", color = Color.Gray) }
-            else LazyColumn(modifier = Modifier.heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { items(orders) { HistoryItemCard(it) } }
+        title = {
+            Column {
+                Text(
+                    "Histórico",
+                    fontWeight = FontWeight.Bold,
+                    color = TitleBlack
+                ); Text("Beneficiário: ${user.name}", fontSize = 12.sp, color = Color.Gray)
+            }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Voltar", color = IpcaGreen, fontWeight = FontWeight.Bold) } }
+        text = {
+            if (isLoading) Box(
+                modifier = Modifier.fillMaxWidth().height(150.dp),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator(color = IpcaGreen) }
+            else if (orders.isEmpty()) Box(
+                modifier = Modifier.fillMaxWidth().height(100.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Nenhum registo.", color = Color.Gray) }
+            else LazyColumn(
+                modifier = Modifier.heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) { items(orders) { HistoryItemCard(it) } }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    "Voltar",
+                    color = IpcaGreen,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     )
 }
 
 @Composable
 fun HistoryItemCard(order: Order) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT"))
-    Card(colors = CardDefaults.cardColors(containerColor = BgLight), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = BgLight),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.DateRange, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.DateRange,
+                    null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(order.orderDate?.let { dateFormat.format(it) } ?: "-", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(order.orderDate?.let { dateFormat.format(it) } ?: "-",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Total: ${order.items.sumOf { it.quantity ?: 0 }} produtos", fontSize = 12.sp, color = TitleBlack)
+            Text(
+                "Total: ${order.items.sumOf { it.quantity ?: 0 }} produtos",
+                fontSize = 12.sp,
+                color = TitleBlack
+            )
         }
     }
 }

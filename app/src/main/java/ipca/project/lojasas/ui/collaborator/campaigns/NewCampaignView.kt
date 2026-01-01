@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions // Importante
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -19,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction // Importante
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,14 +44,12 @@ fun NewCampaignView(
 
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
-    // Definimos as cores padrão reutilizáveis baseadas no teu pedido
     val customTextFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.primary,
         focusedContainerColor = Color.White,
         unfocusedContainerColor = Color.White,
         cursorColor = MaterialTheme.colorScheme.primary,
-        // Cores para quando o campo de data está "bloqueado" para escrita (mas clicável)
         disabledContainerColor = Color.White,
         disabledBorderColor = MaterialTheme.colorScheme.primary,
         disabledTextColor = Color.Black,
@@ -74,11 +75,10 @@ fun NewCampaignView(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp) // Aumentei um pouco o padding lateral para ficar igual ao login
+                .padding(24.dp)
                 .verticalScroll(scrollState)
         ) {
 
-            // --- NOME ---
             Text(
                 "Nome da Campanha",
                 fontWeight = FontWeight.Medium,
@@ -92,7 +92,7 @@ fun NewCampaignView(
                 placeholder = { Text("Ex: Saldos de Verão", color = Color.Gray) },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Edit, // Ícone de edição
+                        imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -101,7 +101,12 @@ fun NewCampaignView(
                 enabled = !uiState.isLoading,
                 shape = RoundedCornerShape(12.dp),
                 colors = customTextFieldColors,
-                singleLine = true
+                singleLine = true,
+                // UPDATE: Teclado fecha ao terminar
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -114,7 +119,6 @@ fun NewCampaignView(
                 modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
             )
 
-            // Usamos Box para garantir que o clique funciona sobre o campo desativado
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = dateFormat.format(uiState.startDate),
@@ -128,12 +132,11 @@ fun NewCampaignView(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = false, // Desativado para não abrir teclado
+                    enabled = false,
                     shape = RoundedCornerShape(12.dp),
-                    colors = customTextFieldColors, // Usa as mesmas cores (incluindo disabled)
+                    colors = customTextFieldColors,
                     singleLine = true
                 )
-                // Overlay invisível para capturar o clique
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -187,7 +190,6 @@ fun NewCampaignView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- TIPO DE CAMPANHA ---
             Text(
                 "Tipo de Campanha",
                 fontWeight = FontWeight.Bold,
@@ -195,9 +197,7 @@ fun NewCampaignView(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = uiState.campaignType == CampaignType.INTERNO,
                     onClick = { viewModel.onTypeChange(CampaignType.INTERNO) },
@@ -225,7 +225,6 @@ fun NewCampaignView(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // --- MENSAGEM DE ERRO ---
             if (uiState.error != null) {
                 Text(
                     text = uiState.error!!,
@@ -234,7 +233,6 @@ fun NewCampaignView(
                 )
             }
 
-            // --- BOTÃO CRIAR ---
             Button(
                 onClick = {
                     viewModel.addCampaign {
@@ -243,7 +241,7 @@ fun NewCampaignView(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp), // Altura igual ao do Login
+                    .height(56.dp),
                 enabled = !uiState.isLoading,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -265,7 +263,6 @@ fun NewCampaignView(
     }
 }
 
-// Função auxiliar para abrir o Calendário nativo do Android
 fun showDatePicker(context: android.content.Context, initialDate: Date, onDateSelected: (Date) -> Unit) {
     val calendar = Calendar.getInstance()
     calendar.time = initialDate
@@ -274,7 +271,6 @@ fun showDatePicker(context: android.content.Context, initialDate: Date, onDateSe
     val month = calendar.get(Calendar.MONTH)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-    // Aqui usamos explicitamente o android.app.DatePickerDialog para não confundir com o Compose
     android.app.DatePickerDialog(
         context,
         { _: DatePicker, selectedYear: Int, selectedMonth: Int, selectedDay: Int ->
