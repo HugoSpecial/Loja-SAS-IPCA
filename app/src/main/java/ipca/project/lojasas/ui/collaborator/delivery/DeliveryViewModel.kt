@@ -12,6 +12,7 @@ import java.util.Date
 data class DeliveryWithUser (
     val delivery: Delivery,
     val userName: String? = null,
+    val userId: String? = null
 )
 
 data class DeliveryListState(
@@ -66,13 +67,14 @@ class DeliveryViewModel : ViewModel() {
                         .document(orderId)
                         .get()
                         .addOnSuccessListener { orderDoc ->
-
                             val userName = orderDoc.getString("userName")
+                            val userId = orderDoc.getString("userId")
 
                             resultList.add(
                                 DeliveryWithUser(
                                     delivery = delivery,
                                     userName = userName,
+                                    userId = userId
                                 )
                             )
 
@@ -86,5 +88,42 @@ class DeliveryViewModel : ViewModel() {
                         }
                 }
             }
+    }
+
+    //Função em Teste (Pires Lindu - 912343569)
+    fun FaultDelivery(userId: String, deliveryId: String) {
+        uiState.value = uiState.value.copy(isLoading = true)
+
+        val userId = db.collection("users").document(userId)
+        val deliveryId = db.collection("delivery").document(deliveryId)
+
+        db.runTransaction { transaction ->
+            val userSnapshot = transaction.get(userId)
+
+            val currentFaults = (userSnapshot.getLong("fault") ?: 0).toInt()
+
+            val newFaults = currentFaults + 1
+
+            val isBeneficiary = newFaults < 2
+
+            // Atualizar User na BD
+            transaction.update(userId, "fault", newFaults)
+            transaction.update(userId, "isBeneficiary", isBeneficiary)
+
+            // Atualizar Delivery para CANCELADO
+            transaction.update(deliveryId, "state", DeliveryState.CANCELADO.name)
+            transaction.update(deliveryId, "reason", "Falta de comparência")
+            transaction.update(deliveryId, "delivered", false)
+
+        }.addOnSuccessListener {
+            uiState.value = uiState.value.copy(isLoading = false)
+            Log.d("DeliveryVM", "Falta marcada com sucesso.")
+
+        }.addOnFailureListener { e ->
+            uiState.value = uiState.value.copy(
+                isLoading = false,
+                error = "Erro: ${e.message}"
+            )
+        }
     }
 }

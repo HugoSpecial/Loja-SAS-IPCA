@@ -106,48 +106,4 @@ class OrderViewModel : ViewModel() {
                 )
             }
     }
-
-    //Função em Teste (Pires Lindu)
-    fun marcarFaltaEntrega(userId: String, deliveryId: String) {
-        uiState.value = uiState.value.copy(isLoading = true)
-
-        val userId = db.collection("users").document(userId)
-        val deliveryId = db.collection("delivery").document(deliveryId)
-
-        db.runTransaction { transaction ->
-            val userSnapshot = transaction.get(userId)
-
-            val currentFaults = (userSnapshot.getLong("fault") ?: 0).toInt()
-
-            val newFaults = currentFaults + 1
-
-            val isBeneficiary = newFaults < 2
-
-            // Atualizar User na BD
-            transaction.update(userId, "fault", newFaults)
-            transaction.update(userId, "isBeneficiary", isBeneficiary)
-
-            // Atualizar Delivery para CANCELADO
-            transaction.update(deliveryId, "state", DeliveryState.CANCELADO.name)
-            transaction.update(deliveryId, "reason", "Falta de comparência")
-            transaction.update(deliveryId, "delivered", false)
-
-            /** }.addOnSuccessListener { (novasFaltas, aindaBeneficiario) ->
-            uiState.value = uiState.value.copy(
-            isLoading = false,
-            operationSuccess = true
-            )
-            Log.d(
-            "OrderDetailVM",
-            "Falta marcada. Total: $novasFaltas. Beneficiário: $aindaBeneficiario"
-            )
-
-            }.addOnFailureListener { e ->
-            uiState.value = uiState.value.copy(
-            isLoading = false,
-            error = "Erro ao marcar falta: ${e.message}"
-            )
-            Log.e("OrderDetailVM", "Erro na transação", e)*/
-        }
-    }
 }
