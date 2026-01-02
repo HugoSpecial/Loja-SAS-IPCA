@@ -1,5 +1,6 @@
 package ipca.project.lojasas.models
 
+import androidx.privacysandbox.ads.adservices.adid.AdId
 import java.util.Date
 
 data class Notification(
@@ -10,6 +11,7 @@ data class Notification(
     var read: Boolean = false,
     var type: String = "",
     var relatedId: String = "",
+    var recipientId: String = "",
 
     // Define para quem é a notificação: "COLABORADOR", "BENEFICIARIO", "INTERESSADO"
     var targetProfile: String = ""

@@ -169,6 +169,8 @@ class DeliveryDetailViewModel : ViewModel() {
         val currentDelivery = uiState.value.delivery ?: return
         if (currentDelivery.state != DeliveryState.PENDENTE) return
 
+        val currentOrder = uiState.value.order
+
         val collaboratorId = Firebase.auth.currentUser?.uid ?: ""
         val now = Date()
 
@@ -183,6 +185,29 @@ class DeliveryDetailViewModel : ViewModel() {
         db.collection("delivery").document(deliveryId)
             .update(updates)
             .addOnSuccessListener {
+
+                val userIdSafe = currentOrder?.userId
+
+                //Notificação
+                if (!userIdSafe.isNullOrBlank()) {
+                    val notification = Notification(
+                        title = "Entrega não recolhida",
+                        body = "A sua entrega foi cancelada porque não foi recolhida no horário estipulado.",
+                        date = Date(),
+                        read = false,
+                        type = "entrega_rejeitada", // Podes usar um tipo específico para o ícone
+                        relatedId = deliveryId,     // Liga à entrega
+                        targetProfile = "BENEFICIARIO",
+                        recipientId = userIdSafe // O ID que vai para a BD
+                    )
+
+                    db.collection("notifications")
+                        .add(notification)
+                        .addOnFailureListener { e ->
+                            Log.e("DeliveryDetailVM", "Erro ao enviar notificação", e)
+                        }
+                }
+
                 uiState.value = uiState.value.copy(
                     delivery = currentDelivery.copy(
                         state = DeliveryState.CANCELADO,
