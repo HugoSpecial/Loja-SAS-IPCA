@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,10 +34,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Notification
+import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.*
 
-// --- CORES ---
 val BackgroundGray = Color(0xFFF9F9F9)
 val PrimaryGreen = Color(0xFF00864F)
 val TextGray = Color(0xFF8C8C8C)
@@ -50,11 +51,9 @@ fun CollaboratorNotificationView(
 ) {
     val state by remember { viewModel.uiState }
 
-    // --- CORREÇÃO: LaunchedEffect para garantir o carregamento ---
     LaunchedEffect(Unit) {
         viewModel.fetchNotifications()
     }
-    // ------------------------------------------------------------
 
     Column(
         modifier = modifier
@@ -63,7 +62,6 @@ fun CollaboratorNotificationView(
             .padding(horizontal = 24.dp)
     ) {
 
-        // --- 1. CABEÇALHO ---
         Spacer(modifier = Modifier.height(40.dp))
 
         Image(
@@ -76,7 +74,6 @@ fun CollaboratorNotificationView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- 2. TÍTULO ---
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -106,7 +103,6 @@ fun CollaboratorNotificationView(
             modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
 
-        // --- 3. FILTROS ---
         FilterSection(
             selectedFilter = state.selectedFilter,
             onFilterSelected = { type -> viewModel.filterByType(type) }
@@ -114,7 +110,6 @@ fun CollaboratorNotificationView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- 4. LISTA ---
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.notifications.isEmpty() -> {
@@ -131,10 +126,9 @@ fun CollaboratorNotificationView(
                     )
                 }
                 state.notifications.isEmpty() -> {
-                    Text(
-                        text = "Sem notificações.",
-                        color = TextGray,
-                        modifier = Modifier.align(Alignment.Center)
+                    EmptyState(
+                        message = "Sem notificações.",
+                        icon = Icons.Outlined.Notifications
                     )
                 }
                 else -> {
@@ -149,12 +143,6 @@ fun CollaboratorNotificationView(
                                     if (!notification.read) {
                                         viewModel.markAsRead(notification.docId)
                                     }
-
-                                    // Adiciona aqui a navegação do colaborador se necessário
-                                    // Exemplo:
-                                    // if (notification.type == "pedido_novo") {
-                                    //     navController.navigate("orderDetails/${notification.relatedId}")
-                                    // }
                                 }
                             )
                         }
@@ -165,7 +153,6 @@ fun CollaboratorNotificationView(
     }
 }
 
-// --- FUNÇÃO PARA ESCOLHER O ÍCONE ---
 @Composable
 fun getIconForType(type: String): ImageVector {
     return when (type) {
@@ -176,8 +163,6 @@ fun getIconForType(type: String): ImageVector {
         else -> Icons.Default.Notifications
     }
 }
-
-// --- COMPONENTES AUXILIARES ---
 
 @Composable
 fun FilterSection(
@@ -243,7 +228,6 @@ fun NotificationCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícone com Badge
             Box(modifier = Modifier.size(48.dp)) {
                 Box(
                     modifier = Modifier
@@ -274,13 +258,13 @@ fun NotificationCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Textos
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // UPDATE: MaxLines e Ellipsis
                     Text(
                         text = notification.title,
                         fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold,
@@ -301,6 +285,7 @@ fun NotificationCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // UPDATE: MaxLines e Ellipsis
                 Text(
                     text = notification.body,
                     fontSize = 14.sp,

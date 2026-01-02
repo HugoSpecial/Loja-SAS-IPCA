@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,7 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Order
 import ipca.project.lojasas.models.OrderState
+import ipca.project.lojasas.ui.components.EmptyState
 import ipca.project.lojasas.ui.components.StatusBadge
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -55,7 +58,7 @@ fun BeneficiaryHistoryView(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundGray)
-            .padding(horizontal = 20.dp) // Nota: Aqui não há padding vertical (top/bottom)
+            .padding(horizontal = 20.dp)
     ) {
 
         // --- CABEÇALHO ---
@@ -63,13 +66,9 @@ fun BeneficiaryHistoryView(
             painter = painterResource(id = R.drawable.logo_sas),
             contentDescription = "Logo",
             modifier = Modifier
-                // 1. Adicionamos padding TOP de 16dp para simular o padding da Column do Home
                 .padding(top = 16.dp)
-                // 2. Definimos a altura exata igual ao Home
                 .height(80.dp)
-                // 3. Adicionamos padding BOTTOM de 16dp igual ao Home
                 .padding(bottom = 16.dp)
-                // 4. Centramos manualmente porque esta Column não centra itens por defeito
                 .align(Alignment.CenterHorizontally)
         )
 
@@ -119,11 +118,12 @@ fun BeneficiaryHistoryView(
                     color = Color.Red,
                     modifier = Modifier.align(Alignment.Center)
                 )
-                filteredHistory.isEmpty() -> Text(
-                    text = "Sem histórico disponível.",
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                filteredHistory.isEmpty() -> {
+                    EmptyState(
+                        message = "Sem histórico disponível para este filtro.",
+                        icon = Icons.Outlined.DateRange
+                    )
+                }
                 else -> LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)

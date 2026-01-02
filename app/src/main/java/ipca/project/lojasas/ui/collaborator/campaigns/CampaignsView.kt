@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,10 +27,10 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Campaign
 import ipca.project.lojasas.models.CampaignType
+import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// Cores do Tema
 val TextGray = Color(0xFF8C8C8C)
 
 @Composable
@@ -51,22 +52,18 @@ fun CampaignsView(
         }
     ) { paddingValues ->
 
-        // --- COLUNA PRINCIPAL ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
 
-            // --- CABEÇALHO ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // Este padding(top = 16.dp) é o único espaço do topo, igualando a outra view
                     .padding(top = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Seta à Esquerda
                 IconButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.padding(start = 8.dp)
@@ -79,7 +76,6 @@ fun CampaignsView(
                     )
                 }
 
-                // 2. Imagem ao Centro
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -119,7 +115,6 @@ fun CampaignsView(
                     modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
                 )
 
-                // --- FILTROS LINHA 1: TEMPO ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -143,7 +138,6 @@ fun CampaignsView(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // --- FILTROS LINHA 2: TIPO ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -163,15 +157,15 @@ fun CampaignsView(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // --- LISTA ---
                 if (uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (uiState.filteredCampaigns.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Nenhuma campanha encontrada.", color = Color.Gray)
-                    }
+                    EmptyState(
+                        message = "Nenhuma campanha encontrada.",
+                        icon = Icons.Outlined.DateRange
+                    )
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(
@@ -192,14 +186,8 @@ fun CampaignsView(
     }
 }
 
-// --- COMPONENTES AUXILIARES ---
-
 @Composable
-fun FilterChipButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+fun FilterChipButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
@@ -211,11 +199,7 @@ fun FilterChipButton(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         modifier = Modifier.height(32.dp)
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
+        Text(text = text, style = MaterialTheme.typography.labelLarge, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
     }
 }
 
@@ -240,7 +224,9 @@ fun CampaignCard(campaign: Campaign, onClick: () -> Unit) {
                 text = campaign.name,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(8.dp))

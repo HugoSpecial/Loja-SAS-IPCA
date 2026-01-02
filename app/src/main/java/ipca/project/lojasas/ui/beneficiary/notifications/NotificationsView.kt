@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +34,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Notification
+import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -50,13 +52,9 @@ fun NotificationView(
 ) {
     val state by remember { viewModel.uiState }
 
-    // --- CORREÇÃO FUNDAMENTAL ---
-    // Isto garante que a busca é feita SEMPRE que entras neste ecrã.
-    // Resolve o problema de o ViewModel ter sido criado antes do Login estar pronto.
     LaunchedEffect(Unit) {
         viewModel.fetchNotifications()
     }
-    // ----------------------------
 
     Column(
         modifier = modifier
@@ -125,8 +123,6 @@ fun NotificationView(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-                // Mostramos erro apenas se não for "Utilizador não autenticado" (para evitar piscar na transição)
-                // ou podes deixar assim para debug
                 state.error != null -> {
                     Text(
                         text = state.error ?: "Ocorreu um erro.",
@@ -139,12 +135,12 @@ fun NotificationView(
                         "cat_pedidos" -> "Sem notificações de pedidos."
                         "cat_candidaturas" -> "Sem notificações de candidatura."
                         "cat_levantamentos" -> "Sem levantamentos agendados."
-                        else -> "Sem notificações."
+                        else -> "Sem notificações novas."
                     }
-                    Text(
-                        text = msg,
-                        color = TextGray,
-                        modifier = Modifier.align(Alignment.Center)
+
+                    EmptyState(
+                        message = msg,
+                        icon = Icons.Outlined.Notifications
                     )
                 }
                 else -> {
