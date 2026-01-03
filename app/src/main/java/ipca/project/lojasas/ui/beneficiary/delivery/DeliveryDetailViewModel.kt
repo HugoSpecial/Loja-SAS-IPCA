@@ -4,9 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.Timestamp
+
 data class DeliveryDetailState(
     val notificationTitle: String = "",
     val notificationBody: String = "",
@@ -22,9 +22,8 @@ class DeliveryDetailViewModel : ViewModel() {
         private set
 
     private val db = FirebaseFirestore.getInstance()
-    private val auth = Firebase.auth
 
-    // 1. Busca dados da notificação (para mostrar no topo)
+    // 1. Busca dados da notificação
     fun fetchNotificationData(notificationId: String) {
         if (notificationId.isEmpty()) return
 
@@ -36,8 +35,6 @@ class DeliveryDetailViewModel : ViewModel() {
                 )
             }
     }
-
-    // 2. Verifica se já existe nota (para bloquear se necessário)
     fun checkExistingNote(orderId: String) {
         if (orderId.isEmpty()) return
 
@@ -64,55 +61,44 @@ class DeliveryDetailViewModel : ViewModel() {
                 uiState = uiState.copy(isLoading = false, error = "Erro ao carregar dados.")
             }
     }
-
     fun onUserNoteChange(newText: String) {
         uiState = uiState.copy(userNote = newText)
     }
 
-    // 3. GRAVAR NOTA + ENVIAR NOTIFICAÇÃO AO COLABORADOR
+    // 3. GRAVAR NOTA + ENVIAR NOTIFICAÇÃO GERAL
     fun saveDeliveryNote(orderId: String, noteToSave: String) {
         if (orderId.isEmpty()) return
 
         uiState = uiState.copy(isLoading = true, error = null)
 
-        // PASSO A: Gravar a nota na entrega
+        // Passo A: Atualiza a nota na entrega DIRETAMENTE
         db.collection("delivery").document(orderId)
             .update("beneficiaryNote", noteToSave)
             .addOnSuccessListener {
-
-                // PASSO B: Se gravou bem, envia a notificação para o colaborador
                 sendCollaboratorNotification(orderId, noteToSave)
-
             }
             .addOnFailureListener { e ->
                 uiState = uiState.copy(isLoading = false, error = "Erro ao gravar: ${e.message}")
             }
     }
-
-    // Função auxiliar para criar a notificação
     private fun sendCollaboratorNotification(orderId: String, message: String) {
-        val currentUser = auth.currentUser?.uid ?: ""
 
-        // Cria o objeto da notificação
         val notification = hashMapOf(
-            "title" to "Nova resposta de Entrega",
-            "body" to "O beneficiário respondeu: $message",
-            "date" to com.google.firebase.Timestamp.now(),
+            "title" to "Nova Resposta de Entrega",
+            "body" to "Benefeciario: $message",
+            "date" to Timestamp.now(),
             "read" to false,
-            "type" to "resposta_entrega", // Tipo especial para o colaborador identificar
-            "relatedId" to orderId,        // ID da entrega para o colaborador abrir
-            "senderId" to currentUser,
-            "receiverId" to "collaborator" // Podes ajustar se quiseres mandar para um colaborador específico
+            "type" to "resposta_entrega_rejeitada",
+            "relatedId" to orderId,
+            "targetProfile" to "COLABORADOR"
         )
 
         db.collection("notifications")
             .add(notification)
             .addOnSuccessListener {
-                // SUCESSO TOTAL: Nota gravada e Notificação enviada
                 uiState = uiState.copy(isLoading = false, isSaved = true)
             }
             .addOnFailureListener {
-                // Se falhar a notificação, assumimos que está salvo na mesma, mas avisamos (opcional)
                 uiState = uiState.copy(isLoading = false, isSaved = true)
             }
     }

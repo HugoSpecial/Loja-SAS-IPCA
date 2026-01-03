@@ -195,10 +195,10 @@ class DeliveryDetailViewModel : ViewModel() {
                         body = "A sua entrega foi cancelada porque não foi recolhida no horário estipulado.",
                         date = Date(),
                         read = false,
-                        type = "entrega_recolha", // Podes usar um tipo específico para o ícone
-                        relatedId = deliveryId,     // Liga à entrega
+                        type = "entrega_rejeitada",
+                        relatedId = deliveryId,
                         targetProfile = "BENEFICIARIO",
-                        recipientId = userIdSafe // O ID que vai para a BD
+                        recipientId = userIdSafe
                     )
 
                     db.collection("notifications")

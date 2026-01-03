@@ -167,8 +167,7 @@ fun NotificationView(
                                     }
                                     // 2. Entrega ou Levantamento
                                     else if (notification.type.equals("entrega", ignoreCase = true) ||
-                                        notification.type.equals("entrega_rejeitada", ignoreCase = true) ||
-                                        notification.title.contains("Levantamento", ignoreCase = true)) {
+                                        notification.type.equals("entrega_rejeitada", ignoreCase = true)) {
                                         navController.navigate("beneficiary_delivery_detail/${notification.relatedId}/${notification.docId}")
                                     }
                                     // 3. Pedido (Default)

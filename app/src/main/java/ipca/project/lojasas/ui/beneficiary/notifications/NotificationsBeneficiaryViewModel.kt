@@ -114,7 +114,7 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
                 it.type.startsWith("candidatura")
             }
             "cat_Entrega" -> list.filter {
-                it.type.equals("entrega_recolha") || it.type.equals("entrega")
+                it.type.equals("entrega_rejeitada") || it.type.equals("entrega")
             }
             else -> list
         }
