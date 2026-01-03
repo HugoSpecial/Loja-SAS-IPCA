@@ -35,6 +35,8 @@ import androidx.navigation.compose.rememberNavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Notification
 import ipca.project.lojasas.ui.components.EmptyState
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -135,6 +137,7 @@ fun NotificationView(
                         "cat_pedidos" -> "Sem notificações de pedidos."
                         "cat_candidaturas" -> "Sem notificações de candidatura."
                         "cat_levantamentos" -> "Sem levantamentos agendados."
+                        "cat_Entrega" -> "Sem notificações de entregas."
                         else -> "Sem notificações novas."
                     }
 
@@ -156,10 +159,20 @@ fun NotificationView(
                                         viewModel.markAsRead(notification.docId)
                                     }
 
-                                    // Navegação
-                                    if (notification.type.startsWith("candidatura")) {
+                                    // --- NAVEGAÇÃO ---
+
+                                    // 1. Candidatura
+                                    if (notification.type.startsWith("candidatura", ignoreCase = true)) {
                                         navController.navigate("await-candidature")
-                                    } else {
+                                    }
+                                    // 2. Entrega ou Levantamento
+                                    else if (notification.type.equals("entrega", ignoreCase = true) ||
+                                        notification.type.equals("entrega_rejeitada", ignoreCase = true) ||
+                                        notification.title.contains("Levantamento", ignoreCase = true)) {
+                                        navController.navigate("beneficiary_delivery_detail/${notification.relatedId}/${notification.docId}")
+                                    }
+                                    // 3. Pedido (Default)
+                                    else {
                                         navController.navigate("beneficiary_order_details/${notification.relatedId}")
                                     }
                                 }
@@ -178,6 +191,7 @@ fun getBeneficiaryIconForType(notification: Notification): ImageVector {
     return when {
         notification.type.startsWith("candidatura") -> Icons.Default.AccountBox
         notification.title.contains("Levantamento", ignoreCase = true) -> Icons.Default.DateRange
+        notification.type.equals("entrega", ignoreCase = true) -> Icons.Default.LocalShipping
         notification.type.startsWith("pedido") -> ImageVector.vectorResource(id = R.drawable.shopping_cart)
         else -> Icons.Default.Notifications
     }
@@ -194,7 +208,8 @@ fun BeneficiaryFilterSection(
         null to "Tudo",
         "cat_pedidos" to "Pedidos",
         "cat_candidaturas" to "Candidatura",
-        "cat_levantamentos" to "Levantamentos"
+        "cat_levantamentos" to "Levantamentos",
+        "cat_Entrega" to "Entregas" // Adicionado
     )
 
     LazyRow(

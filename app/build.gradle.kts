@@ -76,5 +76,6 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")
 
-
+    //Icons
+    implementation("androidx.compose.material:material-icons-extended")
 }

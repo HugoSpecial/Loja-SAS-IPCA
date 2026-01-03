@@ -160,6 +160,22 @@ class MainActivity : ComponentActivity() {
                         composable("urgent_delivery") {
                             UrgentDeliveryView(navController = navController)
                         }
+                        composable(
+                            route = "beneficiary_delivery_detail/{deliveryId}/{notificationId}",
+                            arguments = listOf(
+                                navArgument("deliveryId") { type = NavType.StringType },
+                                navArgument("notificationId") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val deliveryId = backStackEntry.arguments?.getString("deliveryId") ?: ""
+                            val notificationId = backStackEntry.arguments?.getString("notificationId") ?: ""
+
+                            ipca.project.lojasas.ui.beneficiary.delivery.DeliveryDetailView(
+                                navController = navController,
+                                deliveryId = deliveryId,
+                                notificationId = notificationId
+                            )
+                        }
 
                         composable("campaigns") { CampaignsView(navController = navController) }
                         composable("new-campaign") { NewCampaignView(navController = navController) }

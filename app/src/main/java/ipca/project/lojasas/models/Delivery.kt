@@ -6,7 +6,7 @@ enum class DeliveryState {
     PENDENTE,
     ENTREGUE,
     CANCELADO,
-    EM_ANALISE
+    EM_ANALISE,
 }
 
 data class Delivery (
@@ -18,4 +18,5 @@ data class Delivery (
     var surveyDate : Date? = null,
     var evaluatedBy: String? = null,
     var evaluationDate: Date? = null,
+    var beneficiaryNote: String? = null,
 )

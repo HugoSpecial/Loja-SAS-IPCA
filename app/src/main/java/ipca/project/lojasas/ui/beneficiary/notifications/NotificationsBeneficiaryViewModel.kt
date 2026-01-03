@@ -32,11 +32,9 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
         fetchNotifications()
     }
 
-    // --- ALTERAÇÃO: Removido 'private' para poder ser chamado pela View ---
     fun fetchNotifications() {
         val userId = auth.currentUser?.uid
 
-        // Se o user for null, limpamos a lista e mostramos erro/aviso
         if (userId == null) {
             uiState.value = uiState.value.copy(
                 error = "Utilizador não autenticado",
@@ -114,6 +112,9 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
             }
             "cat_candidaturas" -> list.filter {
                 it.type.startsWith("candidatura")
+            }
+            "cat_Entrega" -> list.filter {
+                it.type.equals("entrega_recolha") || it.type.equals("entrega")
             }
             else -> list
         }
