@@ -167,13 +167,13 @@ class MainActivity : ComponentActivity() {
                                 navArgument("notificationId") { type = NavType.StringType }
                             )
                         ) { backStackEntry ->
-                            val deliveryId = backStackEntry.arguments?.getString("deliveryId") ?: ""
-                            val notificationId = backStackEntry.arguments?.getString("notificationId") ?: ""
+                            val idDaRota = backStackEntry.arguments?.getString("deliveryId") ?: ""
+                            val notifId = backStackEntry.arguments?.getString("notificationId") ?: ""
 
                             ipca.project.lojasas.ui.beneficiary.delivery.DeliveryDetailView(
                                 navController = navController,
-                                deliveryId = deliveryId,
-                                notificationId = notificationId
+                                orderId = idDaRota,
+                                notificationId = notifId
                             )
                         }
 
