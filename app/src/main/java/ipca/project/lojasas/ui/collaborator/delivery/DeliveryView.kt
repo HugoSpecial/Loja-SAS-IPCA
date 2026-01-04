@@ -19,19 +19,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
-import ipca.project.lojasas.models.Delivery
 import ipca.project.lojasas.models.DeliveryState
+//import ipca.project.lojasas.models.DeliveryWithUser
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-val BackgroundGray = Color(0xFFF5F6F8)
-val TextGray = Color(0xFF8C8C8C)
 
 @Composable
 fun DeliveryListView(
@@ -49,7 +45,7 @@ fun DeliveryListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundGray)
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
         // --- CABEÇALHO COM LOGÓTIPO ---
         Row(
@@ -103,18 +99,18 @@ fun DeliveryListView(
             Text(
                 text = "Aqui pode consultar todas as entregas.",
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                color = TextGray,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Contador de pendentes
-            val pendingColor = Color(0xFFEF6C00)
+            val pendingColor = Color(0xFFEF6C00) // Laranja fixo para alerta
             Text(
                 text = if (state.pendingCount == 1) "1 pendente" else "${state.pendingCount} pendentes",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = if (state.pendingCount > 0) pendingColor else Color.LightGray
+                color = if (state.pendingCount > 0) pendingColor else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -153,15 +149,18 @@ fun DeliveryListView(
             // Lista de pedidos
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
-                    state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    state.isLoading -> CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     state.error != null -> Text(
                         text = state.error ?: "Erro",
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center)
                     )
                     filteredList.isEmpty() -> Text(
                         text = "Não existem pedidos neste filtro.",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         modifier = Modifier.align(Alignment.Center)
                     )
                     else -> LazyColumn(
@@ -189,10 +188,12 @@ fun FilterChipButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-            contentColor = if (isSelected) Color.White else TextGray
+            // Selecionado: Primary. Não: Surface (Branco/Preto)
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            // Selecionado: Branco. Não: Texto adaptável
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         ),
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(50),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         modifier = Modifier.height(32.dp)
@@ -213,7 +214,9 @@ fun DeliveryCard(delivery: DeliveryWithUser, onClick: () -> Unit) {
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        )
     ) {
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
             Row(
@@ -233,14 +236,15 @@ fun DeliveryCard(delivery: DeliveryWithUser, onClick: () -> Unit) {
 
             Text(
                 text = "Beneficiário: ${delivery.userName ?: "--"}",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
             Text(
                 text = "Data: ${delivery.delivery.surveyDate?.let { dateFormat.format(it) } ?: "--"}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextGray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -248,20 +252,22 @@ fun DeliveryCard(delivery: DeliveryWithUser, onClick: () -> Unit) {
 
 @Composable
 fun StatusBadgeOrder(state: DeliveryState) {
-    val (bg, color) = when(state) {
-        DeliveryState.PENDENTE -> Color(0xFFFFF3E0) to Color(0xFFEF6C00)
-        DeliveryState.ENTREGUE -> Color(0xFFE8F5E9) to Color(0xFF2E7D32)
-        DeliveryState.CANCELADO -> Color(0xFFFFEBEE) to Color(0xFFC62828)
-        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4) to Color(0xFF3F51B5)
+    val mainColor = when(state) {
+        DeliveryState.PENDENTE -> Color(0xFFEF6C00)
+        DeliveryState.ENTREGUE -> MaterialTheme.colorScheme.primary
+        DeliveryState.CANCELADO -> MaterialTheme.colorScheme.error
+        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4)
     }
+
+    // Badge com fundo transparente da cor principal
     Surface(
-        color = bg,
+        color = mainColor.copy(alpha = 0.1f),
         shape = RoundedCornerShape(50),
         modifier = Modifier.wrapContentSize()
     ) {
         Text(
             text = state.name.replace("_", " "),
-            color = color,
+            color = mainColor,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             fontWeight = FontWeight.Bold

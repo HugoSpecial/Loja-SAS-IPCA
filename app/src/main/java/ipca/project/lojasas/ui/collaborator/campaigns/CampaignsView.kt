@@ -31,8 +31,6 @@ import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-val TextGray = Color(0xFF8C8C8C)
-
 @Composable
 fun CampaignsView(
     navController: NavController,
@@ -45,11 +43,12 @@ fun CampaignsView(
             FloatingActionButton(
                 onClick = { navController.navigate("new-campaign") },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Nova Campanha")
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background // Fundo Scaffold adaptável
     ) { paddingValues ->
 
         Column(
@@ -58,6 +57,7 @@ fun CampaignsView(
                 .background(MaterialTheme.colorScheme.background)
         ) {
 
+            // --- CABEÇALHO ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -111,10 +111,12 @@ fun CampaignsView(
                 Text(
                     text = "Aqui pode consultar todas as campanhas.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextGray,
+                    // Texto cinza adaptável (Branco transparente no escuro)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
                 )
 
+                // FILTROS TEMPORAIS
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -138,6 +140,7 @@ fun CampaignsView(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // FILTROS TIPO
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -191,10 +194,13 @@ fun FilterChipButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-            contentColor = if (isSelected) Color.White else TextGray
+            // Selecionado: Verde. Não Selecionado: Surface (Branco/Cinza Escuro)
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            // Selecionado: Branco. Não Selecionado: Texto cinza adaptável
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         ),
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
+        // Borda apenas se não estiver selecionado
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(50),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         modifier = Modifier.height(32.dp)
@@ -213,7 +219,9 @@ fun CampaignCard(campaign: Campaign, onClick: () -> Unit) {
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        )
     ) {
         Column(
             modifier = Modifier
@@ -224,7 +232,7 @@ fun CampaignCard(campaign: Campaign, onClick: () -> Unit) {
                 text = campaign.name,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.primary, // Verde
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -236,22 +244,24 @@ fun CampaignCard(campaign: Campaign, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Data da Campanha
                 Text(
                     text = "${dateFormat.format(campaign.startDate)} - ${dateFormat.format(campaign.endDate)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontSize = 13.sp
                 )
 
+                // Chip de Tipo (Interno/Externo)
                 Surface(
-                    color = Color(0xFFE0E0E0),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), // Fundo cinza suave adaptável
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.height(24.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
                         Text(
                             text = campaign.campaignType.name,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )

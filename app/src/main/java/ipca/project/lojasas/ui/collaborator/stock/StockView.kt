@@ -41,10 +41,6 @@ import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// --- CORES DO TEMA ---
-val IpcaGreen = Color(0xFF438F56)
-val BackgroundGray = Color(0xFFF9F9F9)
-
 @Composable
 fun StockView(
     navController: NavController,
@@ -74,8 +70,18 @@ fun StockView(
     if (showDeleteConfirm && selectedItem != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Apagar Produto") },
-            text = { Text("Tem a certeza que deseja apagar '${selectedItem!!.name}' e todo o seu stock?") },
+            title = {
+                Text(
+                    "Apagar Produto",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    "Tem a certeza que deseja apagar '${selectedItem!!.name}' e todo o seu stock?",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -84,15 +90,20 @@ fun StockView(
                             selectedItem = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
                 ) {
                     Text("Apagar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") }
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                }
             },
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface // Adaptável
         )
     }
 
@@ -101,15 +112,15 @@ fun StockView(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("product") },
-                containerColor = IpcaGreen,
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar")
             }
         },
-        containerColor = BackgroundGray
+        containerColor = MaterialTheme.colorScheme.background // Adaptável
     ) { paddingValues ->
 
         Column(
@@ -132,7 +143,7 @@ fun StockView(
             // TÍTULO "Stock"
             Text(
                 text = "Stock",
-                color = IpcaGreen,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -140,7 +151,7 @@ fun StockView(
             Text(
                 text = "Gerencie os produtos e validades.",
                 fontSize = 14.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
             )
 
@@ -148,23 +159,27 @@ fun StockView(
             OutlinedTextField(
                 value = state.searchText,
                 onValueChange = { viewModel.onSearchTextChange(it) },
-                placeholder = { Text("Pesquisar", color = Color.Gray) },
+                placeholder = {
+                    Text("Pesquisar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                },
                 leadingIcon = {
                     Icon(
                         Icons.Default.Search,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = Color.Black
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedBorderColor = IpcaGreen,
-                    unfocusedBorderColor = Color.Gray,
-                    cursorColor = IpcaGreen
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 singleLine = true
             )
@@ -177,13 +192,17 @@ fun StockView(
             ) {
                 items(categories) { category ->
                     val isSelected = category == state.selectedCategory
+                    val chipBg = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                    val chipBorder = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                    val chipText = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) IpcaGreen else Color.Transparent)
+                            .background(chipBg)
                             .border(
                                 width = 1.dp,
-                                color = if (isSelected) IpcaGreen else Color.Gray,
+                                color = chipBorder,
                                 shape = RoundedCornerShape(20.dp)
                             )
                             .clickable { viewModel.onCategoryChange(category) }
@@ -191,7 +210,7 @@ fun StockView(
                     ) {
                         Text(
                             text = category,
-                            color = if (isSelected) Color.White else Color.Gray,
+                            color = chipText,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -204,7 +223,7 @@ fun StockView(
             // GRID DE PRODUTOS
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = IpcaGreen)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else if (filteredItems.isEmpty()) {
                 EmptyState(
@@ -237,7 +256,9 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -252,7 +273,7 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
                     .fillMaxWidth()
                     .height(100.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)), // Placeholder adaptável
                 contentAlignment = Alignment.Center
             ) {
                 if (item.imageUrl.isNotEmpty()) {
@@ -274,7 +295,7 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Sem imagem",
-                        tint = Color.LightGray,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -282,12 +303,11 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // UPDATE: Textos com Ellipsis
             Text(
                 text = item.name,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = IpcaGreen,
+                color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -295,7 +315,7 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
             Text(
                 text = item.category,
                 fontSize = 10.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -305,7 +325,7 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
             Text(
                 text = "Total: $totalQuantity un",
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -313,7 +333,7 @@ fun ProductCard(item: Product, onClick: () -> Unit) {
             Text(
                 text = if (validitiesCount > 0) "$validitiesCount validades" else "Sem validade",
                 fontSize = 12.sp,
-                color = if (validitiesCount > 0) IpcaGreen else Color.Gray
+                color = if (validitiesCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -337,29 +357,41 @@ fun ProductBatchesDialog(
                 Text(
                     text = item.name,
                     fontWeight = FontWeight.Bold,
-                    color = IpcaGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 24.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, // UPDATE
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
 
                 Row {
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Gray)
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Editar",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
                     }
                     IconButton(onClick = onDeleteRequest) {
-                        Icon(Icons.Default.Delete, contentDescription = "Apagar", tint = Color(0xFFD32F2F))
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Apagar",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }
         },
         text = {
             Column {
-                Divider(color = Color.LightGray.copy(alpha = 0.5f))
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Detalhes por validade:", fontSize = 14.sp, color = Color.Gray)
+                Text(
+                    text = "Detalhes por validade:",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 LazyColumn(
@@ -376,7 +408,7 @@ fun ProductBatchesDialog(
                                 "Sem stock disponível.",
                                 fontSize = 14.sp,
                                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
                         }
                     }
@@ -384,7 +416,8 @@ fun ProductBatchesDialog(
                     items(batches) { batch ->
                         Card(
                             shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = BackgroundGray),
+                            // Fundo ligeiramente diferente para destacar dentro do dialog
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
                             elevation = CardDefaults.cardElevation(0.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -396,24 +429,33 @@ fun ProductBatchesDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Validade", fontSize = 11.sp, color = Color.Gray)
+                                    Text(
+                                        "Validade",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
                                     val dateStr = batch.validity?.let {
                                         SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
                                     } ?: "Sem data"
 
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(dateStr, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+                                    Text(
+                                        dateStr,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
 
                                 Surface(
-                                    color = IpcaGreen,
+                                    color = MaterialTheme.colorScheme.primary,
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Text(
                                         text = "${batch.quantity} un",
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         fontSize = 14.sp
                                     )
                                 }
@@ -425,10 +467,14 @@ fun ProductBatchesDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Fechar", color = IpcaGreen, fontSize = 16.sp)
+                Text(
+                    "Fechar",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 16.sp
+                )
             }
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface, // Adaptável
         shape = RoundedCornerShape(16.dp)
     )
 }

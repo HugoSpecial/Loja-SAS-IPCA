@@ -8,7 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions // Importante
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -20,7 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction // Importante
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,32 +44,44 @@ fun NewCampaignView(
 
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
+    // Cores dos campos de texto (Agora usando Surface e Primary do Tema)
     val customTextFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.primary,
         unfocusedBorderColor = MaterialTheme.colorScheme.primary,
-        focusedContainerColor = Color.White,
-        unfocusedContainerColor = Color.White,
+        focusedContainerColor = MaterialTheme.colorScheme.surface,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         cursorColor = MaterialTheme.colorScheme.primary,
-        disabledContainerColor = Color.White,
-        disabledBorderColor = MaterialTheme.colorScheme.primary,
-        disabledTextColor = Color.Black,
+        disabledContainerColor = MaterialTheme.colorScheme.surface,
+        disabledBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+        disabledTextColor = MaterialTheme.colorScheme.onSurface,
         disabledTrailingIconColor = MaterialTheme.colorScheme.primary
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nova Campanha") },
+                title = {
+                    Text(
+                        "Nova Campanha",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Voltar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background // Adaptável
     ) { paddingValues ->
         Column(
             modifier = modifier
@@ -79,6 +91,7 @@ fun NewCampaignView(
                 .verticalScroll(scrollState)
         ) {
 
+            // --- NOME CAMPANHA ---
             Text(
                 "Nome da Campanha",
                 fontWeight = FontWeight.Medium,
@@ -89,7 +102,9 @@ fun NewCampaignView(
             OutlinedTextField(
                 value = uiState.name,
                 onValueChange = { viewModel.onNameChange(it) },
-                placeholder = { Text("Ex: Saldos de Verão", color = Color.Gray) },
+                placeholder = {
+                    Text("Ex: Saldos de Verão", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Edit,
@@ -102,7 +117,6 @@ fun NewCampaignView(
                 shape = RoundedCornerShape(12.dp),
                 colors = customTextFieldColors,
                 singleLine = true,
-                // UPDATE: Teclado fecha ao terminar
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done
@@ -190,6 +204,7 @@ fun NewCampaignView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- TIPO DE CAMPANHA ---
             Text(
                 "Tipo de Campanha",
                 fontWeight = FontWeight.Bold,
@@ -206,7 +221,7 @@ fun NewCampaignView(
                 Text(
                     text = "Interno",
                     modifier = Modifier.clickable { viewModel.onTypeChange(CampaignType.INTERNO) },
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.width(24.dp))
@@ -219,7 +234,7 @@ fun NewCampaignView(
                 Text(
                     text = "Externo",
                     modifier = Modifier.clickable { viewModel.onTypeChange(CampaignType.EXTERNO) },
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -246,14 +261,14 @@ fun NewCampaignView(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Text("Criar Campanha", fontSize = 18.sp, fontWeight = FontWeight.Bold)

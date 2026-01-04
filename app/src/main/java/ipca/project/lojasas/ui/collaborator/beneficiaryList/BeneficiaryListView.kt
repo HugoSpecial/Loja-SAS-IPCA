@@ -37,11 +37,6 @@ import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-val IpcaGreen = Color(0xFF00864F)
-val BgLight = Color(0xFFF2F4F3)
-val FaultRed = Color(0xFFD32F2F)
-val TitleBlack = Color(0xFF1A1A1A)
-
 @Composable
 fun BeneficiaryListView(
     navController: NavController,
@@ -56,11 +51,14 @@ fun BeneficiaryListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
+            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (state.isLoading && state.beneficiaries.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IpcaGreen)
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -136,7 +134,7 @@ fun HeaderContent() {
             text = "Lista de Beneficiários",
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = TitleBlack,
+            color = MaterialTheme.colorScheme.onBackground, // Preto/Branco
             modifier = Modifier.padding(bottom = 16.dp)
         )
     }
@@ -147,20 +145,24 @@ fun SearchBar(searchText: String, onSearchChange: (String) -> Unit) {
     OutlinedTextField(
         value = searchText,
         onValueChange = onSearchChange,
-        placeholder = { Text("Pesquisar por nome...", color = Color.Gray) },
+        placeholder = {
+            Text("Pesquisar por nome...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+        },
         leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null, tint = IpcaGreen)
+            Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         },
         modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(12.dp)),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = IpcaGreen,
-            unfocusedBorderColor = Color.LightGray,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
         )
     )
 }
@@ -169,7 +171,9 @@ fun SearchBar(searchText: String, onSearchChange: (String) -> Unit) {
 fun BeneficiaryCard(user: User, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
@@ -179,28 +183,34 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // UPDATE: Ellipsis e MaxLines
                 Text(
                     text = user.name ?: "Sem Nome",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TitleBlack,
+                    color = MaterialTheme.colorScheme.onSurface, // Texto adaptável
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (user.fault > 0) {
-                    Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), // Vermelho suave
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
                         Text(
                             "${user.fault} Falta(s)",
-                            color = FaultRed,
+                            color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
                 } else {
-                    Text("0 Faltas", color = Color.Gray, fontSize = 12.sp)
+                    Text(
+                        "0 Faltas",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        fontSize = 12.sp
+                    )
                 }
             }
             if (!user.preferences.isNullOrBlank()) {
@@ -209,7 +219,7 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
                     Icon(
                         Icons.Default.Info,
                         null,
-                        tint = Color(0xFFE65100),
+                        tint = Color(0xFFE65100), // Laranja (mantido fixo pois é alerta)
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -229,12 +239,12 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
 fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza no Dark
         title = {
             Text(
                 text = user.name ?: "Detalhes",
                 fontWeight = FontWeight.Bold,
-                color = TitleBlack
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -244,11 +254,11 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
                         Icon(
                             Icons.Outlined.Email,
                             null,
-                            tint = IpcaGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(user.email!!, fontSize = 14.sp)
+                        Text(user.email!!, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 if (!user.phone.isNullOrEmpty()) {
@@ -256,19 +266,22 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
                         Icon(
                             Icons.Default.Phone,
                             null,
-                            tint = IpcaGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(user.phone!!, fontSize = 14.sp)
+                        Text(user.phone!!, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                Divider(color = BgLight)
+
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val faultColor = if (user.fault > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                     Icon(
                         Icons.Default.Warning,
                         null,
-                        tint = if (user.fault > 0) FaultRed else IpcaGreen,
+                        tint = faultColor,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -276,10 +289,12 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
                         "Número de Faltas: ${user.fault}",
                         fontSize = 14.sp,
                         fontWeight = if (user.fault > 0) FontWeight.Bold else FontWeight.Normal,
-                        color = if (user.fault > 0) FaultRed else TitleBlack
+                        color = if (user.fault > 0) faultColor else MaterialTheme.colorScheme.onSurface
                     )
                 }
-                Divider(color = BgLight)
+
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
                 if (!user.preferences.isNullOrBlank()) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -291,15 +306,15 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
                             color = Color(0xFFE65100)
                         )
                         }
-                        Text(user.preferences!!, fontSize = 14.sp)
+                        Text(user.preferences!!, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                 } else {
-                    Text("Sem preferências.", color = Color.Gray)
+                    Text("Sem preferências.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onViewHistory,
-                    colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -311,7 +326,11 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fechar", color = Color.Gray) } }
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+            }
+        }
     )
 }
 
@@ -319,25 +338,25 @@ fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: (
 fun HistoryDialog(user: User, orders: List<Order>, isLoading: Boolean, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Column {
                 Text(
                     "Histórico",
                     fontWeight = FontWeight.Bold,
-                    color = TitleBlack
-                ); Text("Beneficiário: ${user.name}", fontSize = 12.sp, color = Color.Gray)
+                    color = MaterialTheme.colorScheme.onSurface
+                ); Text("Beneficiário: ${user.name}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             }
         },
         text = {
             if (isLoading) Box(
                 modifier = Modifier.fillMaxWidth().height(150.dp),
                 contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator(color = IpcaGreen) }
+            ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             else if (orders.isEmpty()) Box(
                 modifier = Modifier.fillMaxWidth().height(100.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Nenhum registo.", color = Color.Gray) }
+            ) { Text("Nenhum registo.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
             else LazyColumn(
                 modifier = Modifier.heightIn(max = 400.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -347,7 +366,7 @@ fun HistoryDialog(user: User, orders: List<Order>, isLoading: Boolean, onDismiss
             TextButton(onClick = onDismiss) {
                 Text(
                     "Voltar",
-                    color = IpcaGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -359,7 +378,10 @@ fun HistoryDialog(user: User, orders: List<Order>, isLoading: Boolean, onDismiss
 fun HistoryItemCard(order: Order) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT"))
     Card(
-        colors = CardDefaults.cardColors(containerColor = BgLight),
+        // Fundo do Card dentro do Dialog: Um pouco mais escuro/claro que o surface
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+        ),
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -368,19 +390,21 @@ fun HistoryItemCard(order: Order) {
                 Icon(
                     Icons.Default.DateRange,
                     null,
-                    tint = Color.Gray,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(order.orderDate?.let { dateFormat.format(it) } ?: "-",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp)
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 "Total: ${order.items.sumOf { it.quantity ?: 0 }} produtos",
                 fontSize = 12.sp,
-                color = TitleBlack
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

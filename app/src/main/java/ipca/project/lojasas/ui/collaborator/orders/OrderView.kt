@@ -3,6 +3,7 @@ package ipca.project.lojasas.ui.collaborator.orders
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,14 +37,6 @@ import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// --- PALETA DE CORES ---
-val IpcaGreen = Color(0xFF00864F)
-val IpcaDarkTeal = Color(0xFF005A49)
-val BgLight = Color(0xFFF5F7FA)
-val TextDark = Color(0xFF2D3436)
-val TextGray = Color(0xFF95A5A6)
-val BorderColor = Color(0xFFE0E0E0)
-
 @Composable
 fun OrderListView(
     navController: NavController,
@@ -60,7 +53,7 @@ fun OrderListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
         // --- CABEÇALHO ---
         Row(
@@ -76,7 +69,7 @@ fun OrderListView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = IpcaDarkTeal,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -106,12 +99,12 @@ fun OrderListView(
                 text = "Gestão de Pedidos",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
                 text = "${filteredList.size} pedidos encontrados",
                 fontSize = 14.sp,
-                color = TextGray,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -135,7 +128,7 @@ fun OrderListView(
             // --- Lista ---
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = IpcaGreen)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else if (filteredList.isEmpty()) {
                 EmptyState(
@@ -166,8 +159,8 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 
     val (accentColor, statusText) = when(order.accept) {
         OrderState.PENDENTE -> Color(0xFFF39C12) to "Pendente"
-        OrderState.ACEITE -> IpcaGreen to "Aceite"
-        OrderState.REJEITADA -> Color(0xFFC0392B) to "Recusado"
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary to "Aceite"
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error to "Recusado"
     }
 
     Card(
@@ -175,9 +168,12 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, BorderColor)
+        // Borda suave adaptável
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
     ) {
         Row(
             modifier = Modifier
@@ -207,7 +203,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                     text = order.userName ?: "Anónimo",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
@@ -218,7 +214,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.calendar_outline),
                         contentDescription = null,
-                        tint = TextGray,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -229,7 +225,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                     Text(
                         text = dateStr,
                         fontSize = 13.sp,
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -239,7 +235,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                 modifier = Modifier
                     .width(1.dp)
                     .height(50.dp)
-                    .background(Color(0xFFF0F0F0))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
             )
 
             Row(
@@ -254,14 +250,14 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                         modifier = Modifier
                             .size(50.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(BgLight),
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)), // Fundo leve
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "$totalQuantity",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = IpcaDarkTeal
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -270,7 +266,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                     Text(
                         text = "itens",
                         fontSize = 10.sp,
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -280,7 +276,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = Color.LightGray,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -290,16 +286,16 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 
 @Composable
 fun BubbleFilter(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    val bg = if (isSelected) IpcaDarkTeal else Color.White
-    val txt = if (isSelected) Color.White else TextGray
-    val border = if (isSelected) null else BorderStroke(1.dp, BorderColor)
+    val bg = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val txt = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(bg)
             .clickable { onClick() }
-            .then(if (border != null) Modifier.padding(1.dp) else Modifier)
+            .then(if (border != null) Modifier.border(border, RoundedCornerShape(50)) else Modifier)
     ) {
         Text(
             text = text,

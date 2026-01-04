@@ -28,14 +28,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 
-// --- PALETA DE CORES ---
+// --- PALETA DE CORES (Mantidas para os cartões de ação coloridos) ---
 val IpcaGreen = Color(0xFF00864F)
 val IpcaDarkTeal = Color(0xFF005A49)
 val IpcaOlive = Color(0xFF689F38)
 val IpcaBlueGray = Color(0xFF455A64)
 val IpcaBlackGreen = Color(0xFF1B2E25)
 val IpcaRed = Color(0xFFB71C1C)
-val BgLight = Color(0xFFF2F4F3)
 
 @Composable
 fun CollaboratorHomeView(
@@ -51,7 +50,7 @@ fun CollaboratorHomeView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
+            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
             .padding(horizontal = 24.dp)
             .verticalScroll(scrollState)
     ) {
@@ -80,18 +79,18 @@ fun CollaboratorHomeView(
                 text = "Olá, ${state.userName}",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF1A1A1A),
+                color = MaterialTheme.colorScheme.onBackground, // Preto/Branco
                 modifier = Modifier.weight(1f)
             )
 
-            // Botão de Logout: AGORA APENAS ABRE O POPUP
+            // Botão de Logout
             IconButton(
                 onClick = { showLogoutDialog = true }
             ) {
                 Icon(
                     imageVector = Icons.Default.ExitToApp,
                     contentDescription = "Sair",
-                    tint = IpcaRed,
+                    tint = MaterialTheme.colorScheme.error, // Vermelho do tema
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -100,7 +99,8 @@ fun CollaboratorHomeView(
         Text(
             text = "Resumo da atividade hoje.",
             fontSize = 16.sp,
-            color = Color.Gray,
+            // Cinza adaptável (Branco transparente no escuro)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
@@ -155,7 +155,7 @@ fun CollaboratorHomeView(
             text = "Menu de Gestão",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onBackground, // Preto/Branco
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -227,46 +227,49 @@ fun CollaboratorHomeView(
         Spacer(modifier = Modifier.height(100.dp))
     }
 
-    // --- COMPONENTE DO POPUP DE CONFIRMAÇÃO ---
+    // --- POPUP DE CONFIRMAÇÃO ---
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface, // Branco/Cinza Escuro
             title = {
                 Text(
                     text = "Terminar Sessão",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
-                Text("Tem a certeza que pretende sair da aplicação?")
+                Text(
+                    "Tem a certeza que pretende sair da aplicação?",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             },
-            containerColor = Color.White,
             confirmButton = {
                 TextButton(
                     onClick = {
                         showLogoutDialog = false
-                        // Ação de Logout
                         viewModel.signOut()
                         navController.navigate("login") {
                             popUpTo(0)
                         }
                     }
                 ) {
-                    Text("Sair", color = IpcaRed, fontWeight = FontWeight.Bold)
+                    Text("Sair", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showLogoutDialog = false }
                 ) {
-                    Text("Cancelar", color = Color.Gray)
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         )
     }
 }
 
-// --- COMPONENTES AUXILIARES (IGUAIS) ---
+// --- COMPONENTES AUXILIARES ---
 @Composable
 fun SummaryCard(
     title: String,
@@ -278,7 +281,9 @@ fun SummaryCard(
     Card(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -308,13 +313,13 @@ fun SummaryCard(
                     text = count,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface, // Texto principal adaptável
                     lineHeight = 26.sp
                 )
                 Text(
                     text = title,
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), // Texto secundário
                     fontWeight = FontWeight.Medium,
                     lineHeight = 14.sp
                 )
@@ -337,7 +342,7 @@ fun ActionCard(
             .height(180.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor), // Cor fixa (mantida para os cartões)
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Box(
@@ -363,7 +368,7 @@ fun ActionCard(
                     text = title,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = Color.White, // Sempre branco pois o fundo é colorido
                     lineHeight = 24.sp
                 )
                 Spacer(modifier = Modifier.height(4.dp))

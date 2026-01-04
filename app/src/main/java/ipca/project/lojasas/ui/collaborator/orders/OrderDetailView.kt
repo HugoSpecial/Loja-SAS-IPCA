@@ -1,6 +1,5 @@
 package ipca.project.lojasas.ui.collaborator.orders
 
-
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
@@ -30,7 +29,6 @@ import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
-import ipca.project.lojasas.ui.collaborator.candidature.IpcaGreen
 import ipca.project.lojasas.ui.components.InfoRow
 import ipca.project.lojasas.ui.components.SectionTitle
 import ipca.project.lojasas.ui.components.StatusBadge
@@ -40,8 +38,6 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
-
-val BackgroundColor = Color(0xFFF5F6F8)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +65,7 @@ fun OrderDetailView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
         // --- HEADER ---
         Row(
@@ -85,7 +81,7 @@ fun OrderDetailView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = IpcaGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -109,12 +105,12 @@ fun OrderDetailView(
             when {
                 state.isLoading -> CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = IpcaGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 state.error != null -> Text(
                     text = state.error,
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
 
@@ -150,7 +146,7 @@ fun OrderDetailView(
                         if (order.items.isEmpty()) {
                             Text(
                                 "Nenhum produto solicitado.",
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                 fontWeight = FontWeight.Bold
                             )
                         } else {
@@ -203,22 +199,28 @@ fun OrderDetailView(
                             ) {
                                 Button(
                                     onClick = { showRejectDialog = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
+                                    ),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                                    Icon(Icons.Default.Close, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Rejeitar", fontWeight = FontWeight.Bold)
                                 }
 
                                 Button(
                                     onClick = { viewModel.approveOrder(order.docId ?: "") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                                    Icon(Icons.Default.Check, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Aprovar", fontWeight = FontWeight.Bold)
                                 }
@@ -226,7 +228,7 @@ fun OrderDetailView(
                         } else {
                             Text(
                                 text = "Este pedido encontra-se ${order.accept.name}",
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -276,7 +278,7 @@ fun OrderDetailView(
     if (showReasonError) {
         Text(
             text = "É obrigatório inserir um motivo para rejeição",
-            color = Color.Red,
+            color = MaterialTheme.colorScheme.error,
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
         )
@@ -287,12 +289,17 @@ fun OrderDetailView(
 
 @Composable
 private fun OrderStatusBadge(state: OrderState) {
-    val (bg, color) = when (state) {
-        OrderState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
-        OrderState.ACEITE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
-        OrderState.REJEITADA -> Color(0xFFFFCDD2) to Color(0xFFC62828)
+    val mainColor = when (state) {
+        OrderState.PENDENTE -> Color(0xFFEF6C00) // Laranja
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary // Verde
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error // Vermelho
     }
-    StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
+
+    StatusBadge(
+        label = state.name,
+        backgroundColor = mainColor.copy(alpha = 0.1f),
+        contentColor = mainColor
+    )
 }
 
 // --- Produtos ---
@@ -312,7 +319,12 @@ private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<P
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(category, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(
+                category,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
 
         requested.forEach { orderItem ->
@@ -332,15 +344,27 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             if (isFinal) {
-                Text("${orderItem.quantity}x ${orderItem.name}", fontWeight = FontWeight.Bold)
+                Text(
+                    "${orderItem.quantity}x ${orderItem.name}",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             } else {
                 val totalStock = product.batches.sumOf { it.quantity }
                 val newStock = totalStock - (orderItem.quantity ?: 0)
                 val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
-                val iconColor = if (newStock >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
+                val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
-                Text("${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)", fontWeight = FontWeight.Bold)
-                Text("Stock atualizado: $newStock", fontSize = 13.sp, color = Color.DarkGray)
+                Text(
+                    "${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    "Stock atualizado: $newStock",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
                 Icon(icon, contentDescription = null, tint = iconColor)
             }
         }
@@ -383,6 +407,7 @@ fun RejectDialogWithDate(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface, // Branco/Cinza Escuro
         confirmButton = {
             TextButton(onClick = {
                 val millis = if (isDateChange) {
@@ -391,22 +416,36 @@ fun RejectDialogWithDate(
                 onDateSelected(millis)
                 onConfirm()
             }) {
-                Text("Confirmar")
+                Text("Confirmar", color = MaterialTheme.colorScheme.primary)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            }
         },
         text = {
             Column {
                 if (!isDateChange) {
-                    Text("Motivo da rejeição", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Motivo da rejeição",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = reason,
                         onValueChange = onReasonChange,
-                        placeholder = { Text("Escreva o motivo...") },
-                        modifier = Modifier.fillMaxWidth()
+                        placeholder = { Text("Escreva o motivo...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        )
                     )
                     Spacer(Modifier.height(16.dp))
                 }
@@ -414,9 +453,12 @@ fun RejectDialogWithDate(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = isDateChange,
-                        onCheckedChange = onDateChangeToggle
+                        onCheckedChange = onDateChangeToggle,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary
+                        )
                     )
-                    Text("É para propor nova data?")
+                    Text("É para propor nova data?", color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 if (isDateChange) {
@@ -432,4 +474,3 @@ fun RejectDialogWithDate(
         }
     )
 }
-

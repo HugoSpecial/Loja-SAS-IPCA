@@ -34,14 +34,6 @@ import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
 
-// --- CORES ---
-val CabazLightBg = Color(0xFFF7F9F8)
-val TextDark = Color(0xFF3E3448)
-val ButtonGreen = Color(0xFF438E63)
-val ButtonGray = Color(0xFFAAB0AD)
-val ButtonRemoveRed = Color(0xFFE57373)
-val IpcaRed = Color(0xFFB71C1C)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UrgentDeliveryView(
@@ -55,11 +47,9 @@ fun UrgentDeliveryView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(CabazLightBg)
-        // Removemos o padding horizontal aqui para o header tocar nas bordas,
-        // aplicamos o padding apenas no conteúdo abaixo
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
-        // --- NOVO CABEÇALHO (Igual ao DeliveryListView) ---
+        // --- NOVO CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,7 +63,7 @@ fun UrgentDeliveryView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = TextDark, // Usamos TextDark para contrastar com o fundo claro
+                    tint = MaterialTheme.colorScheme.onBackground, // Texto adaptável
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -81,7 +71,7 @@ fun UrgentDeliveryView(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 48.dp) // Compensação para centrar o logo visualmente
+                    .padding(end = 48.dp)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
@@ -94,15 +84,25 @@ fun UrgentDeliveryView(
             }
         }
 
-        // --- CONTEÚDO PRINCIPAL (Com padding lateral recuperado) ---
+        // --- CONTEÚDO PRINCIPAL ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
         ) {
 
-            Text("Entrega Urgente", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = IpcaRed)
-            Text("Saída rápida de stock.", fontSize = 16.sp, color = TextGray, modifier = Modifier.padding(bottom = 24.dp))
+            Text(
+                text = "Entrega Urgente",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error // Vermelho de alerta
+            )
+            Text(
+                text = "Saída rápida de stock.",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -112,11 +112,19 @@ fun UrgentDeliveryView(
 
                 // --- SEÇÃO 1: BENEFICIÁRIO ---
                 item {
-                    Text("Quem recebe?", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(
+                        text = "Quem recebe?",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
                     Box(modifier = Modifier.fillMaxWidth().zIndex(1f)) {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+                            ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                             elevation = CardDefaults.cardElevation(2.dp)
@@ -125,20 +133,26 @@ fun UrgentDeliveryView(
                                 OutlinedTextField(
                                     value = state.beneficiaryName,
                                     onValueChange = { viewModel.onBeneficiaryNameChange(it) },
-                                    placeholder = { Text("Nome do Beneficiário") },
+                                    placeholder = { Text("Nome do Beneficiário", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp),
                                     singleLine = true,
                                     trailingIcon = {
-                                        if(state.isSearching) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = IpcaRed)
-                                        else Icon(Icons.Default.Search, null, tint = TextGray)
+                                        if(state.isSearching)
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        else
+                                            Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                                     },
                                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = IpcaRed,
-                                        unfocusedBorderColor = Color.LightGray,
-                                        focusedContainerColor = Color.White,
-                                        unfocusedContainerColor = Color.White
+                                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                                     )
                                 )
                             }
@@ -151,7 +165,7 @@ fun UrgentDeliveryView(
                                     .fillMaxWidth()
                                     .heightIn(max = 220.dp),
                                 elevation = CardDefaults.cardElevation(6.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 LazyColumn {
@@ -163,11 +177,20 @@ fun UrgentDeliveryView(
                                                 .padding(16.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Icon(Icons.Default.Person, null, tint = TextGray, modifier = Modifier.size(18.dp))
+                                            Icon(
+                                                Icons.Default.Person,
+                                                null,
+                                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                                modifier = Modifier.size(18.dp)
+                                            )
                                             Spacer(modifier = Modifier.width(12.dp))
-                                            Text(user.name ?: "Sem nome", fontWeight = FontWeight.SemiBold, color = TextDark)
+                                            Text(
+                                                user.name ?: "Sem nome",
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
                                         }
-                                        HorizontalDivider(color = CabazLightBg)
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                                     }
                                 }
                             }
@@ -177,16 +200,28 @@ fun UrgentDeliveryView(
 
                 // --- SEÇÃO 2: PRODUTOS ---
                 item {
-                    Text("Produtos (${state.cart.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                    Text(
+                        "Produtos (${state.cart.size})",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                    )
                 }
 
                 if (state.cart.isEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(100.dp).background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(12.dp)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    RoundedCornerShape(12.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Lista vazia.", color = TextGray)
+                            Text("Lista vazia.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                         }
                     }
                 } else {
@@ -214,7 +249,10 @@ fun UrgentDeliveryView(
                         onClick = { showBottomSheet = true },
                         modifier = Modifier.fillMaxWidth().height(55.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ButtonGreen)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -224,7 +262,12 @@ fun UrgentDeliveryView(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (state.error != null) {
-                        Text(state.error!!, color = IpcaRed, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                        Text(
+                            state.error!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
 
                     if (state.cart.isNotEmpty()) {
@@ -232,10 +275,13 @@ fun UrgentDeliveryView(
                             onClick = { if (!state.isLoading) viewModel.submitUrgentDelivery { navController.popBackStack() } },
                             modifier = Modifier.fillMaxWidth().height(55.dp),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = IpcaRed)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
                         ) {
                             if (state.isLoading) {
-                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.onError, modifier = Modifier.size(24.dp))
                             } else {
                                 Icon(Icons.Default.Check, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -252,7 +298,7 @@ fun UrgentDeliveryView(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             ProductSelectionSheet(
                 products = state.products,
@@ -289,7 +335,9 @@ fun ProductCardItem(
     Card(
         modifier = Modifier.fillMaxWidth().height(80.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -299,29 +347,54 @@ fun ProductCardItem(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Box(
-                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)).background(Color.Gray.copy(0.1f)),
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageBitmap != null) {
                         Image(bitmap = imageBitmap!!, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     } else {
-                        Text(product.name.take(1).uppercase(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                        Text(
+                            product.name.take(1).uppercase(),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(text = product.name, color = TextDark, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                    Text("Stock: $stock", fontSize = 10.sp, color = TextGray)
+                    Text(
+                        text = product.name,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        "Stock: $stock",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 QuantityButton(
                     icon = if (quantity == 1) Icons.Default.Delete else ImageVector.vectorResource(id = R.drawable.sub_round),
-                    backgroundColor = if (quantity == 1) ButtonRemoveRed else ButtonGreen,
+                    backgroundColor = if (quantity == 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     onClick = onRemove
                 )
-                Text(text = "$quantity", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextDark, modifier = Modifier.padding(horizontal = 12.dp))
-                QuantityButton(icon = Icons.Default.Add, backgroundColor = if (quantity >= stock) ButtonGray else ButtonGreen, onClick = onAdd)
+                Text(
+                    text = "$quantity",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                QuantityButton(
+                    icon = Icons.Default.Add,
+                    backgroundColor = if (quantity >= stock) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primary,
+                    onClick = onAdd
+                )
             }
         }
     }
@@ -330,10 +403,19 @@ fun ProductCardItem(
 @Composable
 fun QuantityButton(icon: ImageVector, backgroundColor: Color, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(backgroundColor).clickable { onClick() },
+        modifier = Modifier
+            .size(32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White, // Ícone sempre branco
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -346,13 +428,23 @@ fun ProductSelectionSheet(
 
     Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp)) {
 
-        Text("Escolha o Produto", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextDark)
+        Text(
+            "Escolha o Produto",
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = searchQuery, onValueChange = { searchQuery = it },
-            placeholder = { Text("Pesquisar...") }, modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            placeholder = { Text("Pesquisar...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+            )
         )
 
         LazyColumn(modifier = Modifier.heightIn(max = 400.dp).padding(top = 12.dp)) {
@@ -381,7 +473,7 @@ fun ProductSelectionSheet(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Gray.copy(0.1f)),
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (listImage != null) {
@@ -392,7 +484,12 @@ fun ProductSelectionSheet(
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
-                            Text(p.name.take(1).uppercase(), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                            Text(
+                                p.name.take(1).uppercase(),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
                         }
                     }
 
@@ -403,16 +500,20 @@ fun ProductSelectionSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(p.name, fontWeight = FontWeight.SemiBold, color = TextDark)
+                        Text(
+                            p.name,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         Text(
                             "${p.batches.sumOf { it.quantity }} un.",
-                            color = ButtonGreen,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
                     }
                 }
-                HorizontalDivider(color = CabazLightBg)
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
             }
         }
     }

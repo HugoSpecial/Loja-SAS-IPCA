@@ -89,7 +89,7 @@ fun DonationView(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-
+        // --- CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -145,15 +145,18 @@ fun DonationView(
             Text(
                 text = "Aqui pode registar uma nova doação.",
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                color = Color(0xFF8C8C8C),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- CARD DADOS GERAIS ---
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface // Adaptável
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -167,6 +170,7 @@ fun DonationView(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    // DROPDOWN CAMPANHA
                     ExposedDropdownMenuBox(
                         expanded = campaignExpanded,
                         onExpandedChange = { campaignExpanded = !campaignExpanded }) {
@@ -178,22 +182,34 @@ fun DonationView(
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = campaignExpanded)
                             },
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            )
                         )
 
                         ExposedDropdownMenu(
                             expanded = campaignExpanded,
-                            onDismissRequest = { campaignExpanded = false }) {
-                            DropdownMenuItem(text = { Text("Sem Campanha") }, onClick = {
-                                viewModel.onCampaignSelected(Campaign(name = ""))
-                                campaignExpanded = false
-                            })
+                            onDismissRequest = { campaignExpanded = false },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Sem Campanha", color = MaterialTheme.colorScheme.onSurface) },
+                                onClick = {
+                                    viewModel.onCampaignSelected(Campaign(name = ""))
+                                    campaignExpanded = false
+                                }
+                            )
 
                             state.activeCampaigns.forEach { campaign ->
-                                DropdownMenuItem(text = { Text(campaign.name ?: "") }, onClick = {
-                                    viewModel.onCampaignSelected(campaign)
-                                    campaignExpanded = false
-                                })
+                                DropdownMenuItem(
+                                    text = { Text(campaign.name ?: "", color = MaterialTheme.colorScheme.onSurface) },
+                                    onClick = {
+                                        viewModel.onCampaignSelected(campaign)
+                                        campaignExpanded = false
+                                    }
+                                )
                             }
                         }
                     }
@@ -207,9 +223,14 @@ fun DonationView(
                     ) {
                         Switch(
                             checked = state.isAnonymous,
-                            onCheckedChange = { viewModel.onAnonymousChange(it) })
+                            onCheckedChange = { viewModel.onAnonymousChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            )
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Doador Anónimo")
+                        Text("Doador Anónimo", color = MaterialTheme.colorScheme.onSurface)
                     }
 
                     if (!state.isAnonymous) {
@@ -221,6 +242,10 @@ fun DonationView(
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Words,
                                 imeAction = ImeAction.Next
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                             )
                         )
                     }
@@ -229,6 +254,7 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- SECÇÃO ADICIONAR PRODUTO ---
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -236,7 +262,8 @@ fun DonationView(
                 Text(
                     text = "Adicionar Produto",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -245,7 +272,7 @@ fun DonationView(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.LightGray.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.surface) // Surface para a box
                         .clickable { galleryLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
@@ -265,23 +292,31 @@ fun DonationView(
                             )
                         }
                     } else {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray)
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // AUTOCOMPLETE PRODUTO
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = state.currentName,
                     onValueChange = { viewModel.onNameChange(it) },
                     label = { Text("Nome do Produto") },
                     modifier = Modifier.fillMaxWidth(),
-                    // UPDATE: Next
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
                         imeAction = ImeAction.Next
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                     )
                 )
 
@@ -292,13 +327,15 @@ fun DonationView(
                             .padding(top = 60.dp)
                             .heightIn(max = 150.dp)
                             .zIndex(2f),
-                        elevation = CardDefaults.cardElevation(4.dp)
+                        elevation = CardDefaults.cardElevation(4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         LazyColumn {
                             items(state.filteredProducts) { product ->
                                 DropdownMenuItem(
-                                    text = { Text(product.name) },
-                                    onClick = { viewModel.onProductSelected(product) })
+                                    text = { Text(product.name, color = MaterialTheme.colorScheme.onSurface) },
+                                    onClick = { viewModel.onProductSelected(product) }
+                                )
                             }
                         }
                     }
@@ -307,6 +344,7 @@ fun DonationView(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // DROPDOWN CATEGORIA
             ExposedDropdownMenuBox(
                 expanded = categoryExpanded,
                 onExpandedChange = { categoryExpanded = !categoryExpanded }
@@ -320,16 +358,21 @@ fun DonationView(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                    )
                 )
 
                 ExposedDropdownMenu(
                     expanded = categoryExpanded,
-                    onDismissRequest = { categoryExpanded = false }
+                    onDismissRequest = { categoryExpanded = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                 ) {
                     state.categories.forEach { category ->
                         DropdownMenuItem(
-                            text = { Text(category) },
+                            text = { Text(category, color = MaterialTheme.colorScheme.onSurface) },
                             onClick = {
                                 viewModel.onCategoryChange(category)
                                 categoryExpanded = false
@@ -342,15 +385,19 @@ fun DonationView(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // QUANTIDADE
                 OutlinedTextField(
                     value = state.currentQuantity,
                     onValueChange = { viewModel.onQuantityChange(it) },
                     label = { Text("Qtd") },
                     modifier = Modifier.weight(1f),
-                    // UPDATE: Done
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                     )
                 )
 
@@ -358,6 +405,7 @@ fun DonationView(
                     SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
                 } ?: ""
 
+                // DATA VALIDADE
                 OutlinedTextField(
                     value = dateText,
                     onValueChange = {},
@@ -369,20 +417,24 @@ fun DonationView(
                     trailingIcon = { Icon(Icons.Default.DateRange, null) },
                     enabled = false,
                     colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = Color.Black,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.primary
                     )
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // BOTÃO ADICIONAR
             Button(
                 onClick = { viewModel.addProductToList() },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
+                )
             ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -390,7 +442,7 @@ fun DonationView(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            Divider()
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
             Spacer(modifier = Modifier.height(16.dp))
 
             Column(
@@ -399,15 +451,17 @@ fun DonationView(
             ) {
                 Text(
                     text = "Produtos na Doação (${state.productsToAdd.size})",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
 
+            // LISTA DE PRODUTOS ADICIONADOS
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 state.productsToAdd.forEachIndexed { index, product ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Row(
@@ -418,7 +472,7 @@ fun DonationView(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(product.name, fontWeight = FontWeight.Bold)
+                                Text(product.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 Text(product.category, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
 
                                 val batch = product.batches.firstOrNull()
@@ -428,11 +482,11 @@ fun DonationView(
                                 Text(
                                     "Qtd: ${batch?.quantity} | Val: $dateStr",
                                     fontSize = 12.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                             IconButton(onClick = { viewModel.removeProductFromList(index) }) {
-                                Icon(Icons.Default.Delete, null, tint = Color.Red)
+                                Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -444,11 +498,12 @@ fun DonationView(
             if (state.error != null) {
                 Text(
                     text = state.error!!,
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
 
+            // BOTÃO FINALIZAR
             Button(
                 onClick = {
                     viewModel.saveDonation { navController.popBackStack() }
@@ -456,7 +511,11 @@ fun DonationView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                enabled = !state.isLoading && state.productsToAdd.isNotEmpty()
+                enabled = !state.isLoading && state.productsToAdd.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 Text("FINALIZAR DOAÇÃO", fontWeight = FontWeight.Bold)
             }

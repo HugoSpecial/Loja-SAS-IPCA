@@ -26,14 +26,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.*
-import ipca.project.lojasas.ui.collaborator.candidature.IpcaGreen
 import ipca.project.lojasas.ui.components.InfoRow
 import ipca.project.lojasas.ui.components.SectionTitle
 import ipca.project.lojasas.ui.components.StatusBadge
 import java.text.SimpleDateFormat
 import java.util.*
-
-val BackgroundColor = Color(0xFFF5F6F8)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +51,7 @@ fun DeliveryDetailView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
         // --- HEADER ---
         Row(
@@ -67,7 +64,7 @@ fun DeliveryDetailView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = IpcaGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -85,11 +82,11 @@ fun DeliveryDetailView(
             when {
                 state.isLoading -> CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
-                    color = IpcaGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
                 state.error != null -> Text(
                     text = state.error,
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
                 state.delivery != null -> {
@@ -126,7 +123,7 @@ fun DeliveryDetailView(
                             if (order.items.isEmpty()) {
                                 Text(
                                     "Nenhum produto solicitado.",
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                     fontWeight = FontWeight.Bold
                                 )
                             } else {
@@ -191,22 +188,28 @@ fun DeliveryDetailView(
                                 ) {
                                     Button(
                                         onClick = { viewModel.rejectDelivery(delivery.docId ?: "") },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ),
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                                        Icon(Icons.Default.Close, contentDescription = null)
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Não levantou", fontWeight = FontWeight.Bold)
                                     }
 
                                     Button(
                                         onClick = { viewModel.approveDelivery(delivery.docId ?: "") },
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                                        Icon(Icons.Default.Check, contentDescription = null)
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Aprovar", fontWeight = FontWeight.Bold)
                                     }
@@ -214,7 +217,7 @@ fun DeliveryDetailView(
                             } else {
                                 Text(
                                     text = "Esta entrega encontra-se ${delivery.state.name}",
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -230,13 +233,20 @@ fun DeliveryDetailView(
 // --- Componentes auxiliares ---
 @Composable
 private fun DeliveryStatusBadge(state: DeliveryState) {
-    val (bg, color) = when (state) {
-        DeliveryState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
-        DeliveryState.ENTREGUE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
-        DeliveryState.CANCELADO -> Color(0xFFFFCDD2) to Color(0xFFC62828)
-        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4) to Color(0xFF3F51B5)
+    // Cores adaptáveis
+    val mainColor = when (state) {
+        DeliveryState.PENDENTE -> Color(0xFFEF6C00) // Laranja
+        DeliveryState.ENTREGUE -> MaterialTheme.colorScheme.primary // Verde
+        DeliveryState.CANCELADO -> MaterialTheme.colorScheme.error // Vermelho
+        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4) // Azul
     }
-    StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
+
+    // Fundo com transparência
+    StatusBadge(
+        label = state.name,
+        backgroundColor = mainColor.copy(alpha = 0.1f),
+        contentColor = mainColor
+    )
 }
 
 // --- Produtos ---
@@ -260,7 +270,12 @@ private fun ProductCategoryList(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(category, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(
+                category,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
 
         requested.forEach { orderItem ->
@@ -280,15 +295,27 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             if (isFinal) {
-                Text("${orderItem.quantity}x ${orderItem.name}", fontWeight = FontWeight.Bold)
+                Text(
+                    "${orderItem.quantity}x ${orderItem.name}",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             } else {
                 val totalStock = product.batches.sumOf { it.quantity }
                 val newStock = totalStock - (orderItem.quantity ?: 0)
                 val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
-                val iconColor = if (newStock >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
+                val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
-                Text("${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)", fontWeight = FontWeight.Bold)
-                Text("Stock atualizado: $newStock", fontSize = 13.sp, color = Color.DarkGray)
+                Text(
+                    "${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    "Stock atualizado: $newStock",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
                 Icon(icon, contentDescription = null, tint = iconColor)
             }
         }

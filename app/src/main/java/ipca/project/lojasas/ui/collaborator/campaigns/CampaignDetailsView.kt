@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +29,7 @@ import ipca.project.lojasas.ui.components.SectionTitle
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-val IpcaGreen = Color(0xFF438C58)
-val BackgroundColor = Color(0xFFF5F6F8)
-val TextDark = Color(0xFF2D2D2D)
+// Cores fixas removidas para usar o Tema
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +57,7 @@ fun CampaignDetailsView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(MaterialTheme.colorScheme.background) // Tema
     ) {
         Row(
             modifier = Modifier
@@ -75,7 +72,7 @@ fun CampaignDetailsView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = IpcaGreen,
+                    tint = MaterialTheme.colorScheme.primary, // Tema
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -95,7 +92,10 @@ fun CampaignDetailsView(
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IpcaGreen)
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary // Tema
+                )
             }
             else if (uiState.campaign != null) {
                 val campaign = uiState.campaign
@@ -128,17 +128,23 @@ fun CampaignDetailsView(
                     if (uiState.donations.isEmpty()) {
                         Text(
                             text = "Ainda não existem doações nesta campanha.",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), // Tema
                             modifier = Modifier.padding(vertical = 12.dp)
                         )
                     } else {
+                        // Estrutura original mantida (LazyColumn dentro de Column com scroll)
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
+                                // Adicionei uma altura máxima para tentar evitar o crash de scroll infinito,
+                                // já que queres manter a LazyColumn aqui. Ajusta se necessário.
+                                .heightIn(max = 500.dp)
                         ) {
                             items(uiState.donations) { donation ->
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface // Tema
+                                    ),
                                     elevation = CardDefaults.cardElevation(2.dp),
                                     modifier = Modifier.clickable { selectedDonation = donation }
                                 ) {
@@ -151,31 +157,31 @@ fun CampaignDetailsView(
                                             Text(
                                                 text = if (donation.anonymous) "Anónimo" else (donation.name ?: "Sem Nome"),
                                                 fontWeight = FontWeight.Bold,
-                                                color = TextDark
+                                                color = MaterialTheme.colorScheme.onSurface // Tema
                                             )
                                             donation.donationDate?.let { date ->
                                                 Text(
                                                     text = dateFormat.format(date),
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.Gray
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) // Tema
                                                 )
                                             }
                                             Text(
                                                 text = "Ver produtos...",
                                                 fontSize = 10.sp,
-                                                color = IpcaGreen
+                                                color = MaterialTheme.colorScheme.primary // Tema
                                             )
                                         }
 
                                         Surface(
-                                            color = IpcaGreen.copy(alpha = 0.15f),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), // Tema
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
                                             Text(
                                                 text = "+${donation.quantity}",
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                                 fontWeight = FontWeight.Bold,
-                                                color = IpcaGreen
+                                                color = MaterialTheme.colorScheme.primary // Tema
                                             )
                                         }
                                     }
@@ -190,7 +196,7 @@ fun CampaignDetailsView(
             else if (uiState.error != null) {
                 Text(
                     text = "Erro: ${uiState.error}",
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error, // Tema
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
@@ -205,10 +211,21 @@ fun DonationProductsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Produtos Doados", fontWeight = FontWeight.Bold, color = IpcaGreen) },
+        containerColor = MaterialTheme.colorScheme.surface, // Tema
+        title = {
+            Text(
+                "Produtos Doados",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary // Tema
+            )
+        },
         text = {
             Column {
-                Text("Doador: ${if (donation.anonymous) "Anónimo" else donation.name}", fontSize = 14.sp, color = Color.Gray)
+                Text(
+                    "Doador: ${if (donation.anonymous) "Anónimo" else donation.name}",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) // Tema
+                )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -219,7 +236,7 @@ fun DonationProductsDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("• ${product.name}", fontWeight = FontWeight.SemiBold)
-                            Text("$prodQty un", fontWeight = FontWeight.Bold, color = IpcaGreen)
+                            Text("$prodQty un", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) // Tema
                         }
                     }
                 }

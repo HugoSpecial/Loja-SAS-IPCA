@@ -25,10 +25,6 @@ import ipca.project.lojasas.models.Donation
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// Reutiliza as mesmas cores do CandidatureView
-val BackgroundGray = Color(0xFFF5F6F8)
-val TextGray = Color(0xFF8C8C8C)
-
 @Composable
 fun DonationListView(
     navController: NavController,
@@ -39,7 +35,7 @@ fun DonationListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundGray)
+            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
     ) {
 
         // --- CABEÇALHO (Seta + Logótipo) ---
@@ -99,7 +95,8 @@ fun DonationListView(
             Text(
                 text = "Aqui pode consultar todas as doações registadas.",
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                color = TextGray,
+                // Texto cinza adaptável
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -118,7 +115,7 @@ fun DonationListView(
                     state.donations.isEmpty() -> {
                         Text(
                             text = "Ainda não há doações registadas.",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -149,7 +146,9 @@ fun DonationCard(donation: Donation) {
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -169,7 +168,7 @@ fun DonationCard(donation: Donation) {
                     Text(
                         text = "Doador",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextGray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
                         text = if (donation.anonymous) "Anónimo" else (donation.name ?: "Sem Nome"),
@@ -186,19 +185,22 @@ fun DonationCard(donation: Donation) {
                 Text(
                     text = dateStr,
                     style = MaterialTheme.typography.labelMedium,
-                    color = TextGray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = Color(0xFFEEEEEE))
+
+            // Divider subtil adaptável
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // --- PRODUTOS ---
             Text(
                 text = "Produtos doados",
                 style = MaterialTheme.typography.labelMedium,
-                color = TextGray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -216,18 +218,20 @@ fun DonationCard(donation: Donation) {
                     Text(
                         text = "• ${product.name}",
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        // Fundo verde claro adaptável
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             text = "$qty",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
