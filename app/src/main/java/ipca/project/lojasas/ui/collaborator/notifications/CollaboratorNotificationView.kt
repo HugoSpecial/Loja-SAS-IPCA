@@ -56,7 +56,6 @@ fun CollaboratorNotificationView(
     Column(
         modifier = modifier.fillMaxSize().background(BackgroundGray).padding(horizontal = 24.dp)
     ) {
-        // ... (Cabeçalho e Filtros mantêm-se iguais, poupei espaço aqui) ...
         Spacer(modifier = Modifier.height(40.dp))
         Image(painter = painterResource(id = R.drawable.logo_sas), contentDescription = "Logo", modifier = Modifier.fillMaxWidth().height(80.dp))
         Spacer(modifier = Modifier.height(24.dp))
@@ -81,10 +80,16 @@ fun CollaboratorNotificationView(
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
                         items(state.notifications) { notification ->
                             NotificationCard(notification = notification, onClick = {
-                                if (!notification.read) viewModel.markAsRead(notification.docId)
+
+                                // --- ALTERAÇÃO IMPORTANTE AQUI ---
+                                // Só marca como lida IMEDIATAMENTE se NÃO for uma justificação.
+                                // Se for justificação, esperamos que o utilizador decida no popup.
+                                if (notification.type != "resposta_entrega_rejeitada" && !notification.read) {
+                                    viewModel.markAsRead(notification.docId)
+                                }
 
                                 if (notification.type == "resposta_entrega_rejeitada") {
-                                    notificationForDialog = notification // Abre o popup
+                                    notificationForDialog = notification // Abre o popup (ainda não lida)
                                 } else if (notification.type == "resposta_entrega") {
                                     navController.navigate("delivery_details/${notification.relatedId}")
                                 } else if (notification.type == "pedido_novo") {
@@ -98,34 +103,71 @@ fun CollaboratorNotificationView(
         }
     }
 
-    // --- POPUP ATUALIZADO ---
+    // --- POPUP: JUSTIFICAR FALTA ---
     if (notificationForDialog != null) {
         val notif = notificationForDialog!!
         val dateFormat = SimpleDateFormat("dd/MM/yyyy às HH:mm", Locale.getDefault())
         val dateString = notif.date?.let { dateFormat.format(it) } ?: "Data desconhecida"
+
+        var beneficiaryName by remember { mutableStateOf("A carregar...") }
+        var beneficiaryPhone by remember { mutableStateOf("") }
+
+        LaunchedEffect(notif) {
+            val idToSearch = notif.senderId
+            if (idToSearch.isNotEmpty()) {
+                viewModel.fetchBeneficiaryDetails(idToSearch) { name, phone ->
+                    beneficiaryName = name
+                    beneficiaryPhone = phone
+                }
+            } else {
+                beneficiaryName = "Desconhecido (ID vazio)"
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { notificationForDialog = null },
             containerColor = Color.White,
             title = {
                 Column {
-                    Text(text = "Decisão de Justificação", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                    Text(text = "Justificação de Falta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Divider(color = Color.LightGray)
+                    HorizontalDivider(color = Color.LightGray)
                 }
             },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = notif.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Enviada a: $dateString", fontSize = 12.sp, color = TextGray)
+                    Text(text = "Beneficiário:", fontSize = 12.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                    Text(text = beneficiaryName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+
+                    if (beneficiaryPhone.isNotEmpty() && beneficiaryPhone != "--") {
+                        Text(text = "Contacto: $beneficiaryPhone", fontSize = 14.sp, color = Color.DarkGray)
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = notif.body, fontSize = 15.sp, lineHeight = 22.sp)
+                    HorizontalDivider(color = Color.LightGray, thickness = 0.5.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(text = notif.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = dateString, fontSize = 12.sp, color = TextGray)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        color = BackgroundGray,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = notif.body,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
             },
-            // Botão "Aceitar Justificação" (VERDE)
             confirmButton = {
                 Button(
+                    // ACEITAR = O ViewModel trata de marcar como lida e atualizar BD
                     onClick = {
                         viewModel.handleJustificationDecision(notif, accepted = true) {
                             notificationForDialog = null
@@ -140,28 +182,28 @@ fun CollaboratorNotificationView(
                     Text("Aceitar justificação")
                 }
             },
-            // Botão "Aplicar Falta" (VERMELHO)
             dismissButton = {
                 Button(
+                    // RECUSAR = O ViewModel aplica falta, cancela entrega e marca como lida
                     onClick = {
                         viewModel.handleJustificationDecision(notif, accepted = false) {
                             notificationForDialog = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)), // Vermelho
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp) // Padding para separar
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                 ) {
                     Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Aplicar falta")
+                    Text("Recusar / Aplicar falta")
                 }
             }
         )
     }
 }
 
-// ... (getIconForType, FilterSection e NotificationCard mantêm-se iguais) ...
+// ... Resto das funções auxiliares ...
 @Composable
 fun getIconForType(type: String): ImageVector {
     return when (type) {
@@ -170,7 +212,7 @@ fun getIconForType(type: String): ImageVector {
         "pedido_agendado" -> Icons.Default.DateRange
         "validade_alerta" -> Icons.Default.Warning
         "resposta_entrega" -> Icons.Default.Email
-        "resposta_entrega_rejeitada" -> Icons.Default.Cancel // Ícone X
+        "resposta_entrega_rejeitada" -> Icons.Default.Cancel
         else -> Icons.Default.Notifications
     }
 }

@@ -9,6 +9,8 @@ import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Notification
+// Certifica-te que tens este import ou usa a String "CANCELADO" diretamente
+import ipca.project.lojasas.models.DeliveryState
 
 data class NotificationListState(
     val notifications: List<Notification> = emptyList(),
@@ -81,24 +83,86 @@ class NotificationsCollaboratorViewModel : ViewModel() {
             .addOnFailureListener { Log.e("NotifVM", "Erro ao marcar como lida", it) }
     }
 
-    // --- NOVA FUNÇÃO: Trata da decisão de Justificação ---
+    // --- FUNÇÃO CORRIGIDA ---
     fun handleJustificationDecision(notification: Notification, accepted: Boolean, onSuccess: () -> Unit) {
         val deliveryId = notification.relatedId
+        // O beneficiário que enviou a justificação está no senderId
+        val beneficiaryUserId = notification.senderId
+
         if (deliveryId.isEmpty()) return
 
-        // Define o novo estado da entrega
-        val newState = if (accepted) "JUSTIFICADO" else "FALTA_INJUSTIFICADA"
+        // 1. CASO ACEITE: Não faz nada, só marca notificação como lida
+        if (accepted) {
+            markAsRead(notification.docId)
+            onSuccess()
+            return
+        }
 
-        // 1. Atualiza a entrega na coleção 'delivery'
-        db.collection("delivery").document(deliveryId)
-            .update("state", newState)
-            .addOnSuccessListener {
-                // 2. Marca a notificação como lida/resolvida
+        // 2. CASO RECUSADO (Aplicar Falta): Executa a lógica do FaultDelivery
+        if (beneficiaryUserId.isNotEmpty()) {
+            applyFaultToBeneficiary(userId = beneficiaryUserId, deliveryId = deliveryId) {
+                // Se correr bem, marca como lida e fecha o popup
                 markAsRead(notification.docId)
                 onSuccess()
             }
+        } else {
+            uiState.value = uiState.value.copy(error = "Erro: ID do beneficiário não encontrado.")
+        }
+    }
+
+    // Lógica copiada/adaptada do teu DeliveryViewModel (FaultDelivery)
+    private fun applyFaultToBeneficiary(userId: String, deliveryId: String, onComplete: () -> Unit) {
+        uiState.value = uiState.value.copy(isLoading = true)
+
+        val userRef = db.collection("users").document(userId)
+        val deliveryRef = db.collection("delivery").document(deliveryId)
+
+        db.runTransaction { transaction ->
+            val userSnapshot = transaction.get(userRef)
+
+            // Incrementa faltas
+            val currentFaults = (userSnapshot.getLong("fault") ?: 0).toInt()
+            val newFaults = currentFaults + 1
+
+            // Se tiver 2 ou mais faltas, deixa de ser beneficiário
+            val isBeneficiary = newFaults < 2
+
+            // Atualiza User
+            transaction.update(userRef, "fault", newFaults)
+            transaction.update(userRef, "isBeneficiary", isBeneficiary)
+
+            // Atualiza Delivery para CANCELADO (Falta Injustificada)
+            // Se não tiveres acesso ao Enum DeliveryState aqui, usa a string "CANCELADO"
+            transaction.update(deliveryRef, "state", "CANCELADO")
+            transaction.update(deliveryRef, "reason", "Justificação Rejeitada / Falta de comparência")
+            transaction.update(deliveryRef, "delivered", false)
+
+        }.addOnSuccessListener {
+            uiState.value = uiState.value.copy(isLoading = false)
+            Log.d("NotifVM", "Falta aplicada com sucesso.")
+            onComplete()
+
+        }.addOnFailureListener { e ->
+            uiState.value = uiState.value.copy(
+                isLoading = false,
+                error = "Erro ao aplicar falta: ${e.message}"
+            )
+        }
+    }
+
+    fun fetchBeneficiaryDetails(userId: String, onResult: (String, String) -> Unit) {
+        if (userId.isEmpty()) {
+            onResult("Desconhecido", "--")
+            return
+        }
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val name = doc.getString("name") ?: "Sem nome"
+                val phone = doc.getString("phone") ?: "--"
+                onResult(name, phone)
+            }
             .addOnFailureListener {
-                uiState.value = uiState.value.copy(error = "Erro ao atualizar entrega.")
+                onResult("Erro ao carregar", "--")
             }
     }
 }

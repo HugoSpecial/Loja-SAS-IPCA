@@ -4,8 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth // Import seguro
+import com.google.firebase.firestore.FirebaseFirestore
 
 data class DeliveryDetailState(
     val notificationTitle: String = "",
@@ -22,10 +23,11 @@ class DeliveryDetailViewModel : ViewModel() {
         private set
 
     private val db = FirebaseFirestore.getInstance()
+    // Uso direto do FirebaseAuth para evitar problemas de imports KTX
+    private val auth = FirebaseAuth.getInstance()
 
-    // 1. Busca dados da notificação
     fun fetchNotificationData(notificationId: String) {
-        if (notificationId.isEmpty()) return
+        if (notificationId.isEmpty() || notificationId == "sem_notificacao") return
 
         db.collection("notifications").document(notificationId).get()
             .addOnSuccessListener {
@@ -35,6 +37,7 @@ class DeliveryDetailViewModel : ViewModel() {
                 )
             }
     }
+
     fun checkExistingNote(orderId: String) {
         if (orderId.isEmpty()) return
 
@@ -61,17 +64,16 @@ class DeliveryDetailViewModel : ViewModel() {
                 uiState = uiState.copy(isLoading = false, error = "Erro ao carregar dados.")
             }
     }
+
     fun onUserNoteChange(newText: String) {
         uiState = uiState.copy(userNote = newText)
     }
 
-    // 3. GRAVAR NOTA + ENVIAR NOTIFICAÇÃO GERAL
     fun saveDeliveryNote(orderId: String, noteToSave: String) {
         if (orderId.isEmpty()) return
 
         uiState = uiState.copy(isLoading = true, error = null)
 
-        // Passo A: Atualiza a nota na entrega DIRETAMENTE
         db.collection("delivery").document(orderId)
             .update("beneficiaryNote", noteToSave)
             .addOnSuccessListener {
@@ -81,15 +83,19 @@ class DeliveryDetailViewModel : ViewModel() {
                 uiState = uiState.copy(isLoading = false, error = "Erro ao gravar: ${e.message}")
             }
     }
+
     private fun sendCollaboratorNotification(orderId: String, message: String) {
+        val currentUserId = auth.currentUser?.uid ?: ""
 
         val notification = hashMapOf(
             "title" to "Nova Resposta de Entrega",
-            "body" to "Benefeciario: $message",
+            "body" to "Beneficiário respondeu: $message",
             "date" to Timestamp.now(),
             "read" to false,
             "type" to "resposta_entrega_rejeitada",
             "relatedId" to orderId,
+            "senderId" to currentUserId,
+            "recipientId" to "",
             "targetProfile" to "COLABORADOR"
         )
 

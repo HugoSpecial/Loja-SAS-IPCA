@@ -12,7 +12,7 @@ data class Notification(
     var type: String = "",
     var relatedId: String = "",
     var recipientId: String = "",
-
+    var senderId: String = "",
     // Define para quem é a notificação: "COLABORADOR", "BENEFICIARIO", "INTERESSADO"
     var targetProfile: String = ""
 )

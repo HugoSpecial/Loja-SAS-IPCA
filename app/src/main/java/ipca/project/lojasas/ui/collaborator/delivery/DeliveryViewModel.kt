@@ -48,14 +48,22 @@ class DeliveryViewModel : ViewModel() {
 
                 for (doc in value?.documents ?: emptyList()) {
 
+                    // --- CORREÇÃO IMPORTANTE ---
+                    // Lê o estado com segurança. Se der erro (ex: estado "JUSTIFICADO" antigo),
+                    // assume CANCELADO para a app não ir abaixo.
+                    val rawState = doc.getString("state") ?: "PENDENTE"
+                    val safeState = try {
+                        DeliveryState.valueOf(rawState)
+                    } catch (e: Exception) {
+                        DeliveryState.CANCELADO
+                    }
+
                     val delivery = Delivery(
                         docId = doc.id,
                         orderId = doc.getString("orderId"),
                         delivered = doc.getBoolean("delivered") ?: false,
                         reason = doc.getString("reason"),
-                        state = DeliveryState.valueOf(
-                            doc.getString("state") ?: "PENDENTE"
-                        ),
+                        state = safeState, // Usamos o estado seguro aqui
                         surveyDate = doc.getDate("surveyDate"),
                         evaluationDate = doc.getDate("evaluationDate"),
                         evaluatedBy = doc.getString("evaluatedBy")
@@ -63,6 +71,7 @@ class DeliveryViewModel : ViewModel() {
 
                     val orderId = delivery.orderId ?: continue
 
+                    // Busca o utilizador para mostrar o nome na lista
                     db.collection("orders")
                         .document(orderId)
                         .get()
@@ -70,50 +79,59 @@ class DeliveryViewModel : ViewModel() {
                             val userName = orderDoc.getString("userName")
                             val userId = orderDoc.getString("userId")
 
-                            resultList.add(
-                                DeliveryWithUser(
-                                    delivery = delivery,
-                                    userName = userName,
-                                    userId = userId
-                                )
+                            val item = DeliveryWithUser(
+                                delivery = delivery,
+                                userName = userName,
+                                userId = userId
                             )
 
+                            // Atualiza a lista evitando duplicados visuais
+                            val index = resultList.indexOfFirst { it.delivery.docId == delivery.docId }
+                            if (index != -1) {
+                                resultList[index] = item
+                            } else {
+                                resultList.add(item)
+                            }
+
+                            // Ordena por data (mais recentes primeiro)
+                            resultList.sortByDescending { it.delivery.surveyDate }
+
                             uiState.value = uiState.value.copy(
-                                deliveries = resultList,
-                                pendingCount = resultList.count {
-                                    it.delivery.state == DeliveryState.PENDENTE
-                                },
+                                deliveries = ArrayList(resultList),
+                                pendingCount = resultList.count { it.delivery.state == DeliveryState.PENDENTE },
                                 isLoading = false
                             )
                         }
                 }
+
+                if (value?.isEmpty == true) {
+                    uiState.value = uiState.value.copy(isLoading = false, deliveries = emptyList())
+                }
             }
     }
 
-    //Função em Teste (Pires Lindu - 912343569)
+    // Mantive a tua função original, caso precises dela noutros ecrãs
     fun FaultDelivery(userId: String, deliveryId: String) {
         uiState.value = uiState.value.copy(isLoading = true)
 
-        val userId = db.collection("users").document(userId)
-        val deliveryId = db.collection("delivery").document(deliveryId)
+        val userRef = db.collection("users").document(userId)
+        val deliveryRef = db.collection("delivery").document(deliveryId)
 
         db.runTransaction { transaction ->
-            val userSnapshot = transaction.get(userId)
+            val userSnapshot = transaction.get(userRef)
 
             val currentFaults = (userSnapshot.getLong("fault") ?: 0).toInt()
-
             val newFaults = currentFaults + 1
-
             val isBeneficiary = newFaults < 2
 
-            // Atualizar User na BD
-            transaction.update(userId, "fault", newFaults)
-            transaction.update(userId, "isBeneficiary", isBeneficiary)
+            // Atualiza User na BD
+            transaction.update(userRef, "fault", newFaults)
+            transaction.update(userRef, "isBeneficiary", isBeneficiary)
 
-            // Atualizar Delivery para CANCELADO
-            transaction.update(deliveryId, "state", DeliveryState.CANCELADO.name)
-            transaction.update(deliveryId, "reason", "Falta de comparência")
-            transaction.update(deliveryId, "delivered", false)
+            // Atualiza Delivery para CANCELADO
+            transaction.update(deliveryRef, "state", DeliveryState.CANCELADO.name)
+            transaction.update(deliveryRef, "reason", "Falta de comparência")
+            transaction.update(deliveryRef, "delivered", false)
 
         }.addOnSuccessListener {
             uiState.value = uiState.value.copy(isLoading = false)
