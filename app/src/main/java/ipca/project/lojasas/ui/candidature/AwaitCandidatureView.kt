@@ -50,11 +50,21 @@ fun AwaitCandidatureView(
         candidature?.creationDate?.let { sdf.format(it) } ?: "Data N/D"
     } catch (e: Exception) { "Data N/D" }
 
-    // --- CORES E TEXTOS ---
+    // --- CORES E TEXTOS ADAPTÁVEIS ---
+    // Usamos as cores do tema para garantir consistência no Dark Mode
     val (statusColor, statusBg, statusText, statusHeadline) = when (currentState) {
-        CandidatureState.PENDENTE -> Quadruple(Color(0xFFFFA000), Color(0xFFFFF8E1), "PENDENTE", "A aguardar validação")
-        CandidatureState.ACEITE -> Quadruple(Color(0xFF4CAF50), Color(0xFFE8F5E9), "ACEITE", "Candidatura Aceite")
-        CandidatureState.REJEITADA -> Quadruple(Color(0xFFF44336), Color(0xFFFFEBEE), "RECUSADA", "Candidatura Rejeitada")
+        CandidatureState.PENDENTE -> {
+            val color = Color(0xFFFFA000) // Laranja (Padrão para alertas)
+            Quadruple(color, color.copy(alpha = 0.1f), "PENDENTE", "A aguardar validação")
+        }
+        CandidatureState.ACEITE -> {
+            val color = MaterialTheme.colorScheme.primary // Verde do Tema
+            Quadruple(color, color.copy(alpha = 0.1f), "ACEITE", "Candidatura Aceite")
+        }
+        CandidatureState.REJEITADA -> {
+            val color = MaterialTheme.colorScheme.error // Vermelho do Tema
+            Quadruple(color, color.copy(alpha = 0.1f), "RECUSADA", "Candidatura Rejeitada")
+        }
     }
 
     val friendlyMessage = when (currentState) {
@@ -65,19 +75,22 @@ fun AwaitCandidatureView(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color(0xFFFAFAFA)
+        containerColor = MaterialTheme.colorScheme.background // Fundo Adaptável
     ) { paddingValues ->
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (errorMessage != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = errorMessage, color = Color.Red, textAlign = TextAlign.Center)
+                    Text(text = errorMessage, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { viewModelData.retry() }) {
+                    Button(
+                        onClick = { viewModelData.retry() },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
                         Text("Tentar Novamente")
                     }
                 }
@@ -138,7 +151,9 @@ fun AwaitCandidatureView(
                             .fillMaxWidth()
                             .widthIn(max = 400.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+                        ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         Column(
@@ -147,7 +162,7 @@ fun AwaitCandidatureView(
                         ) {
                             // Badge Status
                             Surface(
-                                color = statusBg,
+                                color = statusBg, // Cor com transparência
                                 shape = RoundedCornerShape(50),
                                 modifier = Modifier.padding(bottom = 16.dp)
                             ) {
@@ -178,14 +193,14 @@ fun AwaitCandidatureView(
                             Text(
                                 text = friendlyMessage,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.DarkGray,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "Submetido em $submissionDate",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
 
                             Spacer(modifier = Modifier.height(if (isCompactScreen) 20.dp else 32.dp))
@@ -214,12 +229,16 @@ fun AwaitCandidatureView(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Motivo:", color = statusColor, fontWeight = FontWeight.Bold)
                                     }
-                                    Text(rejectionReason, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                                    Text(
+                                        text = rejectionReason,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = { navController.navigate("candidature_form") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary,),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
@@ -240,7 +259,10 @@ fun AwaitCandidatureView(
                                             }
                                         }
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = statusColor),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = statusColor,
+                                        contentColor = Color.White
+                                    ),
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
@@ -264,7 +286,9 @@ fun AwaitCandidatureView(
                             .widthIn(max = 400.dp)
                             .height(50.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.tertiary),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.tertiary // Vermelho do Tema
+                        ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
                     ) {
                         Icon(Icons.Default.ExitToApp, null)
@@ -290,6 +314,10 @@ data class Quadruple<A, B, C, D>(
 fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
     val steps = 3
 
+    // Cor inativa adaptável (Cinza no Light, Cinza escuro no Dark)
+    val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+    val textColor = MaterialTheme.colorScheme.onSurface
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -302,7 +330,7 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
                     modifier = Modifier
                         .size(if (isActive) 14.dp else 10.dp)
                         .background(
-                            color = if (isActive) activeColor else Color(0xFFE5E7EB),
+                            color = if (isActive) activeColor else inactiveColor,
                             shape = CircleShape
                         )
                         .border(
@@ -319,7 +347,7 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
                             .height(2.dp)
                             .padding(horizontal = 2.dp)
                             .background(
-                                color = if (i < currentStep) activeColor else Color(0xFFE5E7EB),
+                                color = if (i < currentStep) activeColor else inactiveColor,
                                 shape = RoundedCornerShape(1.dp)
                             )
                     )
@@ -336,19 +364,19 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
             Text(
                 text = "Enviado",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Black
+                color = textColor
             )
 
             Text(
                 text = "Análise",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (currentStep >= 2) Color.Black else Color.Gray
+                color = if (currentStep >= 2) textColor else textColor.copy(alpha = 0.5f)
             )
 
             Text(
                 text = "Decisão",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (currentStep >= 3) Color.Black else Color.Gray
+                color = if (currentStep >= 3) textColor else textColor.copy(alpha = 0.5f)
             )
         }
     }

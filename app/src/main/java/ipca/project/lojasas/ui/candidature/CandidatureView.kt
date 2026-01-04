@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import ipca.project.lojasas.models.Type // Atualizado de Tipo para Type
+import ipca.project.lojasas.models.Type
 import ipca.project.lojasas.ui.authentication.LoginViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,7 +79,6 @@ fun CandidatureView(
                                     if (indexNome != -1) realName = c.getString(indexNome)
                                 }
                             }
-                            // addAnexo -> addAttachment
                             withContext(Dispatchers.Main) { viewModel.addAttachment(realName, base64String) }
                         }
                     }
@@ -94,11 +93,12 @@ fun CandidatureView(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background // Adaptável
     ) { paddingValues ->
 
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = Color(0xFFF5F5F5)
+            color = MaterialTheme.colorScheme.background // Adaptável
         ) {
             Column(
                 modifier = Modifier
@@ -152,7 +152,7 @@ fun CandidatureView(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // --- MENSAGEM DE ERRO (FEEDBACK VISUAL) ---
+                // --- MENSAGEM DE ERRO ---
                 if (uiState.error != null) {
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
@@ -170,7 +170,7 @@ fun CandidatureView(
 
                 SectionHeader("Identificação")
 
-                // ANO LETIVO -> ACADEMIC YEAR
+                // ANO LETIVO
                 AppTextField(
                     value = uiState.candidature.academicYear,
                     onValueChange = { viewModel.updateAcademicYear(it) },
@@ -181,7 +181,7 @@ fun CandidatureView(
                     visualTransformation = SchoolYearVisualTransformation()
                 )
 
-                // DATA NASCIMENTO -> BIRTH DATE
+                // DATA NASCIMENTO
                 AppTextField(
                     value = uiState.candidature.birthDate,
                     onValueChange = { viewModel.updateBirthDate(it) },
@@ -193,7 +193,7 @@ fun CandidatureView(
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // TELEMOVEL -> MOBILE PHONE
+                    // TELEMOVEL
                     AppTextField(
                         value = uiState.candidature.mobilePhone,
                         onValueChange = { viewModel.updateMobilePhone(it) },
@@ -204,6 +204,7 @@ fun CandidatureView(
                         keyboardType = KeyboardType.Phone
                     )
 
+                    // EMAIL
                     AppTextField(
                         value = uiState.candidature.email,
                         onValueChange = { viewModel.updateEmail(it) },
@@ -220,7 +221,7 @@ fun CandidatureView(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     var expanded by remember { mutableStateOf(false) }
 
-                    // DROPDOWN TIPO -> TYPE
+                    // DROPDOWN TIPO
                     Column(modifier = Modifier.weight(1f).padding(bottom = 20.dp)) {
                         Text(
                             text = "Tipo",
@@ -241,13 +242,17 @@ fun CandidatureView(
                                 onValueChange = {},
                                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 shape = RoundedCornerShape(12.dp),
-                                placeholder = { Text("Selecionar", color = Color.Gray) },
+                                placeholder = {
+                                    Text("Selecionar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
-                                    cursorColor = MaterialTheme.colorScheme.primary
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    cursorColor = MaterialTheme.colorScheme.primary,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                 ),
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -256,11 +261,11 @@ fun CandidatureView(
                             ExposedDropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false },
-                                modifier = Modifier.background(Color.White)
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                             ) {
                                 Type.values().forEach { typeEnum ->
                                     DropdownMenuItem(
-                                        text = { Text(formatEnum(typeEnum)) },
+                                        text = { Text(formatEnum(typeEnum), color = MaterialTheme.colorScheme.onSurface) },
                                         onClick = {
                                             viewModel.updateType(typeEnum)
                                             expanded = false
@@ -271,7 +276,7 @@ fun CandidatureView(
                         }
                     }
 
-                    // NÚMERO CARTÃO -> CARD NUMBER
+                    // NÚMERO CARTÃO
                     AppTextField(
                         value = uiState.candidature.cardNumber,
                         onValueChange = { viewModel.updateCardNumber(it) },
@@ -282,8 +287,6 @@ fun CandidatureView(
                     )
                 }
 
-                // CURSO -> COURSE (SÓ APARECE SE NÃO FOR FUNCIONÁRIO)
-                // Nota: Assumo que existe Type.EMPLOYEE ou similar no teu Enum em inglês
                 if (uiState.candidature.type != Type.FUNCIONARIO) {
                     AppTextField(
                         value = uiState.candidature.course ?: "",
@@ -297,7 +300,6 @@ fun CandidatureView(
                 SectionHeader("Produtos Solicitados")
 
                 AppCard {
-                    // Mapeamento dos produtos em Inglês
                     val produtos = listOf(
                         "Produtos alimentares" to uiState.candidature.foodProducts,
                         "Produtos de higiene pessoal" to uiState.candidature.hygieneProducts,
@@ -318,9 +320,16 @@ fun CandidatureView(
                                         "Produtos de limpeza" -> viewModel.updateCleaningProducts(checked)
                                     }
                                 },
-                                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    checkmarkColor = Color.White
+                                )
                             )
-                            Text(text = label, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
@@ -331,12 +340,19 @@ fun CandidatureView(
                 AppCard {
                     Text("Apoio FAES?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Row {
-                        // FAES SUPPORT
-                        RadioButton(selected = uiState.candidature.faesSupport == true, onClick = { viewModel.updateFaesSupport(true) })
-                        Text("Sim", Modifier.align(Alignment.CenterVertically))
+                        RadioButton(
+                            selected = uiState.candidature.faesSupport == true,
+                            onClick = { viewModel.updateFaesSupport(true) },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sim", Modifier.align(Alignment.CenterVertically), color = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.width(16.dp))
-                        RadioButton(selected = uiState.candidature.faesSupport == false, onClick = { viewModel.updateFaesSupport(false) })
-                        Text("Não", Modifier.align(Alignment.CenterVertically))
+                        RadioButton(
+                            selected = uiState.candidature.faesSupport == false,
+                            onClick = { viewModel.updateFaesSupport(false) },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Não", Modifier.align(Alignment.CenterVertically), color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -344,18 +360,24 @@ fun CandidatureView(
                 AppCard {
                     Text("Bolsa de Estudo?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Row {
-                        // SCHOLARSHIP SUPPORT
-                        RadioButton(selected = uiState.candidature.scholarshipSupport == true, onClick = { viewModel.updateScholarshipSupport(true) })
-                        Text("Sim", Modifier.align(Alignment.CenterVertically))
+                        RadioButton(
+                            selected = uiState.candidature.scholarshipSupport == true,
+                            onClick = { viewModel.updateScholarshipSupport(true) },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Sim", Modifier.align(Alignment.CenterVertically), color = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.width(16.dp))
-                        RadioButton(selected = uiState.candidature.scholarshipSupport == false, onClick = { viewModel.updateScholarshipSupport(false) })
-                        Text("Não", Modifier.align(Alignment.CenterVertically))
+                        RadioButton(
+                            selected = uiState.candidature.scholarshipSupport == false,
+                            onClick = { viewModel.updateScholarshipSupport(false) },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text("Não", Modifier.align(Alignment.CenterVertically), color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
 
                 if (uiState.candidature.scholarshipSupport == true) {
-                    // SCHOLARSHIP DETAILS
                     AppTextField(
                         value = uiState.candidature.scholarshipDetails,
                         onValueChange = { viewModel.updateScholarshipDetails(it) },
@@ -367,18 +389,18 @@ fun CandidatureView(
                 SectionHeader("Documentação Necessária")
 
                 Surface(
-                    color = Color(0xFFE8F5E9),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), // Verde suave adaptável
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF4CAF50)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                        Icon(Icons.Default.Info, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Nota: Beneficiários FAES não necessitam entregar os documentos abaixo.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1B5E20),
+                            color = MaterialTheme.colorScheme.primary, // Verde
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -399,19 +421,24 @@ fun CandidatureView(
                     Spacer(Modifier.height(8.dp))
 
                     AppCard {
-                        // ANEXOS -> ATTACHMENTS
                         if (uiState.candidature.attachments.isNotEmpty()) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 uiState.candidature.attachments.forEachIndexed { index, attachment ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth().background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp)).padding(8.dp)
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(8.dp)
                                     ) {
                                         Icon( ImageVector.vectorResource(id = R.drawable.file_dock), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text(attachment.name, Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                                        Text(attachment.name, Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                                         IconButton(onClick = { viewModel.removeAttachment(index) }, modifier = Modifier.size(24.dp)) {
-                                            Icon(Icons.Default.Delete, null, tint = Color.Red, modifier = Modifier.size(20.dp))
+                                            Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                         }
                                     }
                                 }
@@ -423,13 +450,21 @@ fun CandidatureView(
                             onClick = { launcher.launch("*/*") },
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = Color.White)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
+                            )
                         ) {
                             Icon(ImageVector.vectorResource(id = R.drawable.file_dock), null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Adicionar Ficheiro")
                         }
-                        Text("Máx total: 1MB", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally))
+                        Text(
+                            "Máx total: 1MB",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally)
+                        )
                     }
                 }
 
@@ -437,21 +472,36 @@ fun CandidatureView(
                 SectionHeader("Declarações")
 
                 Row(verticalAlignment = Alignment.Top) {
-                    // TRUTHFULNESS DECLARATION
-                    Checkbox(checked = uiState.candidature.truthfulnessDeclaration, onCheckedChange = { viewModel.updateTruthfulnessDeclaration(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
-                    Text("Declaro, sob compromisso de honra, a veracidade das informações.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
+                    Checkbox(
+                        checked = uiState.candidature.truthfulnessDeclaration,
+                        onCheckedChange = { viewModel.updateTruthfulnessDeclaration(it) },
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                    )
+                    Text(
+                        "Declaro, sob compromisso de honra, a veracidade das informações.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
                 Row(verticalAlignment = Alignment.Top) {
-                    // DATA AUTHORIZATION
-                    Checkbox(checked = uiState.candidature.dataAuthorization, onCheckedChange = { viewModel.updateDataAuthorization(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
-                    Text("Autorizo o tratamento de dados (RGPD).", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
+                    Checkbox(
+                        checked = uiState.candidature.dataAuthorization,
+                        onCheckedChange = { viewModel.updateDataAuthorization(it) },
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                    )
+                    Text(
+                        "Autorizo o tratamento de dados (RGPD).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
 
                 Spacer(Modifier.height(20.dp))
                 SectionHeader("Finalização")
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // SIGNATURE
                     AppTextField(
                         value = uiState.candidature.signature,
                         onValueChange = { viewModel.updateSignature(it) },
@@ -477,12 +527,15 @@ fun CandidatureView(
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
                     enabled = !uiState.isLoading,
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
                     if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                     } else {
                         Text("Submeter Candidatura", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
@@ -515,16 +568,20 @@ fun AppTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(placeholder, color = Color.Gray) },
+            placeholder = {
+                Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+            },
             leadingIcon = icon?.let { { Icon(it, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) } },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.primary,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                cursorColor = MaterialTheme.colorScheme.primary
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -536,7 +593,7 @@ fun AppTextField(
 @Composable
 fun AppCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza Escuro no Dark
         shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
         modifier = Modifier.fillMaxWidth()
@@ -550,7 +607,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        color = Color.Black,
+        color = MaterialTheme.colorScheme.onSurface, // Preto/Branco
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
     )
@@ -560,7 +617,11 @@ fun SectionHeader(title: String) {
 fun DocumentoRequisitoItem(texto: String) {
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
         Text("•", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 8.dp))
-        Text(texto, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
     }
 }
 
