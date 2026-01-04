@@ -1,6 +1,7 @@
 package ipca.project.lojasas.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,11 +19,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import ipca.project.lojasas.R
 
 @Composable
 fun SplashView() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            // ADICIONADO: Garante que o fundo é Cinza Claro (Light) ou Preto (Dark)
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -31,7 +36,7 @@ fun SplashView() {
         ) {
 
             Image(
-                painter = painterResource(id = ipca.project.lojasas.R.drawable.logo_sas),
+                painter = painterResource(id = R.drawable.logo_sas),
                 contentDescription = "Logo",
                 modifier = Modifier
                     .fillMaxWidth()

@@ -52,7 +52,7 @@ fun ProfileView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
             .padding(24.dp)
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.Start
@@ -70,7 +70,8 @@ fun ProfileView(
         Text(
             text = "O perfil atualiza automaticamente, escreva somente o seu telemóvel e as suas preferências (se tiver).",
             fontSize = 12.sp,
-            color = Color.Gray,
+            // Texto cinza adaptável (Branco transparente no escuro)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             lineHeight = 14.sp
         )
 
@@ -125,6 +126,7 @@ fun ProfileView(
 
         Spacer(modifier = Modifier.height(40.dp))
 
+        // Botão Suporte
         Button(
             onClick = { },
             modifier = Modifier
@@ -132,19 +134,20 @@ fun ProfileView(
                 .height(50.dp),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
             Text(
                 text = "Suporte Chat",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                fontWeight = FontWeight.Bold
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Botão Logout
         OutlinedButton(
             onClick = {
                 viewModel.logout {
@@ -153,15 +156,16 @@ fun ProfileView(
                     }
                 }
             },
-
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, Color.Red),
+            // Borda Vermelha (Erro)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
             colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = Color.White,
-                contentColor = Color.Red
+                // Fundo transparente ou Surface
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.error
             )
         ) {
             Icon(Icons.Default.ExitToApp, null)
@@ -206,6 +210,7 @@ fun CustomProfileField(
 
             shape = RoundedCornerShape(12.dp),
 
+            // isReadOnly controla a lógica, enabled controla a cor visual (acinzentada)
             enabled = !isReadOnly,
             readOnly = isReadOnly,
             singleLine = !isMultiLine,
@@ -216,29 +221,37 @@ fun CustomProfileField(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isReadOnly) Color.Gray else MaterialTheme.colorScheme.primary
+                        // Ícone cinza se readOnly, Verde se editável
+                        tint = if (isReadOnly)
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        else
+                            MaterialTheme.colorScheme.primary
                     )
                 }
             } else null,
 
             placeholder = {
-                Text(text = placeholder, color = Color.Gray)
+                Text(
+                    text = placeholder,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
             },
 
             colors = OutlinedTextFieldDefaults.colors(
-                // Bordas sempre Verdes
+                // Bordas
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.primary,
-                disabledBorderColor = MaterialTheme.colorScheme.primary,
+                disabledBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
 
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                disabledContainerColor = Color.Gray.copy(alpha = 0.5f),
+                // Fundos (Surface adapta-se a Branco/Cinza Escuro)
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), // Ligeiramente diferente para indicar disabled
 
-                // Texto
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                disabledTextColor = Color.DarkGray
+                // Textos
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         )
     }

@@ -35,16 +35,8 @@ import androidx.navigation.compose.rememberNavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Notification
 import ipca.project.lojasas.ui.components.EmptyState
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.*
-
-// --- CORES ---
-val BackgroundGray = Color(0xFFF9F9F9)
-val PrimaryGreen = Color(0xFF00864F)
-val TextGray = Color(0xFF8C8C8C)
-val LightGreenBg = Color(0xFFE8F5E9)
 
 @Composable
 fun NotificationView(
@@ -61,7 +53,7 @@ fun NotificationView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BackgroundGray)
+            .background(MaterialTheme.colorScheme.background) // Fundo adaptável
             .padding(horizontal = 24.dp)
     ) {
 
@@ -87,13 +79,13 @@ fun NotificationView(
                 text = "Notificações",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = PrimaryGreen
+                color = MaterialTheme.colorScheme.primary // GreenPrimary
             )
 
             if (state.unreadCount > 0) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Badge(
-                    containerColor = Color.Red,
+                    containerColor = MaterialTheme.colorScheme.error, // RedPrimary
                     contentColor = Color.White
                 ) {
                     Text(text = "${state.unreadCount}", modifier = Modifier.padding(2.dp))
@@ -104,7 +96,8 @@ fun NotificationView(
         Text(
             text = "Fique a par do estado dos seus pedidos.",
             fontSize = 14.sp,
-            color = TextGray,
+            // Texto cinza adaptável (Branco transparente no escuro)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
 
@@ -121,14 +114,14 @@ fun NotificationView(
             when {
                 state.isLoading && state.notifications.isEmpty() -> {
                     CircularProgressIndicator(
-                        color = PrimaryGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 state.error != null -> {
                     Text(
                         text = state.error ?: "Ocorreu um erro.",
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -160,17 +153,13 @@ fun NotificationView(
                                     }
 
                                     // --- NAVEGAÇÃO ---
-
-                                    // 1. Candidatura
                                     if (notification.type.startsWith("candidatura", ignoreCase = true)) {
                                         navController.navigate("await-candidature")
                                     }
-                                    // 2. Entrega ou Levantamento
                                     else if (notification.type.equals("entrega", ignoreCase = true) ||
                                         notification.type.equals("entrega_rejeitada", ignoreCase = true)) {
                                         navController.navigate("beneficiary_delivery_detail/${notification.relatedId}/${notification.docId}")
                                     }
-                                    // 3. Pedido (Default)
                                     else {
                                         navController.navigate("beneficiary_order_details/${notification.relatedId}")
                                     }
@@ -208,7 +197,7 @@ fun BeneficiaryFilterSection(
         "cat_pedidos" to "Pedidos",
         "cat_candidaturas" to "Candidatura",
         "cat_levantamentos" to "Levantamentos",
-        "cat_Entrega" to "Entregas" // Adicionado
+        "cat_Entrega" to "Entregas"
     )
 
     LazyRow(
@@ -221,10 +210,13 @@ fun BeneficiaryFilterSection(
             Button(
                 onClick = { onFilterSelected(key) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) PrimaryGreen else Color.White,
-                    contentColor = if (isSelected) Color.White else TextGray
+                    // Se selecionado: Verde. Se não: Surface (Branco/Cinza Escuro)
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    // Se selecionado: Branco. Se não: Texto cinza
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 ),
-                border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray),
+                // Borda suave se não estiver selecionado
+                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                 modifier = Modifier.height(36.dp)
@@ -250,7 +242,9 @@ fun BeneficiaryNotificationCard(
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco (Light) ou DarkSurface (Dark)
+        ),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -263,18 +257,19 @@ fun BeneficiaryNotificationCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(modifier = Modifier.size(48.dp)) {
+                // Fundo do Ícone: Verde com 10% de opacidade
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(CircleShape)
-                        .background(LightGreenBg)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         .align(Alignment.Center),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = getBeneficiaryIconForType(notification),
                         contentDescription = null,
-                        tint = PrimaryGreen,
+                        tint = MaterialTheme.colorScheme.primary, // Verde
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -284,7 +279,7 @@ fun BeneficiaryNotificationCard(
                         modifier = Modifier
                             .size(12.dp)
                             .clip(CircleShape)
-                            .background(Color.Red)
+                            .background(MaterialTheme.colorScheme.error) // Vermelho
                             .align(Alignment.TopEnd)
                     )
                 }
@@ -302,7 +297,7 @@ fun BeneficiaryNotificationCard(
                         text = notification.title,
                         fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold,
                         fontSize = 16.sp,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface, // Preto/Branco
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -311,7 +306,7 @@ fun BeneficiaryNotificationCard(
                     Text(
                         text = dateString,
                         fontSize = 12.sp,
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), // Data discreta
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
@@ -321,7 +316,11 @@ fun BeneficiaryNotificationCard(
                 Text(
                     text = notification.body,
                     fontSize = 14.sp,
-                    color = if (isUnread) Color.DarkGray else TextGray,
+                    // Texto do corpo ligeiramente mais claro se lido
+                    color = if (isUnread)
+                        MaterialTheme.colorScheme.onSurface
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 20.sp

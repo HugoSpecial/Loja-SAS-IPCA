@@ -52,16 +52,6 @@ import java.time.format.TextStyle
 import java.util.Date
 import java.util.Locale
 
-// Cores
-val CabazLightBg = Color(0xFFF7F9F8)
-val DisabledDayColor = Color(0xFFE0E0E0)
-val SelectedDayBg = Color(0xFFDBECDF)
-val TextDark = Color(0xFF3E3448)
-val TextGray = Color(0xFF999999)
-val ButtonGreen = Color(0xFF438E63)
-val ButtonGray = Color(0xFFAAB0AD)
-val ButtonRemoveRed = Color(0xFFE57373)
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NewBasketView(
@@ -82,13 +72,13 @@ fun NewBasketView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(CabazLightBg)
+            .background(MaterialTheme.colorScheme.background) // Fundo adaptável
     ) {
         // --- CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(CabazLightBg)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(top = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -99,7 +89,7 @@ fun NewBasketView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary, // GreenPrimary
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -137,18 +127,25 @@ fun NewBasketView(
             SectionHeader("Qual dia?", "Escolha um dia disponível para levantamento.")
             Spacer(modifier = Modifier.height(16.dp))
 
-            DynamicCalendarView(displayedYearMonth, selectedDate, { displayedYearMonth = it }, { selectedDate = it })
+            DynamicCalendarView(
+                displayedYearMonth,
+                selectedDate,
+                { displayedYearMonth = it },
+                { selectedDate = it }
+            )
             Spacer(modifier = Modifier.height(40.dp))
 
             SectionHeader("Produtos", "Ajuste as quantidades.")
             Spacer(modifier = Modifier.height(16.dp))
 
             if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.primary
+                )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (productsToShow.isEmpty()) {
-                        // UPDATE: EmptyStateView
                         Box(modifier = Modifier.height(150.dp)) {
                             EmptyState(
                                 message = "O cabaz está vazio. Volte à Home para adicionar produtos.",
@@ -184,7 +181,10 @@ fun NewBasketView(
                             }
                         },
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(55.dp)
@@ -200,7 +200,7 @@ fun NewBasketView(
     }
 }
 
-// --- Componentes Auxiliares (Mantêm-se iguais, só com TextOverflow) ---
+// --- Componentes Auxiliares ---
 
 @Composable
 fun ProductCardItem(product: Product, quantity: Int, stock: Int, onAdd: () -> Unit, onRemove: () -> Unit) {
@@ -214,10 +214,14 @@ fun ProductCardItem(product: Product, quantity: Int, stock: Int, onAdd: () -> Un
             } catch (e: Exception) {}
         }
     }
+
+    // Card agora usa 'surface' (Branco no Light, Cinza Escuro no Dark)
     Card(
         modifier = Modifier.fillMaxWidth().height(80.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -230,7 +234,7 @@ fun ProductCardItem(product: Product, quantity: Int, stock: Int, onAdd: () -> Un
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Gray.copy(0.1f)),
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)), // Placeholder adaptável
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageBitmap != null) {
@@ -241,39 +245,44 @@ fun ProductCardItem(product: Product, quantity: Int, stock: Int, onAdd: () -> Un
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Text("Img", fontSize = 10.sp, color = Color.Gray)
+                        Text("Img", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    // UPDATE: Ellipsis
                     Text(
                         text = product.name,
-                        color = TextDark,
+                        color = MaterialTheme.colorScheme.onSurface, // Preto ou Branco
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text("Stock: $stock", fontSize = 10.sp, color = TextGray)
+                    Text(
+                        text = "Stock: $stock",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 QuantityButton(
                     icon = if (quantity == 1) Icons.Default.Delete else ImageVector.vectorResource(id = R.drawable.sub_round),
-                    backgroundColor = if (quantity == 1) ButtonRemoveRed else ButtonGreen,
+                    // Vermelho se for para remover, Verde se for subtrair
+                    backgroundColor = if (quantity == 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     onClick = onRemove
                 )
                 Text(
                     text = "$quantity",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextDark,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
                 QuantityButton(
                     icon = Icons.Default.Add,
-                    backgroundColor = if (quantity >= stock) ButtonGray else ButtonGreen,
+                    // Cinza se stock maximo, Verde se normal
+                    backgroundColor = if (quantity >= stock) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primary,
                     onClick = onAdd
                 )
             }
@@ -294,7 +303,7 @@ fun QuantityButton(icon: ImageVector, backgroundColor: Color, onClick: () -> Uni
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White,
+            tint = Color.White, // Ícone sempre branco
             modifier = Modifier.size(20.dp)
         )
     }
@@ -304,7 +313,12 @@ fun QuantityButton(icon: ImageVector, backgroundColor: Color, onClick: () -> Uni
 fun SectionHeader(title: String, subtitle: String) {
     Column {
         Text(title, color = MaterialTheme.colorScheme.primary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = TextDark.copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            subtitle,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -319,16 +333,60 @@ fun DynamicCalendarView(displayedYearMonth: YearMonth, selectedDate: LocalDate, 
     val startOffset = displayedYearMonth.atDay(1).dayOfWeek.value % 7
 
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        // Navegação Mês
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             val canGoBack = displayedYearMonth.isAfter(YearMonth.now())
-            IconButton(onClick = { if (canGoBack) onMonthChange(displayedYearMonth.minusMonths(1)) }, enabled = canGoBack) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = if (canGoBack) TextDark else Color.Transparent) }
-            Text("$monthName $year", color = TextDark, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            IconButton(onClick = { onMonthChange(displayedYearMonth.plusMonths(1)) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = TextDark) }
+            IconButton(
+                onClick = { if (canGoBack) onMonthChange(displayedYearMonth.minusMonths(1)) },
+                enabled = canGoBack
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    null,
+                    tint = if (canGoBack) MaterialTheme.colorScheme.onBackground else Color.Transparent
+                )
+            }
+            Text(
+                "$monthName $year",
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+            IconButton(onClick = { onMonthChange(displayedYearMonth.plusMonths(1)) }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    null,
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
+
+        // Cabeçalho Semanal
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            daysOfWeek.forEach { Text(it, color = if (it == "Dom" || it == "Sáb") Color(0xFF5E4B68) else MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.width(40.dp), textAlign = TextAlign.Center) }
+            daysOfWeek.forEach { dayName ->
+                // Fins de semana com cor diferente ou padrão
+                val color = if (dayName == "Dom" || dayName == "Sáb")
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                else
+                    MaterialTheme.colorScheme.primary
+
+                Text(
+                    dayName,
+                    color = color,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.width(40.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         Spacer(modifier = Modifier.height(12.dp))
+
+        // Grelha de Dias
         val totalSlots = startOffset + daysInMonth
         val rows = (totalSlots / 7) + if (totalSlots % 7 != 0) 1 else 0
         for (r in 0 until rows) {
@@ -340,7 +398,11 @@ fun DynamicCalendarView(displayedYearMonth: YearMonth, selectedDate: LocalDate, 
                         if (isValid) {
                             val date = displayedYearMonth.atDay(dayNum)
                             val disabled = (c == 0 || c == 6) || !date.isAfter(today)
-                            DayCell(dayNum, selectedDate.isEqual(date), disabled) { if (!disabled) onDateSelected(date) }
+                            DayCell(
+                                day = dayNum,
+                                selected = selectedDate.isEqual(date),
+                                disabled = disabled
+                            ) { if (!disabled) onDateSelected(date) }
                         }
                     }
                 }
@@ -351,10 +413,28 @@ fun DynamicCalendarView(displayedYearMonth: YearMonth, selectedDate: LocalDate, 
 
 @Composable
 fun DayCell(day: Int, selected: Boolean, disabled: Boolean, onClick: () -> Unit) {
-    val bg = when { selected -> SelectedDayBg; disabled -> DisabledDayColor; else -> Color.Transparent }
+    // Lógica de cores do Calendário
+    val bg = when {
+        selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) // Verde suave
+        disabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f) // Cinza muito claro
+        else -> Color.Transparent
+    }
+
     val border = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
-    val text = if (disabled) TextGray else TextDark
-    Box(modifier = Modifier.fillMaxSize().background(bg, RoundedCornerShape(4.dp)).border(1.dp, border, RoundedCornerShape(4.dp)).clickable(enabled = !disabled, onClick = onClick), contentAlignment = Alignment.Center) {
+
+    val text = if (disabled)
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+    else
+        MaterialTheme.colorScheme.onSurface
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bg, RoundedCornerShape(4.dp))
+            .border(1.dp, border, RoundedCornerShape(4.dp))
+            .clickable(enabled = !disabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
         Text("$day", color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }

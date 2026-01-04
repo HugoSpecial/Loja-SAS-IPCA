@@ -53,11 +53,13 @@ fun BeneficiaryBottomBar(
             .height(100.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
+        // --- BARRA DE NAVEGAÇÃO ---
         NavigationBar(
             modifier = Modifier
                 .height(80.dp)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-            containerColor = Color.White,
+            // Fundo adaptável (Branco no Light, Escuro no Dark)
+            containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 10.dp
         ) {
             // 1. HOME
@@ -66,15 +68,17 @@ fun BeneficiaryBottomBar(
                 onClick = { selectedItem = BottomBarItem.Home; navController.navigate(BottomBarItem.Home.route) { launchSingleTop = true; restoreState = true } },
                 icon = { Icon(painter = painterResource(id = R.drawable.icon_home), contentDescription = null, modifier = Modifier.size(28.dp)) },
                 label = { Text(text = BottomBarItem.Home.title, fontSize = 11.sp) },
-                colors = navItemColors(), modifier = Modifier.weight(1f)
+                colors = navItemColors(),
+                modifier = Modifier.weight(1f)
             )
 
+            // 2. NOTIFICAÇÕES
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Notification,
                 onClick = { selectedItem = BottomBarItem.Notification; navController.navigate(BottomBarItem.Notification.route) { launchSingleTop = true; restoreState = true } },
                 icon = {
                     if (unreadCount > 0) {
-                        BadgedBox(badge = { Badge(containerColor = Color.Red, contentColor = Color.White) { Text("$unreadCount") } }) {
+                        BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White) { Text("$unreadCount") } }) {
                             Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
                         }
                     } else {
@@ -82,78 +86,76 @@ fun BeneficiaryBottomBar(
                     }
                 },
                 label = { Text(text = BottomBarItem.Notification.title, fontSize = 10.sp) },
-                colors = navItemColors(), modifier = Modifier.weight(1f)
+                colors = navItemColors(),
+                modifier = Modifier.weight(1f)
             )
 
+            // Espaço vazio para o botão central
             Box(modifier = Modifier.weight(1f))
 
+            // 3. HISTÓRICO
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.History,
                 onClick = { selectedItem = BottomBarItem.History; navController.navigate(BottomBarItem.History.route) { launchSingleTop = true; restoreState = true } },
                 icon = { Icon(painter = painterResource(id = R.drawable.outline_watch), contentDescription = null, modifier = Modifier.size(28.dp)) },
                 label = { Text(text = BottomBarItem.History.title, fontSize = 11.sp) },
-                colors = navItemColors(), modifier = Modifier.weight(1f)
+                colors = navItemColors(),
+                modifier = Modifier.weight(1f)
             )
 
+            // 4. PERFIL
             NavigationBarItem(
                 selected = selectedItem == BottomBarItem.Profile,
                 onClick = { selectedItem = BottomBarItem.Profile; navController.navigate(BottomBarItem.Profile.route) { launchSingleTop = true; restoreState = true } },
                 icon = { Icon(painter = painterResource(id = R.drawable.outline_user), contentDescription = null, modifier = Modifier.size(28.dp)) },
                 label = { Text(text = BottomBarItem.Profile.title, fontSize = 11.sp) },
-                colors = navItemColors(), modifier = Modifier.weight(1f)
+                colors = navItemColors(),
+                modifier = Modifier.weight(1f)
             )
         }
 
+        // --- BOTÃO FLUTUANTE (CARRINHO) ---
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = (-15).dp)
         ) {
-            if (cartCount > 0) {
-                BadgedBox(
-                    badge = {
-                        Badge(
-                            containerColor = Color.Red,
-                            contentColor = Color.White
-                        ) {
-                            Text("$cartCount")
-                        }
-                    }
-                ) {
-                    Surface(
-                        onClick = { navController.navigate("newbasket") },
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        border = BorderStroke(4.dp, Color.White),
-                        modifier = Modifier.size(70.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.shopping_cart),
-                                contentDescription = "Carrinho",
-                                tint = Color.White,
-                                modifier = Modifier.size(30.dp)
-                            )
-                        }
-                    }
-                }
-            } else {
+            // Função auxiliar para desenhar o botão com ou sem badge
+            val cartButtonContent = @Composable {
                 Surface(
                     onClick = { navController.navigate("newbasket") },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
-                    border = BorderStroke(4.dp, Color.White),
+                    // A borda deve ter a mesma cor do fundo da barra (surface) para parecer um recorte
+                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
                     modifier = Modifier.size(70.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(id = R.drawable.shopping_cart),
                             contentDescription = "Carrinho",
-                            tint = Color.White,
+                            tint = Color.White, // Ícone sempre branco sobre o verde
                             modifier = Modifier.size(30.dp)
                         )
                     }
                 }
+            }
+
+            if (cartCount > 0) {
+                BadgedBox(
+                    badge = {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = Color.White
+                        ) {
+                            Text("$cartCount")
+                        }
+                    }
+                ) {
+                    cartButtonContent()
+                }
+            } else {
+                cartButtonContent()
             }
         }
     }
@@ -163,7 +165,8 @@ fun BeneficiaryBottomBar(
 fun navItemColors() = NavigationBarItemDefaults.colors(
     selectedIconColor = MaterialTheme.colorScheme.primary,
     selectedTextColor = MaterialTheme.colorScheme.primary,
-    unselectedIconColor = Color(0xFF4A4A4A),
-    unselectedTextColor = Color(0xFF4A4A4A),
+    // Cores adaptáveis para itens não selecionados (Cinza escuro no Light, Cinza claro no Dark)
+    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+    unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     indicatorColor = Color.Transparent
 )
