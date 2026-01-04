@@ -27,9 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -38,7 +36,7 @@ sealed class BottomBarItemCollaborator(val title: String, val route: String) {
     object Home : BottomBarItemCollaborator("Início", "collaborator")
     object Notification : BottomBarItemCollaborator("Notificações", "notification-collaborador")
     object History : BottomBarItemCollaborator("Histórico ", "history-collaborador")
-    object BeneficiaryList : BottomBarItemCollaborator("Benefeciários", "list-beneficiary")
+    object BeneficiaryList : BottomBarItemCollaborator("Beneficiários", "list-beneficiary")
 }
 
 @Composable
@@ -68,14 +66,17 @@ fun CollaboratorBottomBar(
             .height(100.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
+        // --- BARRA DE NAVEGAÇÃO ---
         NavigationBar(
             modifier = Modifier
                 .height(80.dp)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-            containerColor = Color.White,
+            // Fundo adaptável (Branco no Light, Escuro no Dark)
+            containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 10.dp
         ) {
 
+            // 1. HOME
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.Home,
                 onClick = {
@@ -86,10 +87,11 @@ fun CollaboratorBottomBar(
                     Icon(painter = painterResource(id = R.drawable.icon_home), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
                 label = { Text(text = BottomBarItemCollaborator.Home.title, fontSize = 11.sp) },
-                colors = navItemsColors(),
+                colors = navItemsColorsCollaborator(),
                 modifier = Modifier.weight(1f)
             )
 
+            // 2. NOTIFICAÇÕES
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.Notification,
                 onClick = {
@@ -101,27 +103,28 @@ fun CollaboratorBottomBar(
                         BadgedBox(
                             badge = {
                                 Badge(
-                                    containerColor = Color.Red,
+                                    containerColor = MaterialTheme.colorScheme.error, // Vermelho do tema
                                     contentColor = Color.White
                                 ) {
-                                    Text("$unreadCount") // Mostra o número. Se quiseres só a bola, apaga esta linha.
+                                    Text("$unreadCount")
                                 }
                             }
                         ) {
                             Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
                         }
                     } else {
-                        // Ícone normal sem badge
                         Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
                     }
                 },
                 label = { Text(text = BottomBarItemCollaborator.Notification.title, fontSize = 10.sp) },
-                colors = navItemsColors(),
+                colors = navItemsColorsCollaborator(),
                 modifier = Modifier.weight(1f)
             )
 
+            // ESPAÇO VAZIO (para o botão central)
             Box(modifier = Modifier.weight(1f))
 
+            // 3. HISTÓRICO
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.History,
                 onClick = {
@@ -132,10 +135,11 @@ fun CollaboratorBottomBar(
                     Icon(painter = painterResource(id = R.drawable.outline_watch), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
                 label = { Text(text = BottomBarItemCollaborator.History.title, fontSize = 11.sp) },
-                colors = navItemsColors(),
+                colors = navItemsColorsCollaborator(),
                 modifier = Modifier.weight(1f)
             )
 
+            // 4. BENEFICIÁRIOS
             NavigationBarItem(
                 selected = selectedItem == BottomBarItemCollaborator.BeneficiaryList,
                 onClick = {
@@ -146,16 +150,18 @@ fun CollaboratorBottomBar(
                     Icon(painter = painterResource(id = R.drawable.persons_two), contentDescription = null, modifier = Modifier.size(28.dp))
                 },
                 label = { Text(text = BottomBarItemCollaborator.BeneficiaryList.title, fontSize = 9.sp) },
-                colors = navItemsColors(),
+                colors = navItemsColorsCollaborator(),
                 modifier = Modifier.weight(1f)
             )
         }
 
+        // --- BOTÃO CENTRAL (STOCK) ---
         Surface(
             onClick = { navController.navigate("stock") },
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
-            border = BorderStroke(4.dp, Color.White),
+            // A borda deve ser da mesma cor do fundo da barra (surface) para parecer transparente/recortada
+            border = BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .size(70.dp)
@@ -164,8 +170,8 @@ fun CollaboratorBottomBar(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(id = R.drawable.box_storage),
-                    contentDescription = "Carrinho",
-                    tint = Color.White,
+                    contentDescription = "Stock",
+                    tint = Color.White, // Ícone branco
                     modifier = Modifier.size(30.dp)
                 )
             }
@@ -174,10 +180,11 @@ fun CollaboratorBottomBar(
 }
 
 @Composable
-fun navItemsColors() = NavigationBarItemDefaults.colors(
+fun navItemsColorsCollaborator() = NavigationBarItemDefaults.colors(
     selectedIconColor = MaterialTheme.colorScheme.primary,
     selectedTextColor = MaterialTheme.colorScheme.primary,
-    unselectedIconColor = Color(0xFF4A4A4A),
-    unselectedTextColor = Color(0xFF4A4A4A),
+    // Cores adaptáveis para itens não selecionados (Cinza escuro no Light, Cinza claro no Dark)
+    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+    unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     indicatorColor = Color.Transparent
 )

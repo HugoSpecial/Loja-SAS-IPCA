@@ -7,7 +7,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -23,16 +22,24 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Ícone Grande
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.LightGray,
+            // Usa a cor base (Preto/Branco) com 30% de opacidade.
+            // Light Mode: Fica cinza claro.
+            // Dark Mode: Fica branco translúcido (visível no fundo escuro).
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
             modifier = Modifier.size(64.dp)
         )
+
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Mensagem de Texto
         Text(
             text = message,
-            color = Color.Gray,
+            // Usa a cor base com 60% de opacidade para parecer texto secundário.
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             fontSize = 16.sp
         )
     }
@@ -41,5 +48,6 @@ fun EmptyState(
 @Preview(showBackground = true)
 @Composable
 fun EmptyStatePreview() {
+    // Para testar o tema corretamente no preview, terias de envolver com LojaSASTheme
     EmptyState(message = "Nenhum item para mostrar")
 }

@@ -33,10 +33,6 @@ import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.ui.beneficiary.CartManager
 import ipca.project.lojasas.ui.components.EmptyState
 
-// Cores dos Botões
-val ButtonAddColor = Color(0xFF4CAF50)
-val ButtonRemoveColor = Color(0xFFE57373)
-
 @Composable
 fun HomeView(
     navController: NavController,
@@ -51,7 +47,7 @@ fun HomeView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background) // Fundo adaptável (Cinza/Preto)
             .padding(16.dp)
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -60,18 +56,27 @@ fun HomeView(
         Image(
             painter = painterResource(id = R.drawable.logo_sas),
             contentDescription = "Logo",
-            modifier = Modifier.height(80.dp).padding(bottom = 16.dp)
+            modifier = Modifier
+                .height(80.dp)
+                .padding(bottom = 16.dp)
         )
 
         // --- LOADING / ERRO ---
         if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (!uiState.error.isNullOrEmpty()) {
-            Text("Erro: ${uiState.error}", color = Color.Red)
+            Text(
+                text = "Erro: ${uiState.error}",
+                color = MaterialTheme.colorScheme.error // Vermelho do tema
+            )
         } else if (categories.isEmpty()) {
-            // UPDATE: EmptyStateView
             Box(modifier = Modifier.height(300.dp)) {
                 EmptyState(
                     message = "A sua candidatura não tem produtos atribuídos.",
@@ -85,18 +90,24 @@ fun HomeView(
                     it.category.trim().equals(category, ignoreCase = true)
                 }
 
+                // Título da Categoria
                 Text(
                     text = "${category.replaceFirstChar { it.uppercase() }}:",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    color = MaterialTheme.colorScheme.onBackground, // Preto (Light) ou Branco (Dark)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 )
 
                 if (productsByCategory.isNotEmpty()) {
                     val chunked = productsByCategory.chunked(2)
                     chunked.forEach { rowItems ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             rowItems.forEach { product ->
                                 val isSelected = cartItems.containsKey(product.docId)
 
@@ -114,7 +125,12 @@ fun HomeView(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 } else {
-                    Text("Sem produtos disponíveis nesta categoria.", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(
+                        text = "Sem produtos disponíveis nesta categoria.",
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), // Cinza adaptável
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
 
                 if (index < categories.lastIndex) Spacer(modifier = Modifier.height(24.dp))
@@ -137,17 +153,21 @@ fun ProductCardSelectable(
             .shadow(4.dp, RoundedCornerShape(12.dp))
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco (Light) ou Preto (Dark)
+        )
     ) {
         Column(
             verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxSize().padding(8.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
         ) {
-            // UPDATE: Ellipsis
             Text(
                 text = product.name,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface, // Texto adaptável
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 20.sp,
@@ -166,11 +186,28 @@ fun ProductCardSelectable(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(8.dp)).background(Color.LightGray.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    // Fundo cinza clarinho para placeholder (adaptável)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
                 if (imageBitmap != null) {
-                    Image(bitmap = imageBitmap!!, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    Image(
+                        bitmap = imageBitmap!!,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 } else {
-                    Text("Sem Imagem", fontSize = 10.sp, color = Color.Gray)
+                    Text(
+                        "Sem Imagem",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
                 }
             }
 
@@ -178,12 +215,22 @@ fun ProductCardSelectable(
 
             Button(
                 onClick = onClick,
-                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) ButtonRemoveColor else ButtonAddColor),
+                colors = ButtonDefaults.buttonColors(
+                    // Se selecionado: Vermelho (Erro/Remover). Se não: Verde (Primary/Adicionar)
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ),
                 contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.fillMaxWidth().height(36.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
                 shape = RoundedCornerShape(6.dp)
             ) {
-                Text(text = if (isSelected) "Remover" else "Adicionar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = if (isSelected) "Remover" else "Adicionar",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

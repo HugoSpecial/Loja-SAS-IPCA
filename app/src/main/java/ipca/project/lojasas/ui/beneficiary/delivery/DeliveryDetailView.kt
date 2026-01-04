@@ -19,9 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import ipca.project.lojasas.ui.beneficiary.orders.BackgroundColor
-import ipca.project.lojasas.ui.beneficiary.orders.TextGray
-import ipca.project.lojasas.ui.components.IpcaGreen
+// Imports do teu projeto (Certifica-te que o caminho do SectionTitle está certo)
 import ipca.project.lojasas.ui.components.SectionTitle
 
 @Composable
@@ -56,36 +54,70 @@ fun DeliveryDetailContent(
     onNoteChange: (String) -> Unit = {},
     onSaveClick: (String) -> Unit = {}
 ) {
+    // 1. Fundo adaptável (Cinza Claro no Light, Preto no Dark)
     Box(
-        modifier = Modifier.fillMaxSize().background(BackgroundColor)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
+            // --- CABEÇALHO ---
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = IpcaGreen)
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Voltar",
+                        tint = MaterialTheme.colorScheme.primary // GreenPrimary
+                    )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
-                Text("Detalhes da Entrega", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = IpcaGreen)
+                Text(
+                    "Detalhes da Entrega",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary // GreenPrimary
+                )
             }
 
-            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+            ) {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                SectionTitle("Notificação")
+                SectionTitle("Notificação") // Certifica-te que este componente aceita cores do tema
+
+                // --- CARD DA NOTIFICAÇÃO ---
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface // Branco (Light) ou Preto (Dark)
+                    )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(state.notificationTitle.ifEmpty { "Sem Título" }, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text(
+                            text = state.notificationTitle.ifEmpty { "Sem Título" },
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface // Preto (Light) ou Branco (Dark)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(state.notificationBody.ifEmpty { "Sem conteúdo." }, fontSize = 16.sp, color = TextGray)
+                        Text(
+                            text = state.notificationBody.ifEmpty { "Sem conteúdo." },
+                            fontSize = 16.sp,
+                            // Texto cinza que se adapta ao modo escuro
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
                     }
                 }
 
@@ -93,56 +125,82 @@ fun DeliveryDetailContent(
 
                 SectionTitle("Observação/Resposta")
 
+                // --- CAIXA DE TEXTO ---
                 OutlinedTextField(
                     value = state.userNote,
                     onValueChange = onNoteChange,
-                    // Se isSaved for true (porque gravaste agora ou porque veio da BD), fica bloqueado
                     enabled = !state.isSaved,
-                    modifier = Modifier.fillMaxWidth().height(150.dp).background(Color.White, RoundedCornerShape(8.dp)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = IpcaGreen,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = IpcaGreen,
-                        disabledBorderColor = Color.LightGray,
-                        disabledTextColor = Color.DarkGray
+                        // Bordas
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        disabledBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+
+                        // Fundo
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surface,
+
+                        // Texto e Cursor
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Só mostra o botão se AINDA NÃO estiver salvo
+                // --- BOTÃO ENVIAR ---
                 if (!state.isSaved) {
                     Button(
                         onClick = { onSaveClick(state.userNote) },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary // Branco
+                        ),
                         enabled = !state.isLoading
                     ) {
                         if (state.isLoading) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
                         } else {
-                            Icon(Icons.Default.Send, contentDescription = "Enviar", tint = Color.White)
+                            Icon(Icons.Default.Send, contentDescription = "Enviar")
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Enviar", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
+                // --- MENSAGEM DE SUCESSO ---
                 if (state.isSaved) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Enviado com sucesso!",
-                        color = IpcaGreen,
+                        color = MaterialTheme.colorScheme.primary, // GreenPrimary
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
                 }
 
+                // --- MENSAGEM DE ERRO ---
                 if (state.error != null) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(state.error ?: "Erro", color = Color.Red, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text(
+                        text = state.error ?: "Erro",
+                        color = MaterialTheme.colorScheme.error, // RedPrimary
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
                 }
                 Spacer(modifier = Modifier.height(50.dp))
             }

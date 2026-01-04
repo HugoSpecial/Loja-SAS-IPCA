@@ -30,10 +30,6 @@ import ipca.project.lojasas.ui.components.StatusBadge
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// Cores
-val BackgroundGray = Color(0xFFF5F6F8)
-val TextGray = Color(0xFF8C8C8C)
-
 @Composable
 fun BeneficiaryHistoryView(
     navController: NavController,
@@ -43,7 +39,6 @@ fun BeneficiaryHistoryView(
     var selectedFilter by remember { mutableStateOf("Todos") }
     val filters = listOf("Todos", "Pedidos", "Levantamentos", "Justificações de faltas")
 
-    // Lógica de filtragem simples
     val filteredHistory = remember(state.orders, selectedFilter) {
         when (selectedFilter) {
             "Todos" -> state.orders
@@ -57,7 +52,7 @@ fun BeneficiaryHistoryView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundGray)
+            .background(MaterialTheme.colorScheme.background) // Fundo adaptável
             .padding(horizontal = 20.dp)
     ) {
 
@@ -77,13 +72,14 @@ fun BeneficiaryHistoryView(
             text = "Histórico",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary // Verde
         )
 
         Text(
             text = "Aqui consegue ver o histórico de pedidos realizados, histórico de levantamentos e justificações de faltas.",
             fontSize = 14.sp,
-            color = TextGray,
+            // Texto cinza que se adapta (fica branco translúcido no escuro)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
             lineHeight = 20.sp
         )
@@ -115,7 +111,7 @@ fun BeneficiaryHistoryView(
                 )
                 state.error != null -> Text(
                     text = state.error ?: "Erro desconhecido",
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
                 filteredHistory.isEmpty() -> {
@@ -150,10 +146,13 @@ fun FilterChipButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-            contentColor = if (isSelected) Color.White else TextGray
+            // Se selecionado: Verde. Se não: Branco (Light) ou Preto (Dark)
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            // Se selecionado: Branco. Se não: Cinza/Preto
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         ),
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
+        // Borda cinza suave apenas se não estiver selecionado
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(50),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         modifier = Modifier.height(36.dp)
@@ -174,7 +173,9 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco (Light) / Preto (Dark)
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Linha superior: Tipo e Badge
@@ -200,7 +201,7 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
             Text(
                 text = order.orderDate?.let { dateFormat.format(it) } ?: "--/--/----",
                 fontSize = 13.sp,
-                color = TextGray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) // Cinza
             )
         }
     }
@@ -208,15 +209,18 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
 
 @Composable
 private fun OrderStatusBadge(state: OrderState) {
-    val (backgroundColor, contentColor) = when (state) {
-        OrderState.PENDENTE -> Color(0xFFFFF3E0) to Color(0xFFEF6C00)
-        OrderState.ACEITE -> Color(0xFFE8F5E9) to Color(0xFF2E7D32)
-        OrderState.REJEITADA -> Color(0xFFFFEBEE) to Color(0xFFC62828)
+    // Definimos a cor principal baseada no estado
+    val mainColor = when (state) {
+        OrderState.PENDENTE -> Color(0xFFEF6C00)        // Laranja (Fixo pois é padrão de alerta)
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary // Verde do Tema
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error // Vermelho do Tema
     }
 
+    // O fundo usa a mesma cor principal, mas com apenas 10% de opacidade.
+    // Isso funciona perfeitamente tanto no branco quanto no preto.
     StatusBadge(
         label = state.name,
-        backgroundColor = backgroundColor,
-        contentColor = contentColor
+        backgroundColor = mainColor.copy(alpha = 0.1f),
+        contentColor = mainColor
     )
 }

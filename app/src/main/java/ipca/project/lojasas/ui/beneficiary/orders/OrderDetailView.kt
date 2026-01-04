@@ -38,10 +38,6 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
-val BackgroundColor = Color(0xFFF5F6F8)
-val TextGray = Color(0xFF8C8C8C)
-val IpcaGreen = Color(0xFF2E7D32)
-
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +56,7 @@ fun BeneficiaryOrderDetailView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(MaterialTheme.colorScheme.background) // Fundo adaptável
     ) {
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -73,23 +69,30 @@ fun BeneficiaryOrderDetailView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Voltar",
+                        tint = MaterialTheme.colorScheme.primary // GreenPrimary
+                    )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = "Detalhes do Pedido",
                     fontSize = 22.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
 
             if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.primary
+                )
             } else if (state.error != null) {
                 Text(
                     text = state.error ?: "Erro",
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             } else if (state.selectedOrder != null) {
@@ -111,7 +114,11 @@ fun BeneficiaryOrderDetailView(
                     // --- Produtos Solicitados ---
                     SectionTitle("Produtos solicitados")
                     if (order.items.isEmpty()) {
-                        Text("Nenhum produto solicitado.", color = Color.Gray, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(
+                            "Nenhum produto solicitado.",
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                            fontWeight = FontWeight.Bold
+                        )
                     } else {
                         ProductList(order.items)
                     }
@@ -190,7 +197,9 @@ fun ProposalCard(
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -203,9 +212,18 @@ fun ProposalCard(
                 SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT")).format(it)
             } ?: "--"
 
-            Text("Proposta enviada em: $proposalDateStr", fontSize = 14.sp, color = TextGray)
+            Text(
+                "Proposta enviada em: $proposalDateStr",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Nova data: $newDateStr", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Nova data: $newDateStr",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary // GreenPrimary
+            )
             Spacer(modifier = Modifier.height(12.dp))
 
             if (showButtons) {
@@ -214,26 +232,34 @@ fun ProposalCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    // Botão Aceitar
                     Button(
                         onClick = { viewModel.acceptProposal(orderId, proposal.docId ?: "") },
-                        colors = ButtonDefaults.buttonColors(containerColor = IpcaGreen),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(40.dp)
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "Aceitar", tint = Color.White)
+                        Icon(Icons.Default.Check, contentDescription = "Aceitar")
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Aceitar", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Aceitar", fontWeight = FontWeight.Bold)
                     }
 
+                    // Botão Recusar
                     Button(
                         onClick = { showDatePicker = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error, // Vermelho
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(40.dp)
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Recusar", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Recusar")
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Recusar / Nova Data", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Recusar / Nova Data", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -241,17 +267,23 @@ fun ProposalCard(
     }
 
     if (showDatePicker) {
+        // O AlertDialog usa a cor 'surface' automaticamente
         AlertDialog(
             onDismissRequest = { showDatePicker = false },
+            containerColor = MaterialTheme.colorScheme.surface,
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.proposeNewDate(orderId, Date.from(selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant()))
                         showDatePicker = false
                     }
-                ) { Text("Confirmar") }
+                ) { Text("Confirmar", color = MaterialTheme.colorScheme.primary) }
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") } },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar", color = MaterialTheme.colorScheme.error)
+                }
+            },
             text = {
                 Column {
                     DynamicCalendarView(
@@ -268,12 +300,19 @@ fun ProposalCard(
 
 @Composable
 fun OrderStatusBadge(state: OrderState) {
-    val (bg, color) = when (state) {
-        OrderState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
-        OrderState.ACEITE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
-        OrderState.REJEITADA -> Color(0xFFFFCDD2) to Color(0xFFC62828)
+    // Cores adaptáveis:
+    val mainColor = when (state) {
+        OrderState.PENDENTE -> Color(0xFFEF6C00)        // Laranja (Fixo)
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary // GreenPrimary
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error // RedPrimary
     }
-    StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
+
+    // Fundo usa 10% da cor principal. Funciona em Light e Dark mode.
+    StatusBadge(
+        label = state.name,
+        backgroundColor = mainColor.copy(alpha = 0.1f),
+        contentColor = mainColor
+    )
 }
 
 @Composable
@@ -285,7 +324,9 @@ fun ProductList(items: List<OrderItem>) {
                 .padding(vertical = 4.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+            )
         ) {
             Row(
                 modifier = Modifier
@@ -293,8 +334,16 @@ fun ProductList(items: List<OrderItem>) {
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = item.name ?: "-", fontWeight = FontWeight.Bold)
-                Text(text = "x${item.quantity}", fontWeight = FontWeight.Bold)
+                Text(
+                    text = item.name ?: "-",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "x${item.quantity}",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

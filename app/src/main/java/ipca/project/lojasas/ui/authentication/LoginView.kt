@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import ipca.project.lojasas.R // Certifica-te que este import do R está correto para o teu pacote
 
 @Composable
 fun LoginView(
@@ -52,7 +53,7 @@ fun LoginView(
     val uiState by viewModel.uiState
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // --- POP-UP DE ERRO LIMPO ---
+    // POP-UP DE ERRO
     if (uiState.error != null) {
         CustomErrorDialog(
             error = uiState.error ?: "Ocorreu um erro inesperado.",
@@ -60,12 +61,13 @@ fun LoginView(
         )
     }
 
+    // O Scaffold usa automaticamente o 'background' do Theme (MyBackColor)
     Scaffold(modifier = modifier.fillMaxSize()) { paddingValues ->
         Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            color = Color(0xFFF5F5F5)
+            color = MaterialTheme.colorScheme.background // Garante a cor de fundo Cinza Claro
         ) {
             Column(
                 modifier = Modifier
@@ -78,7 +80,7 @@ fun LoginView(
 
                 // LOGO
                 Image(
-                    painter = painterResource(id = ipca.project.lojasas.R.drawable.logo_sas),
+                    painter = painterResource(id = R.drawable.logo_sas),
                     contentDescription = "Logo IPCA SAS",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -91,7 +93,7 @@ fun LoginView(
                 Text(
                     text = "Login",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary, // Usa o GreenPrimary
                     fontWeight = FontWeight.Bold,
                     fontSize = 32.sp
                 )
@@ -101,7 +103,7 @@ fun LoginView(
                 // --- INPUT EMAIL ---
                 Text(
                     text = "Email",
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary, // Usa o GreenPrimary
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
                 )
@@ -109,23 +111,30 @@ fun LoginView(
                 OutlinedTextField(
                     value = uiState.email ?: "",
                     onValueChange = { viewModel.updateEmail(it) },
-                    placeholder = { Text("Escrever email ...", color = Color.Gray) },
+                    placeholder = {
+                        Text(
+                            "Escrever email ...",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) // Cinza adaptável
+                        )
+                    },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary // Ícone Verde
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isLoading,
-                    shape = RoundedCornerShape(12.dp), // Cantos arredondados suaves
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedContainerColor = Color.White, // Fundo branco
-                        unfocusedContainerColor = Color.White,
-                        cursorColor = MaterialTheme.colorScheme.primary
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,   // Borda Verde ao focar
+                        unfocusedBorderColor = MaterialTheme.colorScheme.primary, // Borda Verde sem foco
+                        cursorColor = MaterialTheme.colorScheme.primary,          // Cursor Verde
+
+                        // Fundo do input: Branco no Light Mode, Escuro no Dark Mode (definido no Theme)
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     singleLine = true
                 )
@@ -135,7 +144,7 @@ fun LoginView(
                 // --- INPUT PASSWORD ---
                 Text(
                     text = "Password",
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary, // Usa o GreenPrimary
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
                 )
@@ -143,23 +152,28 @@ fun LoginView(
                 OutlinedTextField(
                     value = uiState.password ?: "",
                     onValueChange = { viewModel.updatePassword(it) },
-                    placeholder = { Text("Escrever password ...", color = Color.Gray) },
+                    placeholder = {
+                        Text(
+                            "Escrever password ...",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary // Ícone Verde
                         )
                     },
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
                                 painter = painterResource(
-                                    id = if (passwordVisible) ipca.project.lojasas.R.drawable.icon_eyeopen
-                                    else ipca.project.lojasas.R.drawable.icon_eyeclose
+                                    id = if (passwordVisible) R.drawable.icon_eyeopen
+                                    else R.drawable.icon_eyeclose
                                 ),
                                 contentDescription = "Toggle password",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.primary, // Ícone Verde
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -171,9 +185,9 @@ fun LoginView(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        cursorColor = MaterialTheme.colorScheme.primary
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     singleLine = true
                 )
@@ -197,8 +211,11 @@ fun LoginView(
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
+                        // Fundo Verde
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White,
+                        // Texto Branco (onPrimary)
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        // Cor quando desativado (opcional, cinza automático)
                         disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
@@ -206,7 +223,7 @@ fun LoginView(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary, // Spinner Branco
                             strokeWidth = 3.dp
                         )
                     } else {
@@ -224,7 +241,7 @@ fun LoginView(
     }
 }
 
-// --- COMPONENTE DE ERRO REUTILIZÁVEL (CLEAN) ---
+// --- COMPONENTE DE ERRO REUTILIZÁVEL ---
 @Composable
 fun CustomErrorDialog(
     error: String,
@@ -233,12 +250,12 @@ fun CustomErrorDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(16.dp),
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface, // Branco
         title = {
             Text(
                 text = "Atenção",
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.error, // RedPrimary
                 fontSize = 20.sp
             )
         },
@@ -246,15 +263,15 @@ fun CustomErrorDialog(
             Text(
                 text = error,
                 fontSize = 16.sp,
-                color = Color(0xFF4A4A4A)
+                color = MaterialTheme.colorScheme.onSurface // Preto
             )
         },
         confirmButton = {
             Button(
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary, // GreenPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary // Branco
                 ),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.padding(bottom = 8.dp, end = 8.dp)
