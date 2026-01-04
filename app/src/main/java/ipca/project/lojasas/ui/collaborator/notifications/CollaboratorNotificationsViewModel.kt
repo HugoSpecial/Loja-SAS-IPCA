@@ -9,8 +9,6 @@ import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Notification
-// Certifica-te que tens este import ou usa a String "CANCELADO" diretamente
-import ipca.project.lojasas.models.DeliveryState
 
 data class NotificationListState(
     val notifications: List<Notification> = emptyList(),
@@ -83,25 +81,43 @@ class NotificationsCollaboratorViewModel : ViewModel() {
             .addOnFailureListener { Log.e("NotifVM", "Erro ao marcar como lida", it) }
     }
 
-    // --- FUNÇÃO CORRIGIDA ---
+    // --- NOVA FUNÇÃO: Verificar se já tem razão ---
+    fun checkDeliveryStatus(deliveryId: String, onResult: (String?) -> Unit) {
+        if (deliveryId.isEmpty()) {
+            onResult(null)
+            return
+        }
+        db.collection("delivery").document(deliveryId).get()
+            .addOnSuccessListener { document ->
+                // Devolve a razão se existir e não for vazia
+                val reason = document.getString("reason")
+                if (!reason.isNullOrBlank()) {
+                    onResult(reason)
+                } else {
+                    onResult(null)
+                }
+            }
+            .addOnFailureListener {
+                onResult(null)
+            }
+    }
+
     fun handleJustificationDecision(notification: Notification, accepted: Boolean, onSuccess: () -> Unit) {
         val deliveryId = notification.relatedId
-        // O beneficiário que enviou a justificação está no senderId
         val beneficiaryUserId = notification.senderId
 
         if (deliveryId.isEmpty()) return
 
-        // 1. CASO ACEITE: Não faz nada, só marca notificação como lida
         if (accepted) {
-            markAsRead(notification.docId)
-            onSuccess()
+            JustifyBeneficiary(deliveryId) {
+                markAsRead(notification.docId)
+                onSuccess()
+            }
             return
         }
 
-        // 2. CASO RECUSADO (Aplicar Falta): Executa a lógica do FaultDelivery
         if (beneficiaryUserId.isNotEmpty()) {
             applyFaultToBeneficiary(userId = beneficiaryUserId, deliveryId = deliveryId) {
-                // Se correr bem, marca como lida e fecha o popup
                 markAsRead(notification.docId)
                 onSuccess()
             }
@@ -110,7 +126,26 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         }
     }
 
-    // Lógica copiada/adaptada do teu DeliveryViewModel (FaultDelivery)
+    private fun JustifyBeneficiary(deliveryId: String, onComplete: () -> Unit) {
+        uiState.value = uiState.value.copy(isLoading = true)
+
+        // Atualizamos Reason E State ao mesmo tempo
+        db.collection("delivery").document(deliveryId)
+            .update(
+                mapOf(
+                    "reason" to "Justificado",
+                    "state" to "CANCELADO"
+                )
+            )
+            .addOnSuccessListener {
+                uiState.value = uiState.value.copy(isLoading = false)
+                onComplete()
+            }
+            .addOnFailureListener {
+                uiState.value = uiState.value.copy(isLoading = false, error = "Erro ao justificar")
+            }
+    }
+
     private fun applyFaultToBeneficiary(userId: String, deliveryId: String, onComplete: () -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
 
@@ -120,33 +155,22 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         db.runTransaction { transaction ->
             val userSnapshot = transaction.get(userRef)
 
-            // Incrementa faltas
             val currentFaults = (userSnapshot.getLong("fault") ?: 0).toInt()
             val newFaults = currentFaults + 1
-
-            // Se tiver 2 ou mais faltas, deixa de ser beneficiário
             val isBeneficiary = newFaults < 2
 
-            // Atualiza User
             transaction.update(userRef, "fault", newFaults)
             transaction.update(userRef, "isBeneficiary", isBeneficiary)
 
-            // Atualiza Delivery para CANCELADO (Falta Injustificada)
-            // Se não tiveres acesso ao Enum DeliveryState aqui, usa a string "CANCELADO"
             transaction.update(deliveryRef, "state", "CANCELADO")
-            transaction.update(deliveryRef, "reason", "Justificação Rejeitada / Falta de comparência")
+            transaction.update(deliveryRef, "reason", "Justificação Rejeitada (Falta Aplicada)")
             transaction.update(deliveryRef, "delivered", false)
 
         }.addOnSuccessListener {
             uiState.value = uiState.value.copy(isLoading = false)
-            Log.d("NotifVM", "Falta aplicada com sucesso.")
             onComplete()
-
         }.addOnFailureListener { e ->
-            uiState.value = uiState.value.copy(
-                isLoading = false,
-                error = "Erro ao aplicar falta: ${e.message}"
-            )
+            uiState.value = uiState.value.copy(isLoading = false, error = "Erro: ${e.message}")
         }
     }
 
