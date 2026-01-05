@@ -47,13 +47,26 @@ fun CandidatureView(
     modifier: Modifier = Modifier,
     navController: NavController = rememberNavController(),
     viewModel: CandidatureViewModel = viewModel(),
-    viewModelAuth: LoginViewModel = viewModel()
+    viewModelAuth: LoginViewModel = viewModel(),
+    candidatureId: String? = null // Recebe o ID (pode ser null)
 ) {
     val uiState by viewModel.uiState
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val isEditMode = candidatureId != null
+
+    // Lógica Inicial: Carregar dados ou Limpar
+    LaunchedEffect(candidatureId) {
+        if (candidatureId != null) {
+            viewModel.loadCandidature(candidatureId)
+        } else {
+            viewModel.resetState()
+        }
+    }
+
+    // Picker de Ficheiros
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -93,12 +106,12 @@ fun CandidatureView(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background // Adaptável
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
 
         Surface(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            color = MaterialTheme.colorScheme.background // Adaptável
+            color = MaterialTheme.colorScheme.background
         ) {
             Column(
                 modifier = Modifier
@@ -124,7 +137,7 @@ fun CandidatureView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Candidatura",
+                        text = if (isEditMode) "Editar Candidatura" else "Candidatura",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
@@ -145,14 +158,13 @@ fun CandidatureView(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
-                            Text(" Logout", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                            Text(" Sair", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // --- MENSAGEM DE ERRO ---
                 if (uiState.error != null) {
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
@@ -170,7 +182,6 @@ fun CandidatureView(
 
                 SectionHeader("Identificação")
 
-                // ANO LETIVO
                 AppTextField(
                     value = uiState.candidature.academicYear,
                     onValueChange = { viewModel.updateAcademicYear(it) },
@@ -181,7 +192,6 @@ fun CandidatureView(
                     visualTransformation = SchoolYearVisualTransformation()
                 )
 
-                // DATA NASCIMENTO
                 AppTextField(
                     value = uiState.candidature.birthDate,
                     onValueChange = { viewModel.updateBirthDate(it) },
@@ -193,7 +203,6 @@ fun CandidatureView(
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // TELEMOVEL
                     AppTextField(
                         value = uiState.candidature.mobilePhone,
                         onValueChange = { viewModel.updateMobilePhone(it) },
@@ -203,8 +212,6 @@ fun CandidatureView(
                         modifier = Modifier.weight(1f),
                         keyboardType = KeyboardType.Phone
                     )
-
-                    // EMAIL
                     AppTextField(
                         value = uiState.candidature.email,
                         onValueChange = { viewModel.updateEmail(it) },
@@ -221,7 +228,6 @@ fun CandidatureView(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     var expanded by remember { mutableStateOf(false) }
 
-                    // DROPDOWN TIPO
                     Column(modifier = Modifier.weight(1f).padding(bottom = 20.dp)) {
                         Text(
                             text = "Tipo",
@@ -233,26 +239,19 @@ fun CandidatureView(
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded }
                         ) {
-                            fun formatEnum(t: Type): String {
-                                return t.name.lowercase().replaceFirstChar { it.uppercase() }
-                            }
+                            fun formatEnum(t: Type): String = t.name.lowercase().replaceFirstChar { it.uppercase() }
 
                             OutlinedTextField(
                                 value = uiState.candidature.type?.let { formatEnum(it) } ?: "",
                                 onValueChange = {},
                                 modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 shape = RoundedCornerShape(12.dp),
-                                placeholder = {
-                                    Text("Selecionar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                                },
+                                placeholder = { Text("Selecionar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.primary,
                                     focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                    cursorColor = MaterialTheme.colorScheme.primary,
-                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -276,7 +275,6 @@ fun CandidatureView(
                         }
                     }
 
-                    // NÚMERO CARTÃO
                     AppTextField(
                         value = uiState.candidature.cardNumber,
                         onValueChange = { viewModel.updateCardNumber(it) },
@@ -320,16 +318,9 @@ fun CandidatureView(
                                         "Produtos de limpeza" -> viewModel.updateCleaningProducts(checked)
                                     }
                                 },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = MaterialTheme.colorScheme.primary,
-                                    checkmarkColor = Color.White
-                                )
+                                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                             )
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -389,7 +380,7 @@ fun CandidatureView(
                 SectionHeader("Documentação Necessária")
 
                 Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), // Verde suave adaptável
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth()
@@ -400,7 +391,7 @@ fun CandidatureView(
                         Text(
                             text = "Nota: Beneficiários FAES não necessitam entregar os documentos abaixo.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary, // Verde
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -518,7 +509,8 @@ fun CandidatureView(
                     onClick = {
                         viewModel.submitCandidature { success ->
                             if (success) {
-                                Toast.makeText(context, "Candidatura Enviada!", Toast.LENGTH_LONG).show()
+                                val msg = if(isEditMode) "Candidatura Atualizada!" else "Candidatura Enviada!"
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                                 navController.navigate("await-candidature") {
                                     popUpTo("candidature") { inclusive = true }
                                 }
@@ -537,7 +529,11 @@ fun CandidatureView(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                     } else {
-                        Text("Submeter Candidatura", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isEditMode) "Atualizar Candidatura" else "Submeter Candidatura",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -568,9 +564,7 @@ fun AppTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = {
-                Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-            },
+            placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
             leadingIcon = icon?.let { { Icon(it, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) } },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -578,10 +572,7 @@ fun AppTextField(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.primary,
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                cursorColor = MaterialTheme.colorScheme.primary,
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
             ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -593,7 +584,7 @@ fun AppTextField(
 @Composable
 fun AppCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
-        color = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza Escuro no Dark
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
         modifier = Modifier.fillMaxWidth()
@@ -607,7 +598,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface, // Preto/Branco
+        color = MaterialTheme.colorScheme.onSurface,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
     )
@@ -617,11 +608,7 @@ fun SectionHeader(title: String) {
 fun DocumentoRequisitoItem(texto: String) {
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
         Text("•", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 8.dp))
-        Text(
-            text = texto,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
+        Text(texto, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
     }
 }
 
@@ -633,14 +620,12 @@ class SchoolYearVisualTransformation : VisualTransformation {
             out += trimmed[i]
             if (i == 3) out += "/"
         }
-
         val offsetMapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int {
                 if (offset <= 3) return offset
                 if (offset <= 8) return offset + 1
                 return 9
             }
-
             override fun transformedToOriginal(offset: Int): Int {
                 if (offset <= 4) return offset
                 if (offset <= 9) return offset - 1
@@ -659,7 +644,6 @@ class DateVisualTransformation : VisualTransformation {
             out += trimmed[i]
             if (i == 1 || i == 3) out += "/"
         }
-
         val offsetMapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int {
                 if (offset <= 1) return offset
@@ -667,7 +651,6 @@ class DateVisualTransformation : VisualTransformation {
                 if (offset <= 8) return offset + 2
                 return 10
             }
-
             override fun transformedToOriginal(offset: Int): Int {
                 if (offset <= 2) return offset
                 if (offset <= 5) return offset - 1

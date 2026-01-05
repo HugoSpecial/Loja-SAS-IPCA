@@ -51,18 +51,17 @@ fun AwaitCandidatureView(
     } catch (e: Exception) { "Data N/D" }
 
     // --- CORES E TEXTOS ADAPTÁVEIS ---
-    // Usamos as cores do tema para garantir consistência no Dark Mode
     val (statusColor, statusBg, statusText, statusHeadline) = when (currentState) {
         CandidatureState.PENDENTE -> {
-            val color = Color(0xFFFFA000) // Laranja (Padrão para alertas)
+            val color = Color(0xFFFFA000) // Laranja
             Quadruple(color, color.copy(alpha = 0.1f), "PENDENTE", "A aguardar validação")
         }
         CandidatureState.ACEITE -> {
-            val color = MaterialTheme.colorScheme.primary // Verde do Tema
+            val color = MaterialTheme.colorScheme.primary // Verde
             Quadruple(color, color.copy(alpha = 0.1f), "ACEITE", "Candidatura Aceite")
         }
         CandidatureState.REJEITADA -> {
-            val color = MaterialTheme.colorScheme.error // Vermelho do Tema
+            val color = MaterialTheme.colorScheme.error // Vermelho
             Quadruple(color, color.copy(alpha = 0.1f), "RECUSADA", "Candidatura Rejeitada")
         }
     }
@@ -75,7 +74,7 @@ fun AwaitCandidatureView(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background // Fundo Adaptável
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
 
         if (isLoading) {
@@ -152,7 +151,7 @@ fun AwaitCandidatureView(
                             .widthIn(max = 400.dp),
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+                            containerColor = MaterialTheme.colorScheme.surface
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
@@ -162,7 +161,7 @@ fun AwaitCandidatureView(
                         ) {
                             // Badge Status
                             Surface(
-                                color = statusBg, // Cor com transparência
+                                color = statusBg,
                                 shape = RoundedCornerShape(50),
                                 modifier = Modifier.padding(bottom = 16.dp)
                             ) {
@@ -236,8 +235,15 @@ fun AwaitCandidatureView(
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                // --- CORREÇÃO AQUI ---
                                 Button(
-                                    onClick = { navController.navigate("candidature") },
+                                    onClick = {
+                                        // Usamos o ID que veio do Firebase (candidature.docId)
+                                        candidature?.docId?.let { id ->
+                                            navController.navigate("candidature_edit/$id")
+                                        }
+                                    },
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
@@ -287,7 +293,7 @@ fun AwaitCandidatureView(
                             .height(50.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.tertiary // Vermelho do Tema
+                            contentColor = MaterialTheme.colorScheme.tertiary
                         ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
                     ) {
@@ -314,7 +320,6 @@ data class Quadruple<A, B, C, D>(
 fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
     val steps = 3
 
-    // Cor inativa adaptável (Cinza no Light, Cinza escuro no Dark)
     val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
     val textColor = MaterialTheme.colorScheme.onSurface
 
@@ -361,23 +366,9 @@ fun MinimalHorizontalTimeline(activeColor: Color, currentStep: Int) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "Enviado",
-                style = MaterialTheme.typography.labelSmall,
-                color = textColor
-            )
-
-            Text(
-                text = "Análise",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (currentStep >= 2) textColor else textColor.copy(alpha = 0.5f)
-            )
-
-            Text(
-                text = "Decisão",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (currentStep >= 3) textColor else textColor.copy(alpha = 0.5f)
-            )
+            Text("Enviado", style = MaterialTheme.typography.labelSmall, color = textColor)
+            Text("Análise", style = MaterialTheme.typography.labelSmall, color = if (currentStep >= 2) textColor else textColor.copy(alpha = 0.5f))
+            Text("Decisão", style = MaterialTheme.typography.labelSmall, color = if (currentStep >= 3) textColor else textColor.copy(alpha = 0.5f))
         }
     }
 }
