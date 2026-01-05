@@ -158,7 +158,7 @@ fun CandidatureView(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
-                            Text(" Sair", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+//                            Text(" Sair", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
