@@ -13,9 +13,9 @@ import java.util.Date
 data class BeneficiaryHomeState(
     val products: List<Product> = emptyList(),
     val allowedCategories: List<String> = emptyList(),
-    val searchText: String = "",
-    val selectedCategory: String = "Todos",
-    val userName: String = "", // <--- Novo campo para o nome
+    val searchText: String = "",         // Novo
+    val selectedCategory: String = "Todos", // Novo
+    val userName: String = "",           // Novo
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -29,7 +29,7 @@ class BeneficiaryHomeViewModel : ViewModel() {
         private set
 
     init {
-        fetchUserName() // <--- Vamos buscar o nome logo ao iniciar
+        fetchUserName()
         fetchCandidatureAndProducts()
     }
 
@@ -42,34 +42,32 @@ class BeneficiaryHomeViewModel : ViewModel() {
         uiState.value = uiState.value.copy(selectedCategory = category)
     }
 
+    // Filtra a lista plana de produtos
     fun getFilteredProducts(): List<Product> {
         val state = uiState.value
         return state.products.filter { product ->
             val matchesSearch = product.name.contains(state.searchText, ignoreCase = true)
-            val matchesCategory = if (state.selectedCategory == "Todos") true else product.category == state.selectedCategory
-            val isAllowed = state.allowedCategories.contains(product.category)
+
+            val matchesCategory = if (state.selectedCategory == "Todos") true
+            else product.category.equals(state.selectedCategory, ignoreCase = true)
+
+            // Verifica se a categoria é permitida (caso a seleção seja "Todos")
+            val isAllowed = state.allowedCategories.any { it.equals(product.category, ignoreCase = true) }
+
             matchesSearch && matchesCategory && isAllowed
         }
     }
 
-    // --- NOVA FUNÇÃO PARA BUSCAR O NOME ---
+    // --- DADOS ---
     private fun fetchUserName() {
         val userId = auth.currentUser?.uid ?: return
-
         db.collection("users").document(userId).get()
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
-                    // ATENÇÃO: Confirma se o campo na tua base de dados se chama "name"
-                    val name = document.getString("name") ?: "Beneficiário"
-
-                    // Se quiseres apenas o primeiro nome:
-                    val firstName = name.split(" ").firstOrNull() ?: name
-
+                    val fullName = document.getString("name") ?: "Beneficiário"
+                    val firstName = fullName.split(" ").firstOrNull() ?: fullName
                     uiState.value = uiState.value.copy(userName = firstName)
                 }
-            }
-            .addOnFailureListener {
-                Log.e("BeneficiaryHome", "Erro ao buscar nome", it)
             }
     }
 

@@ -20,7 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -32,19 +34,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
+import ipca.project.lojasas.ui.beneficiary.CartManager
 import ipca.project.lojasas.ui.components.EmptyState
 
-@OptIn(ExperimentalFoundationApi::class) // Necessário para usar stickyHeader
+@OptIn(ExperimentalFoundationApi::class) // Necessário para stickyHeader
 @Composable
 fun HomeView(
     navController: NavController,
     viewModel: BeneficiaryHomeViewModel = viewModel()
 ) {
-    val state = viewModel.uiState.value
+    val uiState = viewModel.uiState.value
+
+    // Obtém produtos filtrados pelo ViewModel
     val filteredItems = viewModel.getFilteredProducts()
 
-    // Constrói a lista de filtros (Todos + Categorias permitidas)
-    val displayCategories = listOf("Todos") + state.allowedCategories
+    // Categorias para os filtros (chips)
+    val displayCategories = listOf("Todos") + uiState.allowedCategories
+
+    // Mantém a referência ao CartManager (Assumindo que cartItems é um MutableStateMap ou similar)
+    val cartItems = CartManager.cartItems
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -57,54 +65,58 @@ fun HomeView(
             contentPadding = PaddingValues(bottom = 20.dp)
         ) {
 
+            // --- 1. CABEÇALHO (Scrollável) ---
+            // Logo e Texto de boas-vindas sobem e desaparecem
             item {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.logo_sas),
-                        contentDescription = "Logo IPCA SAS",
+                        contentDescription = "Logo",
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        contentScale = ContentScale.Fit
+                            .height(80.dp)
+                            .padding(bottom = 16.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text(
-                        text = if (state.userName.isNotEmpty()) "Olá, ${state.userName}" else "Olá,",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        text = "Estes são os produtos disponíveis para si.",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
-                    )
+                    // Saudação alinhada à esquerda
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = if (uiState.userName.isNotEmpty()) "Olá, ${uiState.userName}" else "Olá,",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Estes são os produtos disponíveis para si.",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
                 }
             }
 
-            // --- 2. STICKY HEADER (Pesquisa e Filtros) ---
-            // Este bloco sobe e "cola" no topo do ecrã
+            // --- 2. CABEÇALHO FIXO (Sticky Header) ---
+            // Barra de pesquisa e Filtros colam no topo
             stickyHeader {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background) // Fundo opaco é essencial
+                        .background(MaterialTheme.colorScheme.background) // Fundo opaco para tapar o conteúdo ao passar por baixo
                         .padding(vertical = 8.dp)
                 ) {
                     // Barra de Pesquisa
-                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                         OutlinedTextField(
-                            value = state.searchText,
+                            value = uiState.searchText,
                             onValueChange = { viewModel.onSearchTextChange(it) },
-                            placeholder = { Text("Pesquisar produto...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
+                            placeholder = {
+                                Text("Pesquisar produto...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                            },
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Search,
@@ -120,23 +132,20 @@ fun HomeView(
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                                cursorColor = MaterialTheme.colorScheme.primary,
-                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             singleLine = true
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Filtros (Chips)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
+                        contentPadding = PaddingValues(horizontal = 16.dp)
                     ) {
                         items(displayCategories) { category ->
-                            val isSelected = category == state.selectedCategory
+                            val isSelected = category.equals(uiState.selectedCategory, ignoreCase = true)
                             val chipBg = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
                             val chipBorder = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                             val chipText = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -159,7 +168,6 @@ fun HomeView(
                         }
                     }
 
-                    // Separador visual subtil
                     Divider(
                         modifier = Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
@@ -168,11 +176,15 @@ fun HomeView(
             }
 
             // --- 3. CONTEÚDO (Grelha de Produtos) ---
-            if (state.isLoading) {
+            if (uiState.isLoading) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
+                }
+            } else if (!uiState.error.isNullOrEmpty()) {
+                item {
+                    Text(text = "Erro: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
                 }
             } else if (filteredItems.isEmpty()) {
                 item {
@@ -182,31 +194,32 @@ fun HomeView(
                     )
                 }
             } else {
-                // Divide a lista em pares para simular grelha de 2 colunas
+                // Criação da Grelha (2 colunas) manualmente
                 items(filteredItems.chunked(2)) { rowItems ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Primeiro produto
-                        BeneficiaryProductCard(
-                            item = rowItems[0],
-                            onClick = {
-                                // Navegação para detalhe:
-                                // navController.navigate("product_detail/${rowItems[0].docId}")
-                            },
+                        // Item 1
+                        val product1 = rowItems[0]
+                        val isSelected1 = cartItems.containsKey(product1.docId)
+                        ProductCardSelectable(
+                            product = product1,
+                            isSelected = isSelected1,
+                            onClick = { CartManager.toggleProduct(product1.docId) },
                             modifier = Modifier.weight(1f)
                         )
 
-                        // Segundo produto (ou espaço vazio para alinhar)
+                        // Item 2 (se existir)
                         if (rowItems.size > 1) {
-                            BeneficiaryProductCard(
-                                item = rowItems[1],
-                                onClick = {
-                                    // navController.navigate("product_detail/${rowItems[1].docId}")
-                                },
+                            val product2 = rowItems[1]
+                            val isSelected2 = cartItems.containsKey(product2.docId)
+                            ProductCardSelectable(
+                                product = product2,
+                                isSelected = isSelected2,
+                                onClick = { CartManager.toggleProduct(product2.docId) },
                                 modifier = Modifier.weight(1f)
                             )
                         } else {
@@ -219,86 +232,96 @@ fun HomeView(
     }
 }
 
-// --- COMPONENTE DO CARD DE PRODUTO ---
+// O Card mantém-se o mesmo que enviaste
 @Composable
-fun BeneficiaryProductCard(
-    item: Product,
+fun ProductCardSelectable(
+    product: Product,
+    isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
+        modifier = modifier
+            .height(240.dp)
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
-        modifier = modifier.clickable { onClick() }
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Imagem do Produto
+        Column(
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        ) {
+            Text(
+                text = product.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 20.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+            LaunchedEffect(product.imageUrl) {
+                if (product.imageUrl.isNotEmpty()) {
+                    try {
+                        val cleanBase64 = if (product.imageUrl.contains(",")) product.imageUrl.split(",")[1] else product.imageUrl
+                        val decodedBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        imageBitmap = bitmap?.asImageBitmap()
+                    } catch (e: Exception) { e.printStackTrace() }
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp)
+                    .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                if (item.imageUrl.isNotEmpty()) {
-                    val bitmap = remember(item.imageUrl) {
-                        try {
-                            val decodedString = Base64.decode(item.imageUrl, Base64.DEFAULT)
-                            BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size).asImageBitmap()
-                        } catch (e: Exception) { null }
-                    }
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap!!,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Sem imagem",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        modifier = Modifier.size(40.dp)
+                    Text(
+                        "Sem Imagem",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Nome
-            Text(
-                text = item.name,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Categoria
-            Text(
-                text = item.category,
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Botão/Ação
             Button(
                 onClick = onClick,
-                modifier = Modifier.fillMaxWidth().height(36.dp),
-                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ),
                 contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                shape = RoundedCornerShape(6.dp)
             ) {
-                Text("Adicionar", fontSize = 12.sp)
+                Text(
+                    text = if (isSelected) "Remover" else "Adicionar",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
