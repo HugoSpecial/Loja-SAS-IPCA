@@ -20,7 +20,7 @@ import ipca.project.lojasas.ui.beneficiary.CartManager
 sealed class BottomBarItem(val title: String, val route: String) {
     object Home : BottomBarItem("Início", "home")
     object Notification : BottomBarItem("Notificações", "notification")
-    object History : BottomBarItem("Histórico ", "history")
+    object History : BottomBarItem("Histórico", "history")
     object Profile : BottomBarItem("Perfil", "profile")
 }
 
@@ -39,103 +39,118 @@ fun BeneficiaryBottomBar(
 
     var selectedItem by remember { mutableStateOf(items[0]) }
 
-    if (currentRoute != null) {
-        items.find { it.route == currentRoute }?.let {
-            if (it != selectedItem) selectedItem = it
+    // Atualiza o item selecionado com base na rota atual (se houver navegação externa)
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != null) {
+            items.find { it.route == currentRoute }?.let {
+                if (it != selectedItem) selectedItem = it
+            }
         }
     }
 
     val cartCount = CartManager.cartItems.count()
+    val barBackgroundColor = MaterialTheme.colorScheme.surface
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp),
+            .fillMaxWidth(),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // --- BARRA DE NAVEGAÇÃO ---
         NavigationBar(
             modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
                 .height(80.dp)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-            // Fundo adaptável (Branco no Light, Escuro no Dark)
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = barBackgroundColor,
             tonalElevation = 10.dp
         ) {
-            // 1. HOME
-            NavigationBarItem(
-                selected = selectedItem == BottomBarItem.Home,
-                onClick = { selectedItem = BottomBarItem.Home; navController.navigate(BottomBarItem.Home.route) { launchSingleTop = true; restoreState = true } },
-                icon = { Icon(painter = painterResource(id = R.drawable.icon_home), contentDescription = null, modifier = Modifier.size(28.dp)) },
-                label = { Text(text = BottomBarItem.Home.title, fontSize = 11.sp) },
-                colors = navItemColors(),
-                modifier = Modifier.weight(1f)
-            )
-
-            // 2. NOTIFICAÇÕES
-            NavigationBarItem(
-                selected = selectedItem == BottomBarItem.Notification,
-                onClick = { selectedItem = BottomBarItem.Notification; navController.navigate(BottomBarItem.Notification.route) { launchSingleTop = true; restoreState = true } },
-                icon = {
-                    if (unreadCount > 0) {
-                        BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White) { Text("$unreadCount") } }) {
-                            Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
+            // Lado Esquerdo
+            items.take(2).forEach { item ->
+                NavigationBarItem(
+                    selected = selectedItem == item,
+                    onClick = {
+                        selectedItem = item
+                        navController.navigate(item.route) {
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                    } else {
-                        Icon(painter = painterResource(id = R.drawable.outline_notifications), contentDescription = null, modifier = Modifier.size(28.dp))
-                    }
-                },
-                label = { Text(text = BottomBarItem.Notification.title, fontSize = 10.sp) },
-                colors = navItemColors(),
-                modifier = Modifier.weight(1f)
-            )
+                    },
+                    icon = {
+                        // Lógica específica para notificações com Badge
+                        if (item == BottomBarItem.Notification && unreadCount > 0) {
+                            BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.error) { Text("$unreadCount") } }) {
+                                Icon(
+                                    painter = painterResource(id = getIconRes(item)),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp) // Tamanho standard
+                                )
+                            }
+                        } else {
+                            Icon(
+                                painter = painterResource(id = getIconRes(item)),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    label = { Text(text = item.title, fontSize = 10.sp, maxLines = 1) },
+                    colors = navItemColors(),
+                    alwaysShowLabel = true
+                )
+            }
 
-            // Espaço vazio para o botão central
-            Box(modifier = Modifier.weight(1f))
+            // --- ESPAÇO CENTRAL ---
+            // Spacer com peso 1f para empurrar os itens e criar o buraco para o botão
+            Spacer(modifier = Modifier.weight(1f))
 
-            // 3. HISTÓRICO
-            NavigationBarItem(
-                selected = selectedItem == BottomBarItem.History,
-                onClick = { selectedItem = BottomBarItem.History; navController.navigate(BottomBarItem.History.route) { launchSingleTop = true; restoreState = true } },
-                icon = { Icon(painter = painterResource(id = R.drawable.outline_watch), contentDescription = null, modifier = Modifier.size(28.dp)) },
-                label = { Text(text = BottomBarItem.History.title, fontSize = 11.sp) },
-                colors = navItemColors(),
-                modifier = Modifier.weight(1f)
-            )
-
-            // 4. PERFIL
-            NavigationBarItem(
-                selected = selectedItem == BottomBarItem.Profile,
-                onClick = { selectedItem = BottomBarItem.Profile; navController.navigate(BottomBarItem.Profile.route) { launchSingleTop = true; restoreState = true } },
-                icon = { Icon(painter = painterResource(id = R.drawable.outline_user), contentDescription = null, modifier = Modifier.size(28.dp)) },
-                label = { Text(text = BottomBarItem.Profile.title, fontSize = 11.sp) },
-                colors = navItemColors(),
-                modifier = Modifier.weight(1f)
-            )
+            // Lado Direito
+            items.takeLast(2).forEach { item ->
+                NavigationBarItem(
+                    selected = selectedItem == item,
+                    onClick = {
+                        selectedItem = item
+                        navController.navigate(item.route) {
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = getIconRes(item)),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text(text = item.title, fontSize = 10.sp, maxLines = 1) },
+                    colors = navItemColors(),
+                    alwaysShowLabel = true
+                )
+            }
         }
 
-        // --- BOTÃO FLUTUANTE (CARRINHO) ---
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (-15).dp)
+                .navigationBarsPadding() // Acompanha a subida da barra em telemóveis com gestos
+                .offset(y = (-28).dp) // Ajuste para ficar meio dentro/meio fora. Ajusta este valor se necessário
+                .align(Alignment.BottomCenter)
         ) {
-            // Função auxiliar para desenhar o botão com ou sem badge
             val cartButtonContent = @Composable {
                 Surface(
                     onClick = { navController.navigate("newbasket") },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    // A borda deve ter a mesma cor do fundo da barra (surface) para parecer um recorte
-                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.size(70.dp)
+                    color = primaryColor,
+                    border = BorderStroke(4.dp, barBackgroundColor),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier.size(64.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(id = R.drawable.shopping_cart),
                             contentDescription = "Carrinho",
-                            tint = Color.White, // Ícone sempre branco sobre o verde
-                            modifier = Modifier.size(30.dp)
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
@@ -146,7 +161,8 @@ fun BeneficiaryBottomBar(
                     badge = {
                         Badge(
                             containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = Color.White
+                            contentColor = Color.White,
+                            modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
                         ) {
                             Text("$cartCount")
                         }
@@ -161,11 +177,21 @@ fun BeneficiaryBottomBar(
     }
 }
 
+// Função para limpar o código principal e obter os ícones
+@Composable
+fun getIconRes(item: BottomBarItem): Int {
+    return when (item) {
+        BottomBarItem.Home -> R.drawable.icon_home
+        BottomBarItem.Notification -> R.drawable.outline_notifications
+        BottomBarItem.History -> R.drawable.outline_watch
+        BottomBarItem.Profile -> R.drawable.outline_user
+    }
+}
+
 @Composable
 fun navItemColors() = NavigationBarItemDefaults.colors(
     selectedIconColor = MaterialTheme.colorScheme.primary,
     selectedTextColor = MaterialTheme.colorScheme.primary,
-    // Cores adaptáveis para itens não selecionados (Cinza escuro no Light, Cinza claro no Dark)
     unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     indicatorColor = Color.Transparent
