@@ -49,7 +49,7 @@ exports.notificarNovaCandidatura = functions.firestore
           read: false,
           type: "candidatura_nova",
           relatedId: candidaturaId,
-          targetProfile: "COLABORADOR" 
+          receiverId: "collaborator"
         });
       });
 
