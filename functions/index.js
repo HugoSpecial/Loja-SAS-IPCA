@@ -247,20 +247,23 @@ exports.notificarAtualizacaoPedido = functions.firestore
 // ==================================================================
 // 5. VALIDADES (Cron Job -> Avisa COLABORADOR)
 // ==================================================================
+// ==================================================================
+// 5. VALIDADES (Cron Job -> Avisa COLABORADOR aos 15 e 7 dias)
+// ==================================================================
 exports.verificarValidades = functions.pubsub
   .schedule('every 24 hours')
   .timeZone('Europe/Lisbon')
   .onRun(async (context) => {
     
     const hoje = new Date();
-    const diasAlerta = 7; 
-    const dataLimite = new Date();
-    dataLimite.setDate(hoje.getDate() + diasAlerta);
+    hoje.setHours(0, 0, 0, 0); // Normaliza para comparar apenas datas
 
     try {
-      // Nota: Verifica se a coleção é 'product' ou 'products' na tua BD
       const snapshot = await admin.firestore().collection('product').get();
-      let produtosAExpirar = [];
+      
+      let criticos7Dias = [];
+      let aviso15Dias = [];
+      let aviso30Dias = [];
 
       snapshot.forEach(doc => {
         const produto = doc.data();
@@ -269,21 +272,44 @@ exports.verificarValidades = functions.pubsub
         lotes.forEach(lote => {
           if (lote.validity) {
             const dataValidade = lote.validity.toDate ? lote.validity.toDate() : new Date(lote.validity);
-            
-            if (dataValidade > hoje && dataValidade <= dataLimite) {
-              produtosAExpirar.push(`${produto.name} (Qtd: ${lote.quantity})`);
+            dataValidade.setHours(0, 0, 0, 0);
+
+            // Cálculo da diferença em dias
+            const diffTempo = dataValidade.getTime() - hoje.getTime();
+            const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+
+            if (diffDias === 7) {
+              criticos7Dias.push(`${produto.name}`);
+            } else if (diffDias === 15) {
+              aviso15Dias.push(`${produto.name}`);
+            } else if (diffDias === 30) {
+              aviso30Dias.push(`${produto.name}`);
             }
           }
         });
       });
 
-      if (produtosAExpirar.length === 0) return null;
+      // Se não houver nada para avisar hoje, encerra
+      if (criticos7Dias.length === 0 && aviso15Dias.length === 0 && aviso30Dias.length) return null;
 
-      const listaResumida = produtosAExpirar.slice(0, 3).join(", ");
-      const maisOutros = produtosAExpirar.length > 3 ? ` e mais ${produtosAExpirar.length - 3}` : "";
-      const corpoMsg = `Atencao! Produtos a expirar em breve: ${listaResumida}${maisOutros}.`;
+      // Montagem da mensagem
+      let titulo = "Alerta de Validade";
+      let corpoMsg = "";
 
+      if (aviso30Dias.length > 0) {
+        corpoMsg += `Atenção: ${aviso30Dias.slice(0, 3).join(", ")} expiram em 30 dias. `;
+      }
+      if (aviso15Dias.length > 0) {
+        corpoMsg += `Atenção: ${aviso15Dias.slice(0, 3).join(", ")} expiram em 15 dias. `;
+      }
+      if (criticos7Dias.length > 0) {
+        corpoMsg += `CRÍTICO: ${criticos7Dias.slice(0, 3).join(", ")} expiram em 1 semana!`;
+      }
+
+      // Buscar tokens dos colaboradores
       const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
+      if (colabs.empty) return null;
+
       const tokens = [];
       const batch = admin.firestore().batch();
 
@@ -294,7 +320,7 @@ exports.verificarValidades = functions.pubsub
         const ref = admin.firestore().collection('notifications').doc();
         batch.set(ref, {
           recipientId: doc.id,
-          title: "Alerta de Validade",
+          title: titulo,
           body: corpoMsg,
           date: admin.firestore.FieldValue.serverTimestamp(),
           read: false,
@@ -307,17 +333,14 @@ exports.verificarValidades = functions.pubsub
 
       if (tokens.length > 0) {
         await admin.messaging().sendEachForMulticast({
-          notification: {
-            title: "Alerta de Validade",
-            body: corpoMsg
-          },
+          notification: { title: titulo, body: corpoMsg },
           tokens: tokens
         });
       }
-      return null;
 
+      return null;
     } catch (erro) {
-      console.error("Erro validades:", erro);
+      console.error("Erro no cron de validades:", erro);
       return null;
     }
   });
