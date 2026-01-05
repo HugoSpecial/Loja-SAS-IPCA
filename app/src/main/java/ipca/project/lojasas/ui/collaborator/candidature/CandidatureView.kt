@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,12 +34,6 @@ import ipca.project.lojasas.models.CandidatureState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// --- PALETA DE CORES ---
-val IpcaDarkTeal = Color(0xFF005A49)
-val BgLight = Color(0xFFF5F7FA)
-val TextGray = Color(0xFF95A5A6)
-val BorderColor = Color(0xFFE0E0E0)
-
 @Composable
 fun CandidatureListView(
     navController: NavController,
@@ -57,7 +50,7 @@ fun CandidatureListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
 
         // --- CABEÇALHO ---
@@ -74,7 +67,7 @@ fun CandidatureListView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = IpcaDarkTeal,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -105,12 +98,12 @@ fun CandidatureListView(
                 text = "Candidaturas",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
                 text = "${filteredList.size} registos encontrados",
                 fontSize = 14.sp,
-                color = TextGray,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -136,18 +129,18 @@ fun CandidatureListView(
                 if (state.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
-                        color = IpcaGreen
+                        color = MaterialTheme.colorScheme.primary
                     )
                 } else if (state.error != null) {
                     Text(
                         text = state.error ?: "Erro",
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else if (filteredList.isEmpty()) {
                     Text(
                         text = "Não existem candidaturas.",
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
@@ -181,8 +174,8 @@ fun SoftCandidatureCard(
 ) {
     val (accentColor, statusText) = when (candidatura.state) {
         CandidatureState.PENDENTE -> Color(0xFFF39C12) to "Pendente"
-        CandidatureState.ACEITE -> IpcaGreen to "Aceite"
-        CandidatureState.REJEITADA -> Color(0xFFC0392B) to "Rejeitada"
+        CandidatureState.ACEITE -> MaterialTheme.colorScheme.primary to "Aceite"
+        CandidatureState.REJEITADA -> MaterialTheme.colorScheme.error to "Rejeitada"
     }
 
     // DATA COMPLETA (Sem hora)
@@ -195,9 +188,12 @@ fun SoftCandidatureCard(
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, BorderColor)
+        // Borda subtil adaptável
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
     ) {
         Row(
             modifier = Modifier
@@ -230,7 +226,7 @@ fun SoftCandidatureCard(
                     text = candidatura.type?.name ?: "Geral",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 // Email
@@ -238,7 +234,7 @@ fun SoftCandidatureCard(
                     Text(
                         text = candidatura.email,
                         fontSize = 13.sp,
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         maxLines = 1
                     )
                 }
@@ -250,14 +246,14 @@ fun SoftCandidatureCard(
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.calendar_outline),
                         contentDescription = null,
-                        tint = TextGray,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.size(13.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = dateStr,
                         fontSize = 13.sp,
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -268,7 +264,7 @@ fun SoftCandidatureCard(
                 modifier = Modifier
                     .width(1.dp)
                     .height(50.dp)
-                    .background(Color(0xFFF0F0F0))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
             )
 
             // LADO DIREITO (Apenas a Seta)
@@ -279,7 +275,7 @@ fun SoftCandidatureCard(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
                     contentDescription = "Ver detalhes",
-                    tint = Color.LightGray,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -290,9 +286,9 @@ fun SoftCandidatureCard(
 // --- FILTRO ---
 @Composable
 fun SoftTicketFilter(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    val bg = if (isSelected) IpcaDarkTeal else Color.White
-    val txt = if (isSelected) Color.White else TextGray
-    val border = if (isSelected) null else BorderStroke(1.dp, BorderColor)
+    val bg = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val txt = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
     Box(
         modifier = Modifier

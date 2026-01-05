@@ -44,11 +44,6 @@ import ipca.project.lojasas.ui.components.StatusBadge
 import java.io.File
 import java.io.FileOutputStream
 
-// Cores do Tema
-val IpcaGreen = Color(0xFF438C58)
-val BackgroundColor = Color(0xFFF5F6F8)
-val TextDark = Color(0xFF2D2D2D)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CandidatureDetailsView(
@@ -102,9 +97,9 @@ fun CandidatureDetailsView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(MaterialTheme.colorScheme.background) // Adaptável
     ) {
-        // 1. HEADER (Igual à Lista: Seta + Logo)
+        // 1. HEADER
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -118,14 +113,14 @@ fun CandidatureDetailsView(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Voltar",
-                    tint = IpcaGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 48.dp) // Compensa a seta para centrar
+                    .padding(end = 48.dp)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
@@ -141,7 +136,10 @@ fun CandidatureDetailsView(
         // 2. CONTEÚDO COM SCROLL
         Box(modifier = Modifier.fillMaxSize()) {
             if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = IpcaGreen)
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary
+                )
             } else if (state.candidature != null) {
                 val cand = state.candidature
 
@@ -153,7 +151,7 @@ fun CandidatureDetailsView(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Badge de Estado (Alinhado à esquerda)
+                    // Badge de Estado
                     CandidatureStatusBadge(state = cand.state)
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -185,14 +183,14 @@ fun CandidatureDetailsView(
 
                     // --- SITUAÇÃO SOCIOECONÓMICA ---
                     SectionTitle("Situação Socioeconómica")
-                    InfoRow("Benificário FAES:", if (cand.faesSupport == true) "Sim" else "Não") // Mantive o erro ortográfico da imagem "Benificário" ou corrigimos para Beneficiário? Corrigi para Benificário para ser igual à imagem, mas o correto é Beneficiário.
+                    InfoRow("Beneficiário FAES:", if (cand.faesSupport == true) "Sim" else "Não")
                     InfoRow("Bolseiro:", if (cand.scholarshipSupport == true) "Sim" else "Não")
 
                     if (cand.scholarshipSupport == true && cand.scholarshipDetails.isNotEmpty()) {
                         Text(
                             text = "(${cand.scholarshipDetails})",
                             fontSize = 12.sp,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                         )
                     }
@@ -205,7 +203,7 @@ fun CandidatureDetailsView(
                         Text(
                             text = "Sem documentos anexados.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                             fontWeight = FontWeight.Bold
                         )
                     } else {
@@ -236,11 +234,7 @@ fun CandidatureDetailsView(
 
                     // --- FINALIZAÇÃO ---
                     SectionTitle("Finalização")
-                    // Se a data de submissão não existir, usamos a de criação
-                    val subDate = cand.signatureDate.ifEmpty {
-                        // Fallback formatado se necessário, ou vazio
-                        "Data indisponível"
-                    }
+                    val subDate = cand.signatureDate.ifEmpty { "Data indisponível" }
                     InfoRow("Data de submissão:", subDate)
                     InfoRow("Assinatura:", cand.signature)
 
@@ -257,13 +251,14 @@ fun CandidatureDetailsView(
                             // Botão Rejeitar
                             Button(
                                 onClick = { showRejectDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)), // Vermelho
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                ),
                                 shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp)
+                                modifier = Modifier.weight(1f).height(48.dp)
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                                Icon(Icons.Default.Close, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Rejeitar", fontWeight = FontWeight.Bold)
                             }
@@ -271,23 +266,23 @@ fun CandidatureDetailsView(
                             // Botão Aprovar
                             Button(
                                 onClick = { viewModel.approveCandidature(cand.docId) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)), // Verde
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
                                 shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp)
+                                modifier = Modifier.weight(1f).height(48.dp)
                             ) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                                Icon(Icons.Default.Check, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Aprovar", fontWeight = FontWeight.Bold)
                             }
                         }
                     } else {
-                        // Mensagem se já estiver fechada
                         Text(
                             text = "Esta candidatura encontra-se ${cand.state.name}",
                             modifier = Modifier.align(Alignment.CenterHorizontally),
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -297,7 +292,7 @@ fun CandidatureDetailsView(
             } else if (state.error != null) {
                 Text(
                     text = state.error,
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
@@ -306,7 +301,7 @@ fun CandidatureDetailsView(
 }
 
 // ----------------------------------------------------
-// --- COMPONENTES VISUAIS (ESTILO FIGMA) ---
+// --- COMPONENTES VISUAIS ---
 // ----------------------------------------------------
 
 @Composable
@@ -319,14 +314,14 @@ private fun BooleanStatusRow(label: String, isChecked: Boolean) {
             Icon(
                 imageVector = Icons.Filled.CheckCircle,
                 contentDescription = "Sim",
-                tint = IpcaGreen, // Verde
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
         } else {
             Icon(
-                imageVector = Icons.Filled.Close, // Ou Icons.Filled.Close num círculo vermelho
+                imageVector = Icons.Filled.Close,
                 contentDescription = "Não",
-                tint = Color(0xFFE57373), // Vermelho claro
+                tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -335,17 +330,18 @@ private fun BooleanStatusRow(label: String, isChecked: Boolean) {
             text = label,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
 
 @Composable
 private fun CandidatureStatusBadge(state: CandidatureState) {
+    // Cores adaptáveis com transparência para o fundo
     val (bg, color) = when (state) {
-        CandidatureState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
-        CandidatureState.ACEITE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
-        CandidatureState.REJEITADA -> Color(0xFFFFCDD2) to Color(0xFFC62828)
+        CandidatureState.PENDENTE -> Color(0xFFEF6C00).copy(alpha = 0.1f) to Color(0xFFEF6C00)
+        CandidatureState.ACEITE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) to MaterialTheme.colorScheme.primary
+        CandidatureState.REJEITADA -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f) to MaterialTheme.colorScheme.error
     }
     StatusBadge(label = state.name, backgroundColor = bg, contentColor = color)
 }
@@ -359,11 +355,15 @@ private fun FileListItem(attachment: DocumentAttachment, onClick: () -> Unit) {
             .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Info, contentDescription = "PDF", tint = IpcaGreen)
+        Icon(
+            Icons.Default.Info,
+            contentDescription = "Documento",
+            tint = MaterialTheme.colorScheme.primary
+        )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = attachment.name,
-            color = Color.Blue,
+            color = MaterialTheme.colorScheme.primary,
             textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
         )
     }
@@ -383,34 +383,48 @@ fun RejectDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text) },
+        containerColor = MaterialTheme.colorScheme.surface, // Branco ou Cinza Escuro
+        title = {
+            Text(text, color = MaterialTheme.colorScheme.onSurface)
+        },
         text = {
             Column {
-                Text("Motivo da rejeição:")
+                Text("Motivo da rejeição:", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                 OutlinedTextField(
                     value = reason,
                     onValueChange = onReasonChange,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) { Text("Confirmar") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            }
         }
     )
 }
 
-// --- Preview de Imagem e PDF (Mantém a lógica existente) ---
+// --- Preview de Imagem e PDF ---
 @Composable
 fun ImagePreviewDialog(base64String: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().height(400.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth().height(400.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 val bitmap = remember(base64String) {
                     try {
@@ -419,10 +433,18 @@ fun ImagePreviewDialog(base64String: String, onDismiss: () -> Unit) {
                     } catch (e: Exception) { null }
                 }
                 if (bitmap != null) {
-                    Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize())
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd)) {
-                    Icon(Icons.Default.Close, contentDescription = "Fechar")
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Fechar",
+                        tint = Color.Black // Ícone preto para contraste sobre a imagem (geralmente clara) ou fundo
+                    )
                 }
             }
         }
@@ -433,10 +455,18 @@ fun ImagePreviewDialog(base64String: String, onDismiss: () -> Unit) {
 fun PdfPreviewDialog(file: File, onDismiss: () -> Unit) {
     val bitmaps = remember(file) { pdfToBitmaps(file) }
     Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth().height(600.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth().height(600.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
             Column {
-                Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "Fechar") }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Fechar", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
                 LazyColumn(modifier = Modifier.padding(8.dp)) {
                     items(bitmaps.size) { index ->
@@ -453,7 +483,7 @@ fun PdfPreviewDialog(file: File, onDismiss: () -> Unit) {
     }
 }
 
-// Funções utilitárias (File, PDF) - Mantém igual
+// Funções utilitárias (File, PDF)
 private fun saveBase64ToTempFile(context: Context, base64String: String, fileName: String): File? {
     return try {
         val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
@@ -472,6 +502,7 @@ private fun pdfToBitmaps(file: File): List<Bitmap> {
         val renderer = PdfRenderer(fileDescriptor)
         for (i in 0 until renderer.pageCount) {
             val page = renderer.openPage(i)
+            // Renderiza com fundo branco para garantir visibilidade
             val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
             bitmap.eraseColor(android.graphics.Color.WHITE)
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)

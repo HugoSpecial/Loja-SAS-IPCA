@@ -13,6 +13,9 @@ import java.util.Date
 data class BeneficiaryHomeState(
     val products: List<Product> = emptyList(),
     val allowedCategories: List<String> = emptyList(),
+    val searchText: String = "",
+    val selectedCategory: String = "Todos",
+    val userName: String = "", // <--- Novo campo para o nome
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -26,7 +29,48 @@ class BeneficiaryHomeViewModel : ViewModel() {
         private set
 
     init {
+        fetchUserName() // <--- Vamos buscar o nome logo ao iniciar
         fetchCandidatureAndProducts()
+    }
+
+    // --- MÉTODOS DE UI ---
+    fun onSearchTextChange(text: String) {
+        uiState.value = uiState.value.copy(searchText = text)
+    }
+
+    fun onCategoryChange(category: String) {
+        uiState.value = uiState.value.copy(selectedCategory = category)
+    }
+
+    fun getFilteredProducts(): List<Product> {
+        val state = uiState.value
+        return state.products.filter { product ->
+            val matchesSearch = product.name.contains(state.searchText, ignoreCase = true)
+            val matchesCategory = if (state.selectedCategory == "Todos") true else product.category == state.selectedCategory
+            val isAllowed = state.allowedCategories.contains(product.category)
+            matchesSearch && matchesCategory && isAllowed
+        }
+    }
+
+    // --- NOVA FUNÇÃO PARA BUSCAR O NOME ---
+    private fun fetchUserName() {
+        val userId = auth.currentUser?.uid ?: return
+
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    // ATENÇÃO: Confirma se o campo na tua base de dados se chama "name"
+                    val name = document.getString("name") ?: "Beneficiário"
+
+                    // Se quiseres apenas o primeiro nome:
+                    val firstName = name.split(" ").firstOrNull() ?: name
+
+                    uiState.value = uiState.value.copy(userName = firstName)
+                }
+            }
+            .addOnFailureListener {
+                Log.e("BeneficiaryHome", "Erro ao buscar nome", it)
+            }
     }
 
     private fun fetchCandidatureAndProducts() {
@@ -47,7 +91,6 @@ class BeneficiaryHomeViewModel : ViewModel() {
                     val candidature = documents.documents[0].toObject(Candidature::class.java)
                     if (candidature != null) {
                         val categoriesToShow = mutableListOf<String>()
-                        // Garante que estas strings são iguais às do Firebase (campo category)
                         if (candidature.foodProducts) categoriesToShow.add("Alimentos")
                         if (candidature.hygieneProducts) categoriesToShow.add("Higiene")
                         if (candidature.cleaningProducts) categoriesToShow.add("Limpeza")
@@ -79,7 +122,6 @@ class BeneficiaryHomeViewModel : ViewModel() {
                     try {
                         val product = doc.toObject(Product::class.java) ?: continue
                         product.docId = doc.id
-                        // Filtra produtos com stock e validade
                         if (product.batches.any { it.quantity > 0 && it.validity >= today }) {
                             list.add(product)
                         }
@@ -87,7 +129,6 @@ class BeneficiaryHomeViewModel : ViewModel() {
                         Log.e("BeneficiaryHomeVM", "Erro ao ler produto", e)
                     }
                 }
-
                 uiState.value = uiState.value.copy(products = list, isLoading = false, error = null)
             }
     }
