@@ -52,7 +52,6 @@ class DeliveryDetailViewModel : ViewModel() {
 
                         uiState.value = uiState.value.copy(delivery = delivery)
 
-                        // Busca nome do avaliador se existir
                         delivery.evaluatedBy?.let { fetchUser(it, isEvaluator = true) }
 
                         delivery.orderId?.let { orderId ->
@@ -61,16 +60,12 @@ class DeliveryDetailViewModel : ViewModel() {
                                 .addOnSuccessListener { orderSnapshot ->
                                     val order = orderSnapshot.toObject(Order::class.java)?.apply { docId = orderSnapshot.id }
 
-                                    // --- CORREÇÃO AQUI ---
                                     uiState.value = uiState.value.copy(
                                         order = order,
                                         userName = order?.userName,
                                         isLoading = false
                                     )
-
-                                    // Depois buscamos os detalhes extra (Telefone, notas)
                                     order?.userId?.let { fetchUser(it, isEvaluator = false) }
-
                                     fetchProducts()
                                 }
                                 .addOnFailureListener { e ->
@@ -107,25 +102,20 @@ class DeliveryDetailViewModel : ViewModel() {
                     uiState.value = if (isEvaluator) {
                         uiState.value.copy(evaluatorName = name)
                     } else {
-                        // Atualizamos o resto dos dados, mantendo o nome (ou atualizando se mudou)
                         uiState.value.copy(userName = name, userPhone = phone, userNotes = notes)
                     }
                 }
             }
-            .addOnFailureListener { e ->
-                Log.e("DeliveryDetailVM", "Erro ao buscar o utilizador: $userId", e)
-            }
     }
 
     fun fetchProducts() {
-        db.collection("products")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val list = snapshot.documents.mapNotNull { it.toObject(Product::class.java) }
-                uiState.value = uiState.value.copy(products = list)
-            }
+        db.collection("products").get().addOnSuccessListener { snapshot ->
+            val list = snapshot.documents.mapNotNull { it.toObject(Product::class.java) }
+            uiState.value = uiState.value.copy(products = list)
+        }
     }
 
+    // --- APROVAR ENTREGA: Não mexe no stock (já foi retirado antes) ---
     fun approveDelivery(deliveryId: String) {
         val currentDelivery = uiState.value.delivery ?: return
         if (currentDelivery.state != DeliveryState.PENDENTE) return
@@ -160,20 +150,20 @@ class DeliveryDetailViewModel : ViewModel() {
                 uiState.value = uiState.value.copy(isLoading = false, error = e.message)
             }
     }
-
+    
     fun rejectDelivery(deliveryId: String) {
         val currentDelivery = uiState.value.delivery ?: return
         if (currentDelivery.state != DeliveryState.PENDENTE) return
 
         val currentOrder = uiState.value.order
-
         val collaboratorId = Firebase.auth.currentUser?.uid ?: ""
         val now = Date()
 
         val updates = mapOf(
             "state" to DeliveryState.CANCELADO.name,
             "evaluationDate" to now,
-            "evaluatedBy" to collaboratorId
+            "evaluatedBy" to collaboratorId,
+            "delivered" to false
         )
 
         uiState.value = uiState.value.copy(isLoading = true)
@@ -182,9 +172,12 @@ class DeliveryDetailViewModel : ViewModel() {
             .update(updates)
             .addOnSuccessListener {
 
-                val userIdSafe = currentOrder?.userId
+                currentDelivery.orderId?.let { orderId ->
+                    returnStock(orderId)
+                }
 
-                //Notificação
+                // Notificação ao utilizador
+                val userIdSafe = currentOrder?.userId
                 if (!userIdSafe.isNullOrBlank()) {
                     val notification = Notification(
                         title = "Entrega não recolhida",
@@ -196,12 +189,7 @@ class DeliveryDetailViewModel : ViewModel() {
                         targetProfile = "BENEFICIARIO",
                         recipientId = userIdSafe
                     )
-
-                    db.collection("notifications")
-                        .add(notification)
-                        .addOnFailureListener { e ->
-                            Log.e("DeliveryDetailVM", "Erro ao enviar notificação", e)
-                        }
+                    db.collection("notifications").add(notification)
                 }
 
                 uiState.value = uiState.value.copy(
@@ -217,5 +205,55 @@ class DeliveryDetailViewModel : ViewModel() {
             .addOnFailureListener { e ->
                 uiState.value = uiState.value.copy(isLoading = false, error = e.message)
             }
+    }
+
+    private fun returnStock(orderId: String) {
+        db.collection("orders").document(orderId).get().addOnSuccessListener { snapshot ->
+            val orderItemsRaw = snapshot.get("items") as? List<Map<String, Any>> ?: return@addOnSuccessListener
+
+            for (itemMap in orderItemsRaw) {
+                val name = itemMap["name"] as? String ?: continue
+                val quantity = (itemMap["quantity"] as? Long)?.toInt() ?: 0
+
+                if (quantity > 0) {
+                    db.collection("products")
+                        .whereEqualTo("name", name)
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener { productSnap ->
+                            if (!productSnap.isEmpty) {
+                                val productDoc = productSnap.documents[0]
+                                val productRef = productDoc.reference
+
+                                db.runTransaction { transaction ->
+                                    val snapshotProduct = transaction.get(productRef)
+                                    val batchesRaw = snapshotProduct.get("batches") as? List<Map<String, Any>>
+
+                                    val batches = mutableListOf<ProductBatch>()
+                                    if (batchesRaw != null) {
+                                        for (b in batchesRaw) {
+                                            val validDate = (b["validity"] as? com.google.firebase.Timestamp)?.toDate() ?: Date()
+                                            val qtd = (b["quantity"] as? Long)?.toInt() ?: 0
+                                            batches.add(ProductBatch(validity = validDate, quantity = qtd))
+                                        }
+                                    }
+
+                                    if (batches.isNotEmpty()) {
+                                        val targetBatch = batches.maxByOrNull { it.validity?.time ?: 0L }
+                                        if (targetBatch != null) {
+                                            targetBatch.quantity += quantity
+                                            Log.d("DeliveryVM", "Stock devolvido: $name (+ $quantity)")
+                                        }
+                                    } else {
+                                        batches.add(ProductBatch(validity = Date(), quantity = quantity))
+                                    }
+
+                                    transaction.update(productRef, "batches", batches)
+                                }
+                            }
+                        }
+                }
+            }
+        }
     }
 }

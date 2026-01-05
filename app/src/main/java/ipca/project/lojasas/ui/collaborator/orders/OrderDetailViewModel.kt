@@ -42,16 +42,13 @@ class OrderDetailViewModel : ViewModel() {
                 if (snapshot != null && snapshot.exists()) {
                     try {
                         val order = Order()
-
                         order.docId = snapshot.id
                         order.orderDate = snapshot.getDate("orderDate")
                         order.surveyDate = snapshot.getDate("surveyDate")
                         order.userId = snapshot.getString("userId")
-
                         order.accept = runCatching {
                             OrderState.valueOf(snapshot.getString("accept") ?: "PENDENTE")
                         }.getOrDefault(OrderState.PENDENTE)
-
                         order.evaluatedBy = snapshot.getString("evaluatedBy")
                         order.evaluationDate = snapshot.getDate("evaluationDate")
                         order.rejectReason = snapshot.getString("rejectReason")
@@ -69,60 +66,47 @@ class OrderDetailViewModel : ViewModel() {
                             error = null
                         )
 
-                        // Buscar dados do beneficiário e colaborador
                         order.userId?.let { fetchUser(it, isEvaluator = false) }
                         order.evaluatedBy?.let { fetchUser(it, isEvaluator = true) }
-
                         fetchProducts()
 
                     } catch (e: Exception) {
                         Log.e("OrderDetailVM", "Erro no parse", e)
-                        uiState.value = uiState.value.copy(
-                            isLoading = false,
-                            error = "Erro ao ler dados: ${e.message}"
-                        )
+                        uiState.value = uiState.value.copy(isLoading = false, error = "Erro ao ler dados.")
                     }
                 } else {
-                    uiState.value = uiState.value.copy(
-                        isLoading = false,
-                        error = "Pedido não encontrado."
-                    )
+                    uiState.value = uiState.value.copy(isLoading = false, error = "Pedido não encontrado.")
                 }
             }
     }
 
-    /** Buscar info de um user */
     private fun fetchUser(userId: String, isEvaluator: Boolean) {
-        db.collection("users").document(userId)
-            .get()
+        db.collection("users").document(userId).get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot != null && snapshot.exists()) {
                     val name = snapshot.getString("name") ?: ""
                     val phone = snapshot.getString("phone") ?: ""
                     val notes = snapshot.getString("preferences") ?: ""
 
-                    uiState.value =
-                        if (isEvaluator) {
-                            uiState.value.copy(evaluatorName = name)
-                        } else {
-                            uiState.value.copy(userName = name, userPhone = phone, userNotes = notes)
-                        }
+                    uiState.value = if (isEvaluator) {
+                        uiState.value.copy(evaluatorName = name)
+                    } else {
+                        uiState.value.copy(userName = name, userPhone = phone, userNotes = notes)
+                    }
                 }
-            }
-            .addOnFailureListener { e ->
-                Log.e("OrderDetailVM", "Erro ao buscar o utilizador: $userId", e)
             }
     }
 
     fun fetchProducts() {
-        db.collection("products")
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(Product::class.java) } ?: emptyList()
-                uiState.value = uiState.value.copy(products = list)
-            }
+        db.collection("products").addSnapshotListener { snapshot, _ ->
+            val list = snapshot?.documents?.mapNotNull { it.toObject(Product::class.java) } ?: emptyList()
+            uiState.value = uiState.value.copy(products = list)
+        }
     }
 
-    /** Aprovar pedido */
+    /** * APROVAR PEDIDO
+     * AGORA: Retira o stock (FIFO) -> Atualiza Estado -> Cria Entrega
+     */
     fun approveOrder(orderId: String) {
         val currentOrder = uiState.value.order ?: return
         if (currentOrder.accept != OrderState.PENDENTE) {
@@ -130,10 +114,22 @@ class OrderDetailViewModel : ViewModel() {
             return
         }
 
+        uiState.value = uiState.value.copy(isLoading = true)
+
+        // 1. PRIMEIRO: Retirar produtos do stock (FIFO)
+        removeStockFIFO(currentOrder.items) { success ->
+            if (success) {
+                // 2. SE SUCESSO: Atualizar estado e criar entrega
+                finalizeApproval(orderId, currentOrder)
+            } else {
+                uiState.value = uiState.value.copy(isLoading = false, error = "Erro ao atualizar stock. Verifique quantidades.")
+            }
+        }
+    }
+
+    private fun finalizeApproval(orderId: String, currentOrder: Order) {
         val collaboratorId = Firebase.auth.currentUser?.uid ?: ""
         val now = Date()
-
-        uiState.value = uiState.value.copy(isLoading = true)
 
         db.collection("orders").document(orderId)
             .update(
@@ -158,28 +154,22 @@ class OrderDetailViewModel : ViewModel() {
                     )
                     .addOnSuccessListener {
                         fetchOrder(orderId)
+                        uiState.value = uiState.value.copy(
+                            order = currentOrder.copy(accept = OrderState.ACEITE),
+                            operationSuccess = true,
+                            isLoading = false
+                        )
+                        fetchUser(collaboratorId, isEvaluator = true)
                     }
-                    .addOnFailureListener { e ->
-                        uiState.value = uiState.value.copy(error = e.message)
-                    }
-
-                uiState.value = uiState.value.copy(
-                    order = currentOrder.copy(
-                        accept = OrderState.ACEITE,
-                        evaluatedBy = collaboratorId,
-                        evaluationDate = now
-                    ),
-                    operationSuccess = true,
-                    isLoading = false
-                )
-                fetchUser(collaboratorId, isEvaluator = true)
             }
             .addOnFailureListener { e ->
                 uiState.value = uiState.value.copy(isLoading = false, error = e.message)
             }
     }
 
-    /** Rejeitar pedido com motivo ou propor nova data */
+    /** * REJEITAR PEDIDO
+     * AGORA: Apenas muda o estado. NÃO devolve stock (porque ainda não foi tirado).
+     */
     fun rejectOrProposeDate(orderId: String, reason: String, proposedDate: Date?) {
         val currentOrder = uiState.value.order ?: return
         if (currentOrder.accept != OrderState.PENDENTE) {
@@ -191,29 +181,17 @@ class OrderDetailViewModel : ViewModel() {
         val now = Date()
 
         if (proposedDate != null) {
+            // Proposta de Data
             val proposal = ProposalDelivery(
-                docId = null,
-                confirmed = false,
-                newDate = proposedDate,
-                proposedBy = collaboratorId,
-                proposalDate = now
+                docId = null, confirmed = false, newDate = proposedDate,
+                proposedBy = collaboratorId, proposalDate = now
             )
-
-            db.collection("orders").document(orderId)
-                .collection("proposals")
-                .add(proposal)
-                .addOnSuccessListener { docRef ->
-                    docRef.update("docId", docRef.id)
-                    uiState.value = uiState.value.copy(
-                        operationSuccess = true,
-                        isLoading = false
-                    )
-                }
-                .addOnFailureListener { e ->
-                    uiState.value = uiState.value.copy(isLoading = false, error = e.message)
+            db.collection("orders").document(orderId).collection("proposals").add(proposal)
+                .addOnSuccessListener {
+                    uiState.value = uiState.value.copy(operationSuccess = true, isLoading = false)
                 }
         } else {
-            // Rejeita pedido
+            // Rejeição
             val updates = mapOf(
                 "accept" to OrderState.REJEITADA.name,
                 "rejectReason" to reason,
@@ -226,13 +204,11 @@ class OrderDetailViewModel : ViewModel() {
             db.collection("orders").document(orderId)
                 .update(updates)
                 .addOnSuccessListener {
+                    // NOTA: Removido o returnStock() daqui
+                    Log.d("OrderVM", "Pedido REJEITADO. Stock mantido (não foi retirado antes).")
+
                     uiState.value = uiState.value.copy(
-                        order = currentOrder.copy(
-                            accept = OrderState.REJEITADA,
-                            evaluatedBy = collaboratorId,
-                            evaluationDate = now,
-                            rejectReason = reason
-                        ),
+                        order = currentOrder.copy(accept = OrderState.REJEITADA),
                         operationSuccess = true,
                         isLoading = false
                     )
@@ -240,6 +216,71 @@ class OrderDetailViewModel : ViewModel() {
                 }
                 .addOnFailureListener { e ->
                     uiState.value = uiState.value.copy(isLoading = false, error = e.message)
+                }
+        }
+    }
+
+    // --- NOVA FUNÇÃO: REMOVER DO STOCK (FIFO) ---
+    private fun removeStockFIFO(items: List<OrderItem>, onComplete: (Boolean) -> Unit) {
+        if (items.isEmpty()) {
+            onComplete(true)
+            return
+        }
+
+        var processedCount = 0
+        var hasError = false
+
+        for (item in items) {
+            val name = item.name ?: continue
+            val qtyRequired = item.quantity ?: 0
+
+            if (qtyRequired <= 0) {
+                processedCount++
+                if (processedCount == items.size) onComplete(!hasError)
+                continue
+            }
+
+            // Encontrar produto pelo nome
+            db.collection("products").whereEqualTo("name", name).limit(1).get()
+                .addOnSuccessListener { snap ->
+                    if (!snap.isEmpty) {
+                        val productRef = snap.documents[0].reference
+
+                        db.runTransaction { transaction ->
+                            val snapshotProduct = transaction.get(productRef)
+                            val product = snapshotProduct.toObject(Product::class.java)
+
+                            if (product != null) {
+                                // Ordenar por validade (Mais antigo primeiro)
+                                val sortedBatches = product.batches.sortedBy { it.validity }.toMutableList()
+                                var remaining = qtyRequired
+
+                                val iterator = sortedBatches.listIterator()
+                                while (iterator.hasNext() && remaining > 0) {
+                                    val batch = iterator.next()
+                                    if (batch.quantity <= remaining) {
+                                        remaining -= batch.quantity
+                                        iterator.remove() // Remove lote vazio
+                                    } else {
+                                        batch.quantity -= remaining
+                                        remaining = 0
+                                    }
+                                }
+                                transaction.update(productRef, "batches", sortedBatches)
+                            }
+                        }.addOnCompleteListener {
+                            processedCount++
+                            if (processedCount == items.size) onComplete(!hasError)
+                        }.addOnFailureListener {
+                            hasError = true
+                            processedCount++
+                            if (processedCount == items.size) onComplete(false)
+                        }
+                    } else {
+                        // Produto não encontrado
+                        processedCount++
+                        if (processedCount == items.size) onComplete(!hasError)
+                    }
                 }
         }
     }
