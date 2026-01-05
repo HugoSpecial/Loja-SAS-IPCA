@@ -57,14 +57,17 @@ fun BeneficiaryBottomBar(
             .fillMaxWidth(),
         contentAlignment = Alignment.BottomCenter
     ) {
+        // --- BARRA DE NAVEGAÇÃO ---
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .height(80.dp)
+                // REMOVIDO: navigationBarsPadding (para a cor ir até ao fundo)
+                // REMOVIDO: height(80.dp) (para a altura ser dinâmica com o sistema)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
             containerColor = barBackgroundColor,
-            tonalElevation = 10.dp
+            tonalElevation = 10.dp,
+            // Garante que o conteúdo (ícones) respeita a área segura, mas o fundo pinta tudo
+            windowInsets = NavigationBarDefaults.windowInsets
         ) {
             // Lado Esquerdo
             items.take(2).forEach { item ->
@@ -84,7 +87,7 @@ fun BeneficiaryBottomBar(
                                 Icon(
                                     painter = painterResource(id = getIconRes(item)),
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp) // Tamanho standard
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         } else {
@@ -102,7 +105,6 @@ fun BeneficiaryBottomBar(
             }
 
             // --- ESPAÇO CENTRAL ---
-            // Spacer com peso 1f para empurrar os itens e criar o buraco para o botão
             Spacer(modifier = Modifier.weight(1f))
 
             // Lado Direito
@@ -130,10 +132,11 @@ fun BeneficiaryBottomBar(
             }
         }
 
+        // --- BOTÃO FLUTUANTE (CARRINHO) ---
         Box(
             modifier = Modifier
-                .navigationBarsPadding() // Acompanha a subida da barra em telemóveis com gestos
-                .offset(y = (-28).dp) // Ajuste para ficar meio dentro/meio fora. Ajusta este valor se necessário
+                .navigationBarsPadding() // MANTIDO: O botão deve respeitar a barra para não ficar muito em baixo
+                .offset(y = (-28).dp) // Ajuste vertical
                 .align(Alignment.BottomCenter)
         ) {
             val cartButtonContent = @Composable {

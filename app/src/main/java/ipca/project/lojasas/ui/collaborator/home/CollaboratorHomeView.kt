@@ -205,7 +205,7 @@ fun CollaboratorHomeView(
                 )
                 ActionCard(
                     title = "Urgente",
-                    subtitle = "Saída Rápida",
+                    subtitle = "Entrega Rápida",
                     icon = Icons.Default.Warning,
                     backgroundColor = IpcaRed,
                     modifier = Modifier.weight(1f),

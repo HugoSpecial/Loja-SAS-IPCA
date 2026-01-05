@@ -59,13 +59,14 @@ fun CollaboratorBottomBar(
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding() // CRUCIAL: Adapta-se à barra de sistema do Android
-                .height(80.dp)
+                // NOTA: Removeu-se o navigationBarsPadding daqui para a cor ir até ao fundo
+                // NOTA: Removeu-se a altura fixa para o sistema calcular o padding automaticamente
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
             containerColor = barBackgroundColor,
-            tonalElevation = 10.dp
+            tonalElevation = 10.dp,
+            // Isto garante que o conteúdo sobe, mas o fundo fica
+            windowInsets = NavigationBarDefaults.windowInsets
         ) {
-            // ITENS DA ESQUERDA (Início e Notificações)
             items.take(2).forEach { item ->
                 NavigationBarItem(
                     selected = selectedItem == item,
@@ -112,7 +113,7 @@ fun CollaboratorBottomBar(
         // --- BOTÃO CENTRAL (STOCK) ---
         Box(
             modifier = Modifier
-                .navigationBarsPadding() // Sobe junto com a barra
+                .navigationBarsPadding() // O botão MANTÉM o padding para não descer demais
                 .offset(y = (-28).dp) // Ajuste para ficar "flutuante" no meio
                 .align(Alignment.BottomCenter)
         ) {

@@ -37,12 +37,7 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         uiState.value = uiState.value.copy(isLoading = true, error = null)
 
         db.collection("notifications")
-            .where(
-                Filter.or(
-                    Filter.equalTo("recipientId", userId),
-                    Filter.equalTo("targetProfile", "COLABORADOR")
-                )
-            )
+            .whereEqualTo("recipientId", userId)
             .orderBy("date", Query.Direction.DESCENDING)
             .limit(100)
             .addSnapshotListener { value, error ->
@@ -68,7 +63,6 @@ class NotificationsCollaboratorViewModel : ViewModel() {
                 )
             }
     }
-
     fun filterByType(type: String?) {
         val masterList = uiState.value.allNotifications
         val newList = if (type == null) masterList else masterList.filter { it.type == type }
