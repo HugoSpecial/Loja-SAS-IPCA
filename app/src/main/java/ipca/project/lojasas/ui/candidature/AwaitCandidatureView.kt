@@ -237,7 +237,7 @@ fun AwaitCandidatureView(
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
-                                    onClick = { navController.navigate("candidature_form") },
+                                    onClick = { navController.navigate("candidature") },
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                     modifier = Modifier.fillMaxWidth().height(45.dp),
                                     shape = RoundedCornerShape(12.dp)
