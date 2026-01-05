@@ -103,7 +103,7 @@ fun CollaboratorHomeView(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SummaryCard(
-                    title = "Entregas Hoje", // Este texto será cortado, mas visível no popup
+                    title = "Entregas Hoje",
                     count = state.deliveriesTodayCount.toString(),
                     icon = ImageVector.vectorResource(id = R.drawable.delivery),
                     iconColor = IpcaDarkTeal,
@@ -148,7 +148,7 @@ fun CollaboratorHomeView(
         Text(
             text = "(Pressione longo para ver texto completo)",
             fontSize = 12.sp,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), // Cor adaptável
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -216,7 +216,7 @@ fun CollaboratorHomeView(
         Spacer(modifier = Modifier.height(100.dp))
     }
 
-    // Popup Logout (mantido igual)
+    // Popup Logout
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -243,7 +243,7 @@ fun CollaboratorHomeView(
 
 // --- COMPONENTES AUXILIARES ---
 
-@OptIn(ExperimentalFoundationApi::class) // Necessário para o combinedClickable
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SummaryCard(
     title: String,
@@ -252,16 +252,14 @@ fun SummaryCard(
     iconColor: Color,
     modifier: Modifier = Modifier
 ) {
-    // Estado para controlar o popup
     var showFullText by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
         Card(
             modifier = Modifier
                 .height(105.dp)
-                // Adicionado suporte a click e long click
                 .combinedClickable(
-                    onClick = { /* Ação de clique normal, se necessário */ },
+                    onClick = { /* Ação de clique normal */ },
                     onLongClick = { showFullText = true }
                 ),
             shape = RoundedCornerShape(20.dp),
@@ -310,7 +308,7 @@ fun SummaryCard(
             }
         }
 
-        // --- POPUP PARA TEXTO CORTADO ---
+        // --- POPUP PARA TEXTO CORTADO (Adaptado para Modo Escuro) ---
         if (showFullText) {
             Popup(
                 alignment = Alignment.Center,
@@ -318,7 +316,8 @@ fun SummaryCard(
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    // CORRIGIDO: Usa a cor da superfície do tema (Branco no claro, Cinza no escuro)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(8.dp),
                     modifier = Modifier
                         .width(200.dp)
@@ -328,7 +327,6 @@ fun SummaryCard(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Ícone pequeno no popup para contexto
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
@@ -341,13 +339,13 @@ fun SummaryCard(
                             text = count,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface // CORRIGIDO
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = title, // Mostra o título completo
+                            text = title,
                             fontSize = 16.sp,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, // CORRIGIDO: Cor de texto secundário adaptável
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold
                         )
@@ -387,7 +385,6 @@ fun ActionCard(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Ícone de fundo
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -426,7 +423,7 @@ fun ActionCard(
             }
         }
 
-        // --- POPUP DE ACTION CARD ---
+        // --- POPUP DE ACTION CARD (Adaptado para Modo Escuro) ---
         if (showFullText) {
             Popup(
                 alignment = Alignment.Center,
@@ -434,7 +431,8 @@ fun ActionCard(
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    // CORRIGIDO: Usa a cor da superfície do tema
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(8.dp),
                     modifier = Modifier
                         .width(200.dp)
@@ -448,14 +446,14 @@ fun ActionCard(
                             text = title,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = IpcaGreen,
+                            color = IpcaGreen, // Mantém a cor da marca, mas o fundo muda
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = subtitle,
                             fontSize = 14.sp,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, // CORRIGIDO: Cor adaptável para subtítulo
                             textAlign = TextAlign.Center
                         )
                     }
