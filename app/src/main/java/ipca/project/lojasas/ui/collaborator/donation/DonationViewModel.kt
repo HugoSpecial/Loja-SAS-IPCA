@@ -22,7 +22,7 @@ import java.util.Date
 
 data class DonationState(
     var currentName: String = "",
-    var currentCategory: String = "", // <--- NOVA VARIÁVEL
+    var currentCategory: String = "",
     var currentQuantity: String = "",
     var currentValidity: Date? = null,
     var currentImageBase64: String? = null,
@@ -35,7 +35,7 @@ data class DonationState(
     var donorName: String = "",
     var selectedCampaign: Campaign? = null,
     var activeCampaigns: List<Campaign> = emptyList(),
-    var existingProducts: List<Product> = emptyList(),
+    var existingProducts: List<Product> = emptyList(), // Lista local para validação
     var filteredProducts: List<Product> = emptyList(),
     var isLoading: Boolean = false,
     var error: String? = null,
@@ -68,8 +68,14 @@ class DonationViewModel : ViewModel() {
     }
 
     private fun fetchAllProducts() {
+        // Carrega todos os produtos para memória para validação rápida
         db.collection("products").get().addOnSuccessListener { result ->
-            val products = result.toObjects(Product::class.java)
+            val products = mutableListOf<Product>()
+            for (doc in result) {
+                val p = doc.toObject(Product::class.java)
+                p.docId = doc.id
+                products.add(p)
+            }
             uiState.value = uiState.value.copy(existingProducts = products)
         }
     }
@@ -82,7 +88,7 @@ class DonationViewModel : ViewModel() {
                 val item = doc.toObject(Product::class.java)
                 uiState.value = uiState.value.copy(
                     currentName = item?.name ?: "",
-                    currentCategory = item?.category ?: "", // Carrega a categoria se existir
+                    currentCategory = item?.category ?: "",
                     currentImageBase64 = item?.imageUrl,
                     isLoading = false
                 )
@@ -106,13 +112,16 @@ class DonationViewModel : ViewModel() {
     fun onProductSelected(product: Product) {
         uiState.value = uiState.value.copy(
             currentName = product.name,
-            currentCategory = product.category, // Preenche a categoria automaticamente
+            currentCategory = product.category,
             currentImageBase64 = product.imageUrl,
             filteredProducts = emptyList()
         )
     }
 
-    fun onQuantityChange(text: String) { if (text.all { it.isDigit() }) uiState.value = uiState.value.copy(currentQuantity = text) }
+    fun onQuantityChange(text: String) {
+        if (text.all { it.isDigit() }) uiState.value = uiState.value.copy(currentQuantity = text)
+    }
+
     fun onDateSelected(date: Date) { uiState.value = uiState.value.copy(currentValidity = date) }
 
     fun onImageSelected(context: Context, uri: Uri) {
@@ -132,7 +141,6 @@ class DonationViewModel : ViewModel() {
     fun addProductToList() {
         val state = uiState.value
 
-        // Validação
         if (state.currentName.isBlank() || state.currentQuantity.isBlank()) {
             uiState.value = uiState.value.copy(error = "Preencha nome e quantidade.")
             return
@@ -146,19 +154,18 @@ class DonationViewModel : ViewModel() {
         val validDate = state.currentValidity ?: Date()
 
         val newProduct = Product(
-            name = state.currentName,
-            category = state.currentCategory, // Adiciona a categoria ao produto
+            name = state.currentName.trim(), // Importante: Trim para evitar espaços extra
+            category = state.currentCategory,
             imageUrl = state.currentImageBase64 ?: "",
             batches = mutableListOf(ProductBatch(validity = validDate, quantity = qty))
         )
         val currentList = state.productsToAdd.toMutableList()
         currentList.add(newProduct)
 
-        // Limpa os campos para o próximo produto
         uiState.value = uiState.value.copy(
             productsToAdd = currentList,
             currentName = "",
-            currentCategory = "", // Limpa categoria
+            currentCategory = "",
             currentQuantity = "",
             currentValidity = null,
             currentImageBase64 = null,
@@ -175,10 +182,14 @@ class DonationViewModel : ViewModel() {
     }
 
     fun onCampaignSelected(campaign: Campaign) { uiState.value = uiState.value.copy(selectedCampaign = campaign) }
-    fun onAnonymousChange(isAnonymous: Boolean) { uiState.value = uiState.value.copy(isAnonymous = isAnonymous, donorName = if(isAnonymous) "" else uiState.value.donorName) }
+
+    fun onAnonymousChange(isAnonymous: Boolean) {
+        uiState.value = uiState.value.copy(isAnonymous = isAnonymous, donorName = if(isAnonymous) "" else uiState.value.donorName)
+    }
+
     fun onDonorNameChange(text: String) { uiState.value = uiState.value.copy(donorName = text) }
 
-    // --- LÓGICA DE GUARDAR ---
+    // --- LÓGICA DE GUARDAR (CORRIGIDA) ---
     fun saveDonation(onSuccess: () -> Unit) {
         val state = uiState.value
 
@@ -209,14 +220,14 @@ class DonationViewModel : ViewModel() {
             .addOnSuccessListener { docRef ->
                 val newDonationId = docRef.id
 
-                // 2. Atualizar Campanha
+                // 2. Atualizar Campanha (se aplicável)
                 val campaignId = state.selectedCampaign?.docId
                 if (!campaignId.isNullOrEmpty()) {
                     db.collection("campaigns").document(campaignId)
                         .update("donations", FieldValue.arrayUnion(newDonationId))
                 }
 
-                // 3. Atualizar Stock de Produtos
+                // 3. Atualizar Stock de Produtos (Agrupado e Seguro)
                 updateStockForList(state.productsToAdd, onSuccess)
             }
             .addOnFailureListener {
@@ -225,19 +236,29 @@ class DonationViewModel : ViewModel() {
     }
 
     private fun updateStockForList(products: List<Product>, onComplete: () -> Unit) {
-        var processedCount = 0
         if (products.isEmpty()) { onComplete(); return }
 
-        for (product in products) {
-            val qty = product.batches[0].quantity
-            val date = product.batches[0].validity
-            val img = product.imageUrl
-            val name = product.name
-            val cat = product.category // Obtém a categoria
+        // Agrupa produtos pelo nome para evitar conflitos de escrita
+        val groupedProducts = products.groupBy { it.name.trim() }
 
-            updateSingleProductStock(name, cat, qty, date, img) {
+        var processedCount = 0
+        val totalGroups = groupedProducts.size
+
+        for ((name, productList) in groupedProducts) {
+            val allNewBatches = mutableListOf<ProductBatch>()
+            var finalCategory = ""
+            var finalImage = ""
+
+            for (p in productList) {
+                allNewBatches.addAll(p.batches)
+                if (p.category.isNotBlank()) finalCategory = p.category
+                if (!p.imageUrl.isNullOrEmpty()) finalImage = p.imageUrl
+            }
+
+            // Chama a função de atualização com a lista de lotes consolidada
+            updateSingleProductStock(name, finalCategory, allNewBatches, finalImage) {
                 processedCount++
-                if (processedCount == products.size) {
+                if (processedCount == totalGroups) {
                     uiState.value = uiState.value.copy(isLoading = false, isSuccess = true)
                     onComplete()
                 }
@@ -245,42 +266,100 @@ class DonationViewModel : ViewModel() {
         }
     }
 
-    private fun updateSingleProductStock(name: String, category: String, qty: Int, date: Date, img: String?, onDone: () -> Unit) {
-        db.collection("products").whereEqualTo("name", name.trim()).get()
-            .addOnSuccessListener { docs ->
-                if (!docs.isEmpty) {
-                    // PRODUTO JÁ EXISTE: Atualiza stock
-                    val doc = docs.documents[0]
-                    val item = doc.toObject(Product::class.java)!!
-                    val batches = item.batches
-                    var found = false
-                    for (b in batches) {
-                        if (isSameDay(b.validity, date)) {
-                            b.quantity += qty
-                            found = true; break
+    private fun updateSingleProductStock(
+        name: String,
+        category: String,
+        newBatches: List<ProductBatch>,
+        img: String?,
+        onDone: () -> Unit
+    ) {
+        // 1. Verifica na lista local se já existe um produto com este nome (ignora maiúsculas/minúsculas)
+        val localMatch = uiState.value.existingProducts.find {
+            it.name.trim().equals(name.trim(), ignoreCase = true)
+        }
+
+        if (localMatch != null && !localMatch.docId.isNullOrEmpty()) {
+            // --- O Produto JÁ EXISTE (Encontrado localmente) ---
+            val docRef = db.collection("products").document(localMatch.docId)
+
+            docRef.get().addOnSuccessListener { snapshot ->
+                val existingProduct = snapshot.toObject(Product::class.java)
+
+                if (existingProduct != null) {
+                    val currentBatches = existingProduct.batches
+
+                    // Fundir lotes
+                    for (newBatch in newBatches) {
+                        var found = false
+                        for (existingBatch in currentBatches) {
+                            if (isSameDay(existingBatch.validity, newBatch.validity)) {
+                                existingBatch.quantity += newBatch.quantity
+                                found = true
+                                break
+                            }
+                        }
+                        if (!found) {
+                            currentBatches.add(newBatch)
                         }
                     }
-                    if (!found) batches.add(ProductBatch(validity = date, quantity = qty))
 
-                    val updates = mutableMapOf<String, Any>("batches" to batches)
-                    // Atualizamos a imagem se a nova não for vazia
+                    val updates = mutableMapOf<String, Any>("batches" to currentBatches)
                     if (!img.isNullOrEmpty()) updates["imageUrl"] = img
-                    // Opcional: Se quiseres atualizar a categoria de um produto existente, descomenta a linha abaixo
-                    // updates["category"] = category
+                    // updates["category"] = category // Descomente para atualizar categoria
 
-                    doc.reference.update(updates).addOnCompleteListener { onDone() }
+                    docRef.update(updates).addOnCompleteListener { onDone() }
                 } else {
-                    // PRODUTO NOVO
-                    val newBatch = ProductBatch(validity = date, quantity = qty)
-                    val newItem = Product(
-                        name = name,
-                        category = category,
-                        imageUrl = img ?: "",
-                        batches = mutableListOf(newBatch)
-                    )
-                    db.collection("products").add(newItem).addOnCompleteListener { onDone() }
+                    // Se falhar a leitura do objeto, tenta criar novo (fallback raro)
+                    createNewProduct(name, category, newBatches, img, onDone)
                 }
+            }.addOnFailureListener {
+                onDone()
             }
+
+        } else {
+            // --- Produto NÃO encontrado localmente -> Tentar Query Firestore ou Criar Novo ---
+            db.collection("products").whereEqualTo("name", name.trim()).get()
+                .addOnSuccessListener { docs ->
+                    if (!docs.isEmpty) {
+                        // Encontrou na base de dados (lista local podia estar desatualizada)
+                        val product = docs.documents[0].toObject(Product::class.java)
+                        product?.docId = docs.documents[0].id
+
+                        if (product != null) {
+                            // Atualiza lista local e tenta novamente a lógica de update
+                            val newList = uiState.value.existingProducts.toMutableList()
+                            newList.add(product)
+                            uiState.value = uiState.value.copy(existingProducts = newList)
+
+                            // Recursividade segura para ir ao bloco "if (localMatch != null)"
+                            updateSingleProductStock(product.name, category, newBatches, img, onDone)
+                        } else {
+                            onDone()
+                        }
+                    } else {
+                        // Definitivamente não existe -> Criar Novo
+                        createNewProduct(name, category, newBatches, img, onDone)
+                    }
+                }
+        }
+    }
+
+    private fun createNewProduct(name: String, category: String, newBatches: List<ProductBatch>, img: String?, onDone: () -> Unit) {
+        val newItem = Product(
+            name = name.trim(),
+            category = category,
+            imageUrl = img ?: "",
+            batches = newBatches.toMutableList()
+        )
+        db.collection("products").add(newItem).addOnSuccessListener { docRef ->
+            // Adiciona logo à lista local para evitar duplicados na mesma sessão
+            newItem.docId = docRef.id
+            val newList = uiState.value.existingProducts.toMutableList()
+            newList.add(newItem)
+            uiState.value = uiState.value.copy(existingProducts = newList)
+
+            onDone()
+        }
     }
 
     private fun isSameDay(date1: Date?, date2: Date?): Boolean {
@@ -290,6 +369,7 @@ class DonationViewModel : ViewModel() {
         val cal2 = Calendar.getInstance().apply { time = date2 }
         return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) && cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
+
     private fun scaleBitmapDown(bitmap: Bitmap, maxDimension: Int): Bitmap {
         val originalWidth = bitmap.width; val originalHeight = bitmap.height
         var resizedWidth = maxDimension; var resizedHeight = maxDimension
@@ -298,6 +378,7 @@ class DonationViewModel : ViewModel() {
         else { if (originalHeight < maxDimension) return bitmap }
         return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false)
     }
+
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val outputStream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
