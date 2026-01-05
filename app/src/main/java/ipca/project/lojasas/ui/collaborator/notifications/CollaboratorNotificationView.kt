@@ -35,11 +35,6 @@ import ipca.project.lojasas.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.*
 
-val BackgroundGray = Color(0xFFF9F9F9)
-val PrimaryGreen = Color(0xFF00864F)
-val TextGray = Color(0xFF8C8C8C)
-val LightGreenBg = Color(0xFFE8F5E9)
-
 @Composable
 fun CollaboratorNotificationView(
     modifier: Modifier = Modifier,
@@ -47,7 +42,6 @@ fun CollaboratorNotificationView(
     viewModel: NotificationsCollaboratorViewModel = viewModel()
 ) {
     val state by remember { viewModel.uiState }
-
     var notificationForDialog by remember { mutableStateOf<Notification?>(null) }
     var existingReason by remember { mutableStateOf<String?>(null) }
 
@@ -56,47 +50,84 @@ fun CollaboratorNotificationView(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().background(BackgroundGray).padding(horizontal = 24.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .padding(horizontal = 24.dp)
     ) {
         Spacer(modifier = Modifier.height(40.dp))
-        Image(painter = painterResource(id = R.drawable.logo_sas), contentDescription = "Logo", modifier = Modifier.fillMaxWidth().height(80.dp))
+        Image(
+            painter = painterResource(id = R.drawable.logo_sas),
+            contentDescription = "Logo",
+            modifier = Modifier.fillMaxWidth().height(80.dp)
+        )
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text("Notificações", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+            Text(
+                "Notificações",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary // Verde
+            )
             if (state.unreadCount > 0) {
                 Spacer(modifier = Modifier.width(8.dp))
-                Badge(containerColor = Color.Red, contentColor = Color.White) { Text("${state.unreadCount}", Modifier.padding(2.dp)) }
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ) { Text("${state.unreadCount}", Modifier.padding(2.dp)) }
             }
         }
-        Text("Fique a par das novidades.", fontSize = 14.sp, color = TextGray, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+
+        Text(
+            "Fique a par das novidades.",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
+        )
 
         FilterSection(state.selectedFilter) { viewModel.filterByType(it) }
         Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                state.isLoading && state.notifications.isEmpty() -> CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.align(Alignment.Center))
-                state.error != null -> Text(state.error ?: "Erro", color = Color.Red, modifier = Modifier.align(Alignment.Center))
-                state.notifications.isEmpty() -> EmptyState(message = "Sem notificações.", icon = Icons.Outlined.Notifications)
+                state.isLoading && state.notifications.isEmpty() -> CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                state.error != null -> Text(
+                    state.error ?: "Erro",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                state.notifications.isEmpty() -> EmptyState(
+                    message = "Sem notificações.",
+                    icon = Icons.Outlined.Notifications
+                )
                 else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp)
+                    ) {
                         items(state.notifications) { notification ->
-                            NotificationCard(notification = notification, onClick = {
+                            NotificationCard(
+                                notification = notification,
+                                onClick = {
+                                    if (notification.type != "resposta_entrega_rejeitada" && !notification.read) {
+                                        viewModel.markAsRead(notification.docId)
+                                    }
 
-                                if (notification.type != "resposta_entrega_rejeitada" && !notification.read) {
-                                    viewModel.markAsRead(notification.docId)
+                                    if (notification.type == "resposta_entrega_rejeitada") {
+                                        existingReason = null
+                                        notificationForDialog = notification
+                                    } else if (notification.type == "resposta_entrega") {
+                                        navController.navigate("delivery_details/${notification.relatedId}")
+                                    } else if (notification.type == "pedido_novo") {
+                                        navController.navigate("order_details/${notification.relatedId}")
+                                    }
                                 }
-
-                                if (notification.type == "resposta_entrega_rejeitada") {
-                                    existingReason = null
-                                    notificationForDialog = notification
-                                } else if (notification.type == "resposta_entrega") {
-                                    navController.navigate("delivery_details/${notification.relatedId}")
-                                } else if (notification.type == "pedido_novo") {
-                                    navController.navigate("order_details/${notification.relatedId}")
-                                }
-                            })
+                            )
                         }
                     }
                 }
@@ -134,32 +165,60 @@ fun CollaboratorNotificationView(
 
         AlertDialog(
             onDismissRequest = { notificationForDialog = null },
-            containerColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.surface, // Branco/Cinza Escuro
             title = {
                 Column {
-                    Text(text = "Justificação de Falta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                    Text(
+                        text = "Justificação de Falta",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = Color.LightGray)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
                 }
             },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = "Beneficiário:", fontSize = 12.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                    Text(text = beneficiaryName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+                    Text(
+                        text = "Beneficiário:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = beneficiaryName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     if (beneficiaryPhone.isNotEmpty() && beneficiaryPhone != "--") {
-                        Text(text = "Contacto: $beneficiaryPhone", fontSize = 14.sp, color = Color.DarkGray)
+                        Text(
+                            text = "Contacto: $beneficiaryPhone",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color.LightGray, thickness = 0.5.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), thickness = 0.5.dp)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(text = notif.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = dateString, fontSize = 12.sp, color = TextGray)
+                    Text(
+                        text = notif.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = dateString,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Surface(
-                        color = BackgroundGray,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -167,40 +226,46 @@ fun CollaboratorNotificationView(
                             text = notif.body,
                             fontSize = 15.sp,
                             lineHeight = 22.sp,
-                            modifier = Modifier.padding(12.dp)
+                            modifier = Modifier.padding(12.dp),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
-                    // SÓ MOSTRA A CAIXA DE ESTADO SE JÁ ESTIVER DECIDIDO (E NÃO FOR URGENTE)
+                    // SÓ MOSTRA A CAIXA DE ESTADO SE JÁ ESTIVER DECIDIDO
                     if (isDecided) {
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // --- ALTERAÇÃO DE DESIGN AQUI ---
-                        // 1. Título "Estado Atual" fora da caixa e a preto
                         Text(
                             text = "Estado Atual:",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
                         val isAccepted = existingReason!!.contains("Justificado", ignoreCase = true)
 
-                        // 2. Caixa colorida só com a razão
+                        // Cores dinâmicas para a caixa de status
+                        val statusBg = if (isAccepted)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        else
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+
+                        val statusText = if (isAccepted)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.error
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(
-                                    if (isAccepted) LightGreenBg else Color(0xFFFFEBEE),
-                                    RoundedCornerShape(8.dp)
-                                )
+                                .background(statusBg, RoundedCornerShape(8.dp))
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = existingReason!!,
-                                color = if (isAccepted) PrimaryGreen else Color(0xFFD32F2F),
+                                color = statusText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -216,7 +281,10 @@ fun CollaboratorNotificationView(
                                 existingReason = "Justificado (Falta não aplicada)"
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -225,10 +293,8 @@ fun CollaboratorNotificationView(
                         Text("Aceitar justificação")
                     }
                 } else {
-                    // --- ALTERAÇÃO DE DESIGN AQUI ---
-                    // Botão "Fechar" a preto
                     TextButton(onClick = { notificationForDialog = null }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Fechar", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Fechar", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
                 }
             },
@@ -240,7 +306,10 @@ fun CollaboratorNotificationView(
                                 existingReason = "Justificação Rejeitada (Falta Aplicada)"
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     ) {
@@ -254,7 +323,6 @@ fun CollaboratorNotificationView(
     }
 }
 
-// ... Resto das funções auxiliares ...
 @Composable
 fun getIconForType(type: String): ImageVector {
     return when (type) {
@@ -276,12 +344,17 @@ fun FilterSection(selectedFilter: String?, onFilterSelected: (String?) -> Unit) 
             val isSelected = selectedFilter == type
             Button(
                 onClick = { onFilterSelected(type) },
-                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) PrimaryGreen else Color.White, contentColor = if (isSelected) Color.White else TextGray),
-                border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                ),
+                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                 modifier = Modifier.height(36.dp)
-            ) { Text(text = label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp) }
+            ) {
+                Text(text = label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
+            }
         }
     }
 }
@@ -291,22 +364,71 @@ fun NotificationCard(notification: Notification, onClick: () -> Unit) {
     val dateFormat = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
     val dateString = notification.date?.let { dateFormat.format(it) } ?: "--"
     val isUnread = !notification.read
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp), modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+    ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(48.dp)) {
-                Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(LightGreenBg).align(Alignment.Center), contentAlignment = Alignment.Center) {
-                    Icon(imageVector = getIconForType(notification.type), contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(24.dp))
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)) // Fundo verde transparente
+                        .align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getIconForType(notification.type),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
-                if (isUnread) Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(Color.Red).align(Alignment.TopEnd))
+                if (isUnread) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error)
+                            .align(Alignment.TopEnd)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = notification.title, fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold, fontSize = 16.sp, color = Color.Black, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(text = dateString, fontSize = 12.sp, color = TextGray, modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        text = notification.title,
+                        fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = dateString,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = notification.body, fontSize = 14.sp, color = if (isUnread) Color.DarkGray else TextGray, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp)
+                Text(
+                    text = notification.body,
+                    fontSize = 14.sp,
+                    color = if (isUnread)
+                        MaterialTheme.colorScheme.onSurface
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 20.sp
+                )
             }
         }
     }
