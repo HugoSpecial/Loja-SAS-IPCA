@@ -1,8 +1,9 @@
 package ipca.project.lojasas.ui.collaborator.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -22,9 +23,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
@@ -100,7 +103,7 @@ fun CollaboratorHomeView(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SummaryCard(
-                    title = "Entregas Hoje",
+                    title = "Entregas Hoje", // Este texto será cortado, mas visível no popup
                     count = state.deliveriesTodayCount.toString(),
                     icon = ImageVector.vectorResource(id = R.drawable.delivery),
                     iconColor = IpcaDarkTeal,
@@ -140,6 +143,12 @@ fun CollaboratorHomeView(
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Text(
+            text = "(Pressione longo para ver texto completo)",
+            fontSize = 12.sp,
+            color = Color.Gray,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -148,7 +157,7 @@ fun CollaboratorHomeView(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 ActionCard(
                     title = "Entregas",
-                    subtitle = "Gestão",
+                    subtitle = "Gestão Geral",
                     icon = ImageVector.vectorResource(id = R.drawable.delivery),
                     backgroundColor = IpcaOlive,
                     modifier = Modifier.weight(1f),
@@ -156,7 +165,7 @@ fun CollaboratorHomeView(
                 )
                 ActionCard(
                     title = "Pedidos",
-                    subtitle = "Gestão",
+                    subtitle = "Validação",
                     icon = ImageVector.vectorResource(id = R.drawable.shopping_cart),
                     backgroundColor = IpcaDarkTeal,
                     modifier = Modifier.weight(1f),
@@ -168,7 +177,7 @@ fun CollaboratorHomeView(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 ActionCard(
                     title = "Doações",
-                    subtitle = "Gestão",
+                    subtitle = "Entradas",
                     icon = ImageVector.vectorResource(id = R.drawable.donate),
                     backgroundColor = IpcaBlueGray,
                     modifier = Modifier.weight(1f),
@@ -188,7 +197,7 @@ fun CollaboratorHomeView(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 ActionCard(
                     title = "Candidaturas",
-                    subtitle = "Gestão",
+                    subtitle = "Processos",
                     icon = ImageVector.vectorResource(id = R.drawable.file_dock),
                     backgroundColor = IpcaGreen,
                     modifier = Modifier.weight(1f),
@@ -207,7 +216,7 @@ fun CollaboratorHomeView(
         Spacer(modifier = Modifier.height(100.dp))
     }
 
-    // --- POPUP DE LOGOUT ---
+    // Popup Logout (mantido igual)
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -234,6 +243,7 @@ fun CollaboratorHomeView(
 
 // --- COMPONENTES AUXILIARES ---
 
+@OptIn(ExperimentalFoundationApi::class) // Necessário para o combinedClickable
 @Composable
 fun SummaryCard(
     title: String,
@@ -242,57 +252,113 @@ fun SummaryCard(
     iconColor: Color,
     modifier: Modifier = Modifier
 ) {
-    // Aumentei a altura para 105dp
-    Card(
-        modifier = modifier.height(105.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(
+    // Estado para controlar o popup
+    var showFullText by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .height(105.dp)
+                // Adicionado suporte a click e long click
+                .combinedClickable(
+                    onClick = { /* Ação de clique normal, se necessário */ },
+                    onLongClick = { showFullText = true }
+                ),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
-            // Ícone maior
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(iconColor.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(iconColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = count,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = 24.sp
+                    )
+                    Text(
+                        text = title,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(verticalArrangement = Arrangement.Center) {
-                Text(
-                    text = count,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 24.sp
-                )
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+        }
+
+        // --- POPUP PARA TEXTO CORTADO ---
+        if (showFullText) {
+            Popup(
+                alignment = Alignment.Center,
+                onDismissRequest = { showFullText = false }
+            ) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    modifier = Modifier
+                        .width(200.dp)
+                        .padding(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Ícone pequeno no popup para contexto
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = count,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = title, // Mostra o título completo
+                            fontSize = 16.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ActionCard(
     title: String,
@@ -302,56 +368,98 @@ fun ActionCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    // Aumentei a altura para 190dp para evitar cortes
-    Card(
-        modifier = modifier
-            .height(190.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
-            // Ícone de fundo - Posicionado melhor para não parecer cortado por erro
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.2f),
-                modifier = Modifier
-                    .size(90.dp) // Ícone maior
-                    .align(Alignment.TopEnd)
-                    .offset(x = 20.dp, y = (-20).dp) // Deslocamento artístico
-            )
+    var showFullText by remember { mutableStateOf(false) }
 
-            // Conteúdo textual
-            Column(
+    Box(modifier = modifier) {
+        Card(
+            modifier = Modifier
+                .height(190.dp)
+                .combinedClickable(
+                    onClick = { onClick() },
+                    onLongClick = { showFullText = true }
+                ),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = backgroundColor),
+            elevation = CardDefaults.cardElevation(4.dp)
+        ) {
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(end = 4.dp)
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                Text(
-                    text = title,
-                    fontSize = 20.sp, // Fonte confortável
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    lineHeight = 22.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                // Ícone de fundo
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.2f),
+                    modifier = Modifier
+                        .size(90.dp)
+                        .align(Alignment.TopEnd)
+                        .offset(x = 20.dp, y = (-20).dp)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = subtitle,
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 16.sp,
-                    maxLines = 2, // Permite 2 linhas se necessário, mas tenta ficar em 1
-                    overflow = TextOverflow.Ellipsis
-                )
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(end = 4.dp)
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        lineHeight = 22.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Normal,
+                        lineHeight = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        // --- POPUP DE ACTION CARD ---
+        if (showFullText) {
+            Popup(
+                alignment = Alignment.Center,
+                onDismissRequest = { showFullText = false }
+            ) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    modifier = Modifier
+                        .width(200.dp)
+                        .padding(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = title,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IpcaGreen,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = subtitle,
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         }
     }
