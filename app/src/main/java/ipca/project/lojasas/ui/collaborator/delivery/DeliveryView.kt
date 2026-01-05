@@ -106,7 +106,7 @@ fun DeliveryListView(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Contador de pendentes
-            val pendingColor = Color(0xFFEF6C00) // Laranja fixo para alerta
+            val pendingColor = Color(0xFFEF6C00)
             Text(
                 text = if (state.pendingCount == 1) "1 pendente" else "${state.pendingCount} pendentes",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
@@ -188,9 +188,7 @@ fun FilterChipButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            // Selecionado: Primary. Não: Surface (Branco/Preto)
             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-            // Selecionado: Branco. Não: Texto adaptável
             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         ),
         border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
@@ -215,7 +213,7 @@ fun DeliveryCard(delivery: DeliveryWithUser, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
@@ -259,7 +257,6 @@ fun StatusBadgeOrder(state: DeliveryState) {
         DeliveryState.EM_ANALISE -> Color(0xFF00BCD4)
     }
 
-    // Badge com fundo transparente da cor principal
     Surface(
         color = mainColor.copy(alpha = 0.1f),
         shape = RoundedCornerShape(50),

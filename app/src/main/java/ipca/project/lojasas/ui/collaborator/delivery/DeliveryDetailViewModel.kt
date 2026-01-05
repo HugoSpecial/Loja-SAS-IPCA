@@ -62,7 +62,6 @@ class DeliveryDetailViewModel : ViewModel() {
                                     val order = orderSnapshot.toObject(Order::class.java)?.apply { docId = orderSnapshot.id }
 
                                     // --- CORREÇÃO AQUI ---
-                                    // Preenchemos logo o userName com o que vem da Order para evitar o "N/A"
                                     uiState.value = uiState.value.copy(
                                         order = order,
                                         userName = order?.userName,
@@ -119,9 +118,6 @@ class DeliveryDetailViewModel : ViewModel() {
     }
 
     fun fetchProducts() {
-        // --- MELHORIA ---
-        // Alterado de addSnapshotListener para get() para evitar Memory Leaks
-        // já que não estamos a remover o listener quando saímos do ecrã.
         db.collection("products")
             .get()
             .addOnSuccessListener { snapshot ->

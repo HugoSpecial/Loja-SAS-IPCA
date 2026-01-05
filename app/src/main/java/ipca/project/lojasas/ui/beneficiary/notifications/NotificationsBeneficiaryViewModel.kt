@@ -103,7 +103,7 @@ class NotificationsBeneficiaryViewModel : ViewModel() {
 
     private fun applyFilterLogic(list: List<Notification>, category: String?): List<Notification> {
         return when (category) {
-            null -> list // Mostrar Tudo
+            null -> list
             "cat_pedidos" -> list.filter {
                 it.type == "pedido_novo" || it.type == "pedido_estado"
             }
