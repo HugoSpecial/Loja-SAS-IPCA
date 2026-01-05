@@ -1,6 +1,5 @@
 package ipca.project.lojasas
 
-// IMPORTS
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -208,7 +207,20 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("candidature") { CandidatureView(navController = navController) }
+
+                        composable(
+                            route = "candidature_edit/{candidatureId}",
+                            arguments = listOf(navArgument("candidatureId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("candidatureId")
+                            CandidatureView(
+                                navController = navController,
+                                candidatureId = id
+                            )
+                        }
+
                         composable("await-candidature") { AwaitCandidatureView(navController = navController) }
+
                         composable("home") { HomeView(navController = navController) }
 
                         composable("notification") {
