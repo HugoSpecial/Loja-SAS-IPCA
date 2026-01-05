@@ -51,7 +51,7 @@ fun DeliveryDetailView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // --- HEADER ---
         Row(

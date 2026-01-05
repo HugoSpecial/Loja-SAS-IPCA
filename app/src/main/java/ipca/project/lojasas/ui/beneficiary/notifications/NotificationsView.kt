@@ -70,7 +70,6 @@ fun NotificationView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- 2. TÍTULO ---
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -186,7 +185,6 @@ fun getBeneficiaryIconForType(notification: Notification): ImageVector {
 }
 
 // --- COMPONENTES AUXILIARES ---
-
 @Composable
 fun BeneficiaryFilterSection(
     selectedFilter: String?,

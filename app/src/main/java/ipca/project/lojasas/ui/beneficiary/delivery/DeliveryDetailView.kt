@@ -54,7 +54,6 @@ fun DeliveryDetailContent(
     onNoteChange: (String) -> Unit = {},
     onSaveClick: (String) -> Unit = {}
 ) {
-    // 1. Fundo adaptável (Cinza Claro no Light, Preto no Dark)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -62,7 +61,6 @@ fun DeliveryDetailContent(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // --- CABEÇALHO ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -93,15 +91,14 @@ fun DeliveryDetailContent(
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                SectionTitle("Notificação") // Certifica-te que este componente aceita cores do tema
+                SectionTitle("Notificação")
 
-                // --- CARD DA NOTIFICAÇÃO ---
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface // Branco (Light) ou Preto (Dark)
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -109,7 +106,7 @@ fun DeliveryDetailContent(
                             text = state.notificationTitle.ifEmpty { "Sem Título" },
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface // Preto (Light) ou Branco (Dark)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -125,7 +122,6 @@ fun DeliveryDetailContent(
 
                 SectionTitle("Observação/Resposta")
 
-                // --- CAIXA DE TEXTO ---
                 OutlinedTextField(
                     value = state.userNote,
                     onValueChange = onNoteChange,
@@ -182,7 +178,6 @@ fun DeliveryDetailContent(
                     }
                 }
 
-                // --- MENSAGEM DE SUCESSO ---
                 if (state.isSaved) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -193,7 +188,6 @@ fun DeliveryDetailContent(
                     )
                 }
 
-                // --- MENSAGEM DE ERRO ---
                 if (state.error != null) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(

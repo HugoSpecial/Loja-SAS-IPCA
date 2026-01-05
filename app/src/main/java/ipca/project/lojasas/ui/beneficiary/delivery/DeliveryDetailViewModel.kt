@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth // Import seguro
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 data class DeliveryDetailState(
@@ -23,7 +23,6 @@ class DeliveryDetailViewModel : ViewModel() {
         private set
 
     private val db = FirebaseFirestore.getInstance()
-    // Uso direto do FirebaseAuth para evitar problemas de imports KTX
     private val auth = FirebaseAuth.getInstance()
 
     fun fetchNotificationData(notificationId: String) {
