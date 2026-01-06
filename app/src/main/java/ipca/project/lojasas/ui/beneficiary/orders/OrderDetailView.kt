@@ -21,9 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import ipca.project.lojasas.models.Order
+import com.google.firebase.auth.FirebaseAuth
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.ProposalDelivery
@@ -48,7 +46,6 @@ fun BeneficiaryOrderDetailView(
 ) {
     val state = viewModel.uiState
 
-    // Busca o pedido ao iniciar
     LaunchedEffect(orderId) {
         viewModel.fetchOrder(orderId)
     }
@@ -56,11 +53,9 @@ fun BeneficiaryOrderDetailView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fundo adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
-
         Column(modifier = Modifier.fillMaxSize()) {
-
             // --- HEADER ---
             Row(
                 modifier = Modifier
@@ -72,7 +67,7 @@ fun BeneficiaryOrderDetailView(
                     Icon(
                         Icons.Default.ArrowBack,
                         contentDescription = "Voltar",
-                        tint = MaterialTheme.colorScheme.primary // GreenPrimary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -85,10 +80,7 @@ fun BeneficiaryOrderDetailView(
             }
 
             if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else if (state.error != null) {
                 Text(
                     text = state.error ?: "Erro",
@@ -105,55 +97,33 @@ fun BeneficiaryOrderDetailView(
                         .padding(horizontal = 20.dp)
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // --- Estado do Pedido ---
                     OrderStatusBadge(order.accept)
-
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- Produtos Solicitados ---
                     SectionTitle("Produtos solicitados")
                     if (order.items.isEmpty()) {
-                        Text(
-                            "Nenhum produto solicitado.",
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Nenhum produto.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
                     } else {
                         ProductList(order.items)
                     }
-
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- Datas ---
                     SectionTitle("Submissão")
-                    InfoRow(
-                        "Data do pedido",
-                        order.orderDate?.let {
-                            SimpleDateFormat("d 'de' MMM 'de' yyyy, HH:mm", Locale("pt", "PT")).format(it)
-                        } ?: "-"
-                    )
-                    InfoRow(
-                        "Data da entrega",
-                        order.surveyDate?.let {
-                            SimpleDateFormat("d 'de' MMM 'de' yyyy", Locale("pt", "PT")).format(it)
-                        } ?: "-"
-                    )
-
+                    InfoRow("Data do pedido", order.orderDate?.let { SimpleDateFormat("d MMM yyyy, HH:mm", Locale("pt")).format(it) } ?: "-")
+                    InfoRow("Data da entrega", order.surveyDate?.let { SimpleDateFormat("d MMM yyyy", Locale("pt")).format(it) } ?: "-")
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- Observações do Colaborador ---
                     if (!order.rejectReason.isNullOrBlank() && order.accept == OrderState.REJEITADA) {
                         SectionTitle("Observações")
-                        InfoRow("Motivo da rejeição:", order.rejectReason!!)
+                        InfoRow("Motivo:", order.rejectReason!!)
                         Spacer(modifier = Modifier.height(24.dp))
                     }
 
-                    // --- Propostas de Data ---
+                    // --- PROPOSTAS ---
                     if (state.proposals.isNotEmpty()) {
-                        SectionTitle("Propostas de data")
+                        SectionTitle("Negociação de Data")
                         state.proposals.forEach { proposal ->
-                            ProposalCard(proposal = proposal, viewModel = viewModel, orderId = orderId)
+                            BeneficiaryProposalCard(proposal = proposal, viewModel = viewModel, orderId = orderId)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -167,19 +137,26 @@ fun BeneficiaryOrderDetailView(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun ProposalCard(
+fun BeneficiaryProposalCard(
     proposal: ProposalDelivery,
     viewModel: BeneficiaryOrderViewModel,
     orderId: String
 ) {
-    val auth = Firebase.auth
-    val currentUser = auth.currentUser?.uid
+    val currentUser = FirebaseAuth.getInstance().currentUser?.uid
 
+    // Nomes para exibição
+    val myName = viewModel.uiState.currentUserName ?: "Eu"
+    val otherName = "Colaborador"
+
+    val isNegotiationClosed = viewModel.uiState.proposals.any { it.confirmed == true }
+
+    // Identificar a proposta pendente mais recente
     val latestPendingProposal = viewModel.uiState.proposals
         .filter { it.confirmed == false }
         .maxByOrNull { it.proposalDate?.time ?: 0L }
 
-    val showButtons = proposal.confirmed == false &&
+    val showButtons = !isNegotiationClosed &&
+            proposal.confirmed == false &&
             proposal.proposedBy != currentUser &&
             proposal == latestPendingProposal
 
@@ -197,33 +174,28 @@ fun ProposalCard(
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            val proposalDateStr = proposal.proposalDate?.let {
-                SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("pt", "PT")).format(it)
-            } ?: "--"
+            val proposalDateStr = proposal.proposalDate?.let { SimpleDateFormat("dd MMM, HH:mm", Locale("pt")).format(it) } ?: "--"
+            val newDateStr = proposal.newDate?.let { SimpleDateFormat("dd MMM yyyy", Locale("pt")).format(it) } ?: "--"
 
-            val newDateStr = proposal.newDate?.let {
-                SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT")).format(it)
-            } ?: "--"
+            val proposedByLabel = if (proposal.proposedBy == currentUser) myName else otherName
 
-            Text(
-                "Proposta enviada em: $proposalDateStr",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+            Text("Proposta de $proposedByLabel em: $proposalDateStr", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                "Nova data: $newDateStr",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary // GreenPrimary
-            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Nova data: $newDateStr", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                if (proposal.confirmed == true) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.Default.Check, contentDescription = "Aceite", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Text(" (Aceite)", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             if (showButtons) {
@@ -232,34 +204,26 @@ fun ProposalCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Botão Aceitar
                     Button(
                         onClick = { viewModel.acceptProposal(orderId, proposal.docId ?: "") },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(40.dp).weight(1f)
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "Aceitar")
+                        Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Aceitar", fontWeight = FontWeight.Bold)
                     }
 
-                    // Botão Recusar
                     Button(
                         onClick = { showDatePicker = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error, // Vermelho
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(40.dp).weight(1f)
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Recusar")
+                        Icon(Icons.Default.Close, contentDescription = null)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Recusar / Nova Data", fontWeight = FontWeight.Bold)
+                        Text("Contra-propor", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -267,7 +231,6 @@ fun ProposalCard(
     }
 
     if (showDatePicker) {
-        // O AlertDialog usa a cor 'surface' automaticamente
         AlertDialog(
             onDismissRequest = { showDatePicker = false },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -277,12 +240,10 @@ fun ProposalCard(
                         viewModel.proposeNewDate(orderId, Date.from(selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant()))
                         showDatePicker = false
                     }
-                ) { Text("Confirmar", color = MaterialTheme.colorScheme.primary) }
+                ) { Text("Enviar", color = MaterialTheme.colorScheme.primary) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.error)
-                }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancelar", color = MaterialTheme.colorScheme.error) }
             },
             text = {
                 Column {
@@ -300,50 +261,28 @@ fun ProposalCard(
 
 @Composable
 fun OrderStatusBadge(state: OrderState) {
-    // Cores adaptáveis:
     val mainColor = when (state) {
-        OrderState.PENDENTE -> Color(0xFFEF6C00)        // Laranja (Fixo)
-        OrderState.ACEITE -> MaterialTheme.colorScheme.primary // GreenPrimary
-        OrderState.REJEITADA -> MaterialTheme.colorScheme.error // RedPrimary
+        OrderState.PENDENTE -> Color(0xFFEF6C00)
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error
     }
-
-    // Fundo usa 10% da cor principal. Funciona em Light e Dark mode.
-    StatusBadge(
-        label = state.name,
-        backgroundColor = mainColor.copy(alpha = 0.1f),
-        contentColor = mainColor
-    )
+    StatusBadge(label = state.name, backgroundColor = mainColor.copy(alpha = 0.1f), contentColor = mainColor)
 }
 
 @Composable
 fun ProductList(items: List<OrderItem>) {
     items.forEach { item ->
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
-            )
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = item.name ?: "-",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "x${item.quantity}",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text(item.name ?: "-", fontWeight = FontWeight.Bold)
+                Text("x${item.quantity}", color = MaterialTheme.colorScheme.primary)
             }
         }
     }
