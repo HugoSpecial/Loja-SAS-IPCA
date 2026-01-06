@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.*
 import java.util.Date
@@ -19,11 +21,14 @@ data class OrderDetailState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val operationSuccess: Boolean = false,
+    val proposals: List<ProposalDelivery> = emptyList(),
+    val currentCollaboratorName: String? = null
 )
 
 class OrderDetailViewModel : ViewModel() {
 
     private val db = Firebase.firestore
+    private var proposalsListener: ListenerRegistration? = null
 
     var uiState = mutableStateOf(OrderDetailState())
         private set
@@ -31,6 +36,8 @@ class OrderDetailViewModel : ViewModel() {
     /** Buscar detalhes do pedido */
     fun fetchOrder(docId: String) {
         uiState.value = uiState.value.copy(isLoading = true)
+
+        fetchCurrentCollaboratorName()
 
         db.collection("orders").document(docId)
             .addSnapshotListener { snapshot, error ->
@@ -68,7 +75,10 @@ class OrderDetailViewModel : ViewModel() {
 
                         order.userId?.let { fetchUser(it, isEvaluator = false) }
                         order.evaluatedBy?.let { fetchUser(it, isEvaluator = true) }
+
                         fetchProducts()
+
+                        listenToProposals(docId)
 
                     } catch (e: Exception) {
                         Log.e("OrderDetailVM", "Erro no parse", e)
@@ -76,6 +86,39 @@ class OrderDetailViewModel : ViewModel() {
                     }
                 } else {
                     uiState.value = uiState.value.copy(isLoading = false, error = "Pedido não encontrado.")
+                }
+            }
+    }
+
+    private fun fetchCurrentCollaboratorName() {
+        val uid = Firebase.auth.currentUser?.uid ?: return
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val name = doc.getString("name")
+                    uiState.value = uiState.value.copy(currentCollaboratorName = name)
+                }
+            }
+    }
+
+    // Escutar subcoleção de propostas
+    private fun listenToProposals(orderId: String) {
+        proposalsListener?.remove()
+        proposalsListener = db.collection("orders").document(orderId)
+            .collection("proposals")
+            .orderBy("proposalDate", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.e("OrderDetailVM", "Erro propostas", e)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(ProposalDelivery::class.java)?.apply {
+                            docId = doc.id
+                        }
+                    }
+                    uiState.value = uiState.value.copy(proposals = list)
                 }
             }
     }
@@ -153,13 +196,10 @@ class OrderDetailViewModel : ViewModel() {
                         )
                     )
                     .addOnSuccessListener {
-                        fetchOrder(orderId)
                         uiState.value = uiState.value.copy(
-                            order = currentOrder.copy(accept = OrderState.ACEITE),
                             operationSuccess = true,
                             isLoading = false
                         )
-                        fetchUser(collaboratorId, isEvaluator = true)
                     }
             }
             .addOnFailureListener { e ->
@@ -167,11 +207,11 @@ class OrderDetailViewModel : ViewModel() {
             }
     }
 
-    /** * REJEITAR PEDIDO
-     * AGORA: Apenas muda o estado. NÃO devolve stock (porque ainda não foi tirado).
+    /** * REJEITAR PEDIDO ou CONTRA-PROPOR
      */
     fun rejectOrProposeDate(orderId: String, reason: String, proposedDate: Date?) {
         val currentOrder = uiState.value.order ?: return
+        // Rejeitar/propor se estiver Pendente
         if (currentOrder.accept != OrderState.PENDENTE) {
             uiState.value = uiState.value.copy(error = "Pedido já finalizado.")
             return
@@ -181,17 +221,21 @@ class OrderDetailViewModel : ViewModel() {
         val now = Date()
 
         if (proposedDate != null) {
-            // Proposta de Data
+            // Proposta de Data (Não altera stock, não muda estado principal para rejeitado)
             val proposal = ProposalDelivery(
                 docId = null, confirmed = false, newDate = proposedDate,
                 proposedBy = collaboratorId, proposalDate = now
             )
             db.collection("orders").document(orderId).collection("proposals").add(proposal)
                 .addOnSuccessListener {
-                    uiState.value = uiState.value.copy(operationSuccess = true, isLoading = false)
+                    // Sucesso apenas na proposta, não fecha o ecrã necessariamente
+                    uiState.value = uiState.value.copy(isLoading = false)
+                }
+                .addOnFailureListener {
+                    uiState.value = uiState.value.copy(isLoading = false, error = it.message)
                 }
         } else {
-            // Rejeição
+            // Rejeição Final
             val updates = mapOf(
                 "accept" to OrderState.REJEITADA.name,
                 "rejectReason" to reason,
@@ -204,15 +248,11 @@ class OrderDetailViewModel : ViewModel() {
             db.collection("orders").document(orderId)
                 .update(updates)
                 .addOnSuccessListener {
-                    // NOTA: Removido o returnStock() daqui
-                    Log.d("OrderVM", "Pedido REJEITADO. Stock mantido (não foi retirado antes).")
-
+                    Log.d("OrderVM", "Pedido REJEITADO. Stock mantido.")
                     uiState.value = uiState.value.copy(
-                        order = currentOrder.copy(accept = OrderState.REJEITADA),
                         operationSuccess = true,
                         isLoading = false
                     )
-                    fetchUser(collaboratorId, isEvaluator = true)
                 }
                 .addOnFailureListener { e ->
                     uiState.value = uiState.value.copy(isLoading = false, error = e.message)
@@ -220,7 +260,32 @@ class OrderDetailViewModel : ViewModel() {
         }
     }
 
-    // --- NOVA FUNÇÃO: REMOVER DO STOCK (FIFO) ---
+    // Colaborador aceita a data proposta pelo Beneficiário
+    fun acceptProposal(orderId: String, proposalId: String) {
+        val proposal = uiState.value.proposals.find { it.docId == proposalId } ?: return
+        val newDate = proposal.newDate ?: return
+
+        // Batch write para garantir consistência
+        val batch = db.batch()
+
+        val orderRef = db.collection("orders").document(orderId)
+        val proposalRef = orderRef.collection("proposals").document(proposalId)
+        
+        batch.update(orderRef, "surveyDate", newDate)
+
+        // Marcar proposta como confirmada
+        batch.update(proposalRef, "confirmed", true)
+
+        batch.commit()
+            .addOnSuccessListener {
+                Log.d("OrderVM", "Data aceite com sucesso.")
+            }
+            .addOnFailureListener { e ->
+                uiState.value = uiState.value.copy(error = "Erro ao aceitar data: ${e.message}")
+            }
+    }
+
+    // --- REMOVER DO STOCK (FIFO) ---
     private fun removeStockFIFO(items: List<OrderItem>, onComplete: (Boolean) -> Unit) {
         if (items.isEmpty()) {
             onComplete(true)
@@ -240,7 +305,6 @@ class OrderDetailViewModel : ViewModel() {
                 continue
             }
 
-            // Encontrar produto pelo nome
             db.collection("products").whereEqualTo("name", name).limit(1).get()
                 .addOnSuccessListener { snap ->
                     if (!snap.isEmpty) {
@@ -251,7 +315,6 @@ class OrderDetailViewModel : ViewModel() {
                             val product = snapshotProduct.toObject(Product::class.java)
 
                             if (product != null) {
-                                // Ordenar por validade (Mais antigo primeiro)
                                 val sortedBatches = product.batches.sortedBy { it.validity }.toMutableList()
                                 var remaining = qtyRequired
 
@@ -260,7 +323,7 @@ class OrderDetailViewModel : ViewModel() {
                                     val batch = iterator.next()
                                     if (batch.quantity <= remaining) {
                                         remaining -= batch.quantity
-                                        iterator.remove() // Remove lote vazio
+                                        iterator.remove()
                                     } else {
                                         batch.quantity -= remaining
                                         remaining = 0
@@ -277,11 +340,15 @@ class OrderDetailViewModel : ViewModel() {
                             if (processedCount == items.size) onComplete(false)
                         }
                     } else {
-                        // Produto não encontrado
                         processedCount++
                         if (processedCount == items.size) onComplete(!hasError)
                     }
                 }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        proposalsListener?.remove()
     }
 }

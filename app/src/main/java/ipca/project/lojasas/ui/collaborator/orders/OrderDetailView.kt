@@ -24,10 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.Product
+import ipca.project.lojasas.models.ProposalDelivery
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.components.InfoRow
 import ipca.project.lojasas.ui.components.SectionTitle
@@ -65,7 +68,7 @@ fun OrderDetailView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // --- HEADER ---
         Row(
@@ -177,6 +180,20 @@ fun OrderDetailView(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
 
+                        // --- Propostas de Data (NEGOCIAÇÃO) ---
+                        if (state.proposals.isNotEmpty()) {
+                            SectionTitle("Histórico de Negociação")
+                            state.proposals.forEach { proposal ->
+                                CollaboratorProposalCard(
+                                    proposal = proposal,
+                                    viewModel = viewModel,
+                                    orderId = orderId
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+
                         // --- Avaliação ---
                         SectionTitle("Avaliação")
                         InfoRow("Avaliado por:", state.evaluatorName ?: "-")
@@ -192,6 +209,8 @@ fun OrderDetailView(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         val isFinalState = order.accept != OrderState.PENDENTE
+
+                        // Botões Principais (Só aparecem se não for estado final)
                         if (!isFinalState) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -286,6 +305,158 @@ fun OrderDetailView(
 }
 
 // --- Componentes auxiliares ---
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun CollaboratorProposalCard(
+    proposal: ProposalDelivery,
+    viewModel: OrderDetailViewModel,
+    orderId: String
+) {
+    val auth = Firebase.auth
+    val currentUser = auth.currentUser?.uid
+
+    // Determina a proposta pendente mais recente
+    val proposals = viewModel.uiState.value.proposals
+    val latestPendingProposal = proposals
+        .filter { it.confirmed == false }
+        .maxByOrNull { it.proposalDate?.time ?: 0L }
+
+    // Mostrar botões se: não confirmada, não fui eu que propus, e é a mais recente
+    val showButtons = proposal.confirmed == false &&
+            proposal.proposedBy != currentUser &&
+            proposal == latestPendingProposal
+
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    // Configuração inicial do calendário para a data proposta
+    var displayedYearMonth by remember {
+        mutableStateOf(
+            proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()?.let {
+                YearMonth.of(it.year, it.monthValue)
+            } ?: YearMonth.now()
+        )
+    }
+    var selectedDate by remember {
+        mutableStateOf(
+            proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
+                ?: LocalDate.now()
+        )
+    }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            val proposalDateStr = proposal.proposalDate?.let {
+                SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("pt", "PT")).format(it)
+            } ?: "--"
+
+            val newDateStr = proposal.newDate?.let {
+                SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT")).format(it)
+            } ?: "--"
+
+            val beneficiaryName = viewModel.uiState.value.userName ?: "Beneficiário"
+            val collaboratorName = viewModel.uiState.value.currentCollaboratorName ?: "Colaborador"
+
+            val proposedByLabel = if (proposal.proposedBy == currentUser) {
+                collaboratorName
+            } else {
+                beneficiaryName
+            }
+
+            Text(
+                "Proposta enviada por $proposedByLabel em: $proposalDateStr",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Nova data sugerida: $newDateStr",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (showButtons) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Botão Aceitar Proposta
+                    Button(
+                        onClick = { viewModel.acceptProposal(orderId, proposal.docId ?: "") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(40.dp).weight(1f)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = "Aceitar")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Aceitar Data", fontWeight = FontWeight.Bold)
+                    }
+
+                    // Botão Contra-propor (Recusar esta e sugerir outra)
+                    Button(
+                        onClick = { showDatePicker = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(40.dp).weight(1f)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Contra-propor")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Mudar Data", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        AlertDialog(
+            onDismissRequest = { showDatePicker = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val dateAsDate = Date.from(selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant())
+                        viewModel.rejectOrProposeDate(orderId, reason = "", proposedDate = dateAsDate)
+                        showDatePicker = false
+                    }
+                ) { Text("Enviar Contra-proposta", color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            text = {
+                Column {
+                    Text("Selecione uma nova data para sugerir ao beneficiário:", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    DynamicCalendarView(
+                        displayedYearMonth = displayedYearMonth,
+                        selectedDate = selectedDate,
+                        onMonthChange = { displayedYearMonth = it },
+                        onDateSelected = { date -> selectedDate = date }
+                    )
+                }
+            }
+        )
+    }
+}
 
 @Composable
 private fun OrderStatusBadge(state: OrderState) {
@@ -407,7 +578,7 @@ fun RejectDialogWithDate(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface, // Branco/Cinza Escuro
+        containerColor = MaterialTheme.colorScheme.surface,
         confirmButton = {
             TextButton(onClick = {
                 val millis = if (isDateChange) {
@@ -458,7 +629,7 @@ fun RejectDialogWithDate(
                             checkedColor = MaterialTheme.colorScheme.primary
                         )
                     )
-                    Text("É para propor nova data?", color = MaterialTheme.colorScheme.onSurface)
+                    Text("Propor nova data?", color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 if (isDateChange) {
