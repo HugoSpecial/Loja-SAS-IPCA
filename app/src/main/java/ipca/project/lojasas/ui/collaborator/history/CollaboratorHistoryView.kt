@@ -1,5 +1,7 @@
 package ipca.project.lojasas.ui.colaborator.history
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,11 +9,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,10 +36,8 @@ fun CollaboratorHistoryView(
     val state = viewModel.uiState.value
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
-    // --- ESTADO PARA O POP-UP ---
     var selectedItem by remember { mutableStateOf<HistoryUiItem?>(null) }
 
-    // --- POP-UP (DIALOG) ---
     if (selectedItem != null) {
         HistoryDetailsDialog(
             item = selectedItem!!,
@@ -45,35 +49,31 @@ fun CollaboratorHistoryView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 24.dp)
     ) {
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        // --- LOGO ---
         Image(
             painter = painterResource(id = R.drawable.logo_sas),
             contentDescription = "Logo IPCA SAS",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
+            modifier = Modifier.fillMaxWidth().height(80.dp)
         )
 
-        // Espaço entre o logo e o título
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "Histórico",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary // Verde do Tema
+            color = MaterialTheme.colorScheme.primary
         )
 
         Text(
             text = "Toque num item para ver detalhes.",
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), // Cinza adaptável
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
         )
 
@@ -100,13 +100,9 @@ fun HistoryCard(
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -118,7 +114,7 @@ fun HistoryCard(
                     text = item.typeLabel,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = item.typeColor // Mantém a cor que vem do ViewModel (geralmente Verde/Laranja/Vermelho)
+                    color = item.typeColor
                 )
                 Text(
                     text = dateFormat.format(item.date),
@@ -153,7 +149,7 @@ fun HistoryCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Surface(
-                color = item.statusBgColor, // Cor de fundo do badge que vem do ViewModel
+                color = item.statusBgColor,
                 shape = RoundedCornerShape(50)
             ) {
                 Text(
@@ -176,7 +172,7 @@ fun HistoryDetailsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza no Dark
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Column {
                 Text(
@@ -199,9 +195,7 @@ fun HistoryDetailsDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
@@ -218,18 +212,71 @@ fun HistoryDetailsDialog(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                        items(item.productsList) { prod ->
-                            Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                                Text(
-                                    text = "• ",
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = prod,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 250.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(item.productsList) { product ->
+
+                            // --- LINHA DO PRODUTO COM IMAGEM ---
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 1. Caixa de Imagem
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val imageBitmap = remember(product.imageUrl) {
+                                        try {
+                                            if (!product.imageUrl.isNullOrBlank()) {
+                                                val decodedBytes = Base64.decode(product.imageUrl, Base64.DEFAULT)
+                                                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+                                            } else null
+                                        } catch (e: Exception) { null }
+                                    }
+
+                                    if (imageBitmap != null) {
+                                        Image(
+                                            bitmap = imageBitmap,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Outlined.ShoppingCart,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // 2. Nome e Quantidade
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = product.name,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = "${product.quantity} un",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
                     }

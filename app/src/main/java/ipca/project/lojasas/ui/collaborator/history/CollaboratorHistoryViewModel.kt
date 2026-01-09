@@ -9,9 +9,16 @@ import ipca.project.lojasas.models.DeliveryState
 import ipca.project.lojasas.models.Order
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.OrderState
+import ipca.project.lojasas.models.Product // Certifica-te que tens este import
 import java.util.Date
 
-// --- MODELO UI ATUALIZADO ---
+// --- NOVO MODELO PARA O PRODUTO NO HISTÓRICO ---
+data class HistoryProductItem(
+    val name: String,
+    val quantity: Int,
+    val imageUrl: String?
+)
+
 data class HistoryUiItem(
     val id: String,
     val typeLabel: String,
@@ -22,8 +29,8 @@ data class HistoryUiItem(
     val statusLabel: String,
     val statusBgColor: Color,
     val statusTextColor: Color,
-    // NOVO CAMPO: Lista de strings descritivas (ex: "2x Arroz")
-    val productsList: List<String> = emptyList()
+    // AGORA É UMA LISTA DE OBJETOS, NÃO DE STRINGS
+    val productsList: List<HistoryProductItem> = emptyList()
 )
 
 data class HistoryState(
@@ -39,17 +46,33 @@ class CollatorHistoryViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
 
+    // Cache local dos produtos para ir buscar as imagens
+    private var allProductsCache: List<Product> = emptyList()
+
     init {
-        fetchHistoryData()
+        fetchAllProductsAndHistory()
+    }
+
+    // 1. Primeiro buscamos os produtos para ter as imagens
+    private fun fetchAllProductsAndHistory() {
+        uiState.value = uiState.value.copy(isLoading = true)
+
+        db.collection("products").get()
+            .addOnSuccessListener { result ->
+                allProductsCache = result.toObjects(Product::class.java)
+                // 2. Só depois buscamos o histórico
+                fetchHistoryData()
+            }
+            .addOnFailureListener {
+                // Se falhar produtos, tenta buscar histórico na mesma (sem imagens)
+                fetchHistoryData()
+            }
     }
 
     private fun fetchHistoryData() {
-        uiState.value = uiState.value.copy(isLoading = true)
-
         db.collection("orders").get()
             .addOnSuccessListener { ordersResult ->
                 val ordersList = mutableListOf<Order>()
-                // Leitura segura com try-catch para evitar crash se houver lixo na BD
                 for (doc in ordersResult) {
                     try {
                         val order = doc.toObject(Order::class.java)
@@ -60,7 +83,7 @@ class CollatorHistoryViewModel : ViewModel() {
 
                 val ordersMap = ordersList.associateBy { it.docId }
 
-                db.collection("deliveries").get()
+                db.collection("delivery").get() // Atenção: Confirma se a coleção é "delivery" ou "deliveries"
                     .addOnSuccessListener { deliveriesResult ->
                         val deliveriesList = deliveriesResult.toObjects(Delivery::class.java)
                         deliveriesList.forEachIndexed { i, d -> d.docId = deliveriesResult.documents[i].id }
@@ -76,8 +99,7 @@ class CollatorHistoryViewModel : ViewModel() {
                         deliveriesList.forEach { delivery ->
                             val linkedOrder = ordersMap[delivery.orderId]
                             val beneficiaryName = linkedOrder?.userName ?: "Desconhecido"
-                            val date = linkedOrder?.orderDate ?: Date()
-                            // Passamos também os items do pedido original
+                            val date = linkedOrder?.orderDate ?: delivery.surveyDate ?: Date()
                             val items = linkedOrder?.items ?: mutableListOf()
 
                             combinedHistory.add(mapDeliveryToUi(delivery, beneficiaryName, date, items))
@@ -98,11 +120,21 @@ class CollatorHistoryViewModel : ViewModel() {
             }
     }
 
+    // Função auxiliar para mapear items e encontrar a imagem
+    private fun mapItemsToHistoryProducts(items: List<OrderItem>): List<HistoryProductItem> {
+        return items.map { item ->
+            // Procura o produto na cache para obter a imagem
+            val productDetails = allProductsCache.find { it.name == item.name }
+            HistoryProductItem(
+                name = item.name ?: "?",
+                quantity = item.quantity ?: 0,
+                imageUrl = productDetails?.imageUrl
+            )
+        }
+    }
+
     private fun mapOrderToUi(order: Order): HistoryUiItem {
         val totalQty = order.items.sumOf { it.quantity ?: 0 }
-
-        // Converter lista de objetos OrderItem em lista de Strings "Qtd x Nome"
-        val productsDesc = order.items.map { "${it.quantity}x ${it.name}" }
 
         val (label, bg, text) = when (order.accept) {
             OrderState.ACEITE -> Triple("ACEITE", Color(0xFFB9F6CA), Color(0xFF00C853))
@@ -120,7 +152,7 @@ class CollatorHistoryViewModel : ViewModel() {
             statusLabel = label,
             statusBgColor = bg,
             statusTextColor = text,
-            productsList = productsDesc // <--- Preenchido aqui
+            productsList = mapItemsToHistoryProducts(order.items) // Usa a nova função
         )
     }
 
@@ -133,7 +165,6 @@ class CollatorHistoryViewModel : ViewModel() {
         }
 
         val totalQty = items.sumOf { it.quantity ?: 0 }
-        val productsDesc = items.map { "${it.quantity}x ${it.name}" }
 
         return HistoryUiItem(
             id = delivery.docId ?: "",
@@ -145,7 +176,7 @@ class CollatorHistoryViewModel : ViewModel() {
             statusLabel = label,
             statusBgColor = bg,
             statusTextColor = text,
-            productsList = productsDesc // <--- Preenchido aqui
+            productsList = mapItemsToHistoryProducts(items) // Usa a nova função
         )
     }
 }

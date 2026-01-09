@@ -51,7 +51,7 @@ fun BeneficiaryListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (state.isLoading && state.beneficiaries.isEmpty()) {
@@ -134,7 +134,7 @@ fun HeaderContent() {
             text = "Lista de Beneficiários",
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onBackground, // Preto/Branco
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 16.dp)
         )
     }
@@ -172,7 +172,7 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth().clickable { onClick() }
@@ -187,14 +187,14 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
                     text = user.name ?: "Sem Nome",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface, // Texto adaptável
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (user.fault > 0) {
                     Surface(
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), // Vermelho suave
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
@@ -219,7 +219,7 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
                     Icon(
                         Icons.Default.Info,
                         null,
-                        tint = Color(0xFFE65100), // Laranja (mantido fixo pois é alerta)
+                        tint = Color(0xFFE65100),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -239,7 +239,7 @@ fun BeneficiaryCard(user: User, onClick: () -> Unit) {
 fun BeneficiaryDetailsDialog(user: User, onDismiss: () -> Unit, onViewHistory: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface, // Branco no Light, Cinza no Dark
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
                 text = user.name ?: "Detalhes",
@@ -345,22 +345,44 @@ fun HistoryDialog(user: User, orders: List<Order>, isLoading: Boolean, onDismiss
                     "Histórico",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
-                ); Text("Beneficiário: ${user.name}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                )
+                Text(
+                    "Beneficiário: ${user.name}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
             }
         },
         text = {
-            if (isLoading) Box(
-                modifier = Modifier.fillMaxWidth().height(150.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
-            else if (orders.isEmpty()) Box(
-                modifier = Modifier.fillMaxWidth().height(100.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Nenhum registo.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
-            else LazyColumn(
-                modifier = Modifier.heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) { items(orders) { HistoryItemCard(it) } }
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(150.dp),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+            } else if (orders.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) { Text("Nenhum registo.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
+            } else {
+                // --- AQUI ESTÁ A ALTERAÇÃO: Column para adicionar o total antes da lista ---
+                Column {
+                    Text(
+                        text = "Total de pedidos: ${orders.size}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(orders) { HistoryItemCard(it) }
+                    }
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
@@ -378,7 +400,6 @@ fun HistoryDialog(user: User, orders: List<Order>, isLoading: Boolean, onDismiss
 fun HistoryItemCard(order: Order) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT"))
     Card(
-        // Fundo do Card dentro do Dialog: Um pouco mais escuro/claro que o surface
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
         ),
