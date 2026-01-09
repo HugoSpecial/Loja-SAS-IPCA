@@ -304,6 +304,25 @@ fun OrderDetailView(
     }
 }
 
+// Função auxiliar para verificar validade
+fun isDateValid(date: Date?): Boolean {
+    if (date == null) return false
+    val today = java.util.Calendar.getInstance()
+    today.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    today.set(java.util.Calendar.MINUTE, 0)
+    today.set(java.util.Calendar.SECOND, 0)
+    today.set(java.util.Calendar.MILLISECOND, 0)
+
+    val checkDate = java.util.Calendar.getInstance()
+    checkDate.time = date
+    checkDate.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    checkDate.set(java.util.Calendar.MINUTE, 0)
+    checkDate.set(java.util.Calendar.SECOND, 0)
+    checkDate.set(java.util.Calendar.MILLISECOND, 0)
+
+    return !checkDate.before(today)
+}
+
 // --- Componentes auxiliares ---
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -521,23 +540,42 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
             } else {
-                val totalStock = product.batches.sumOf { it.quantity }
-                val newStock = totalStock - (orderItem.quantity ?: 0)
+                // --- CÁLCULO DE STOCK VÁLIDO ---
+                val validStock = product.batches
+                    .filter { it.quantity > 0 && isDateValid(it.validity) }
+                    .sumOf { it.quantity }
+
+                val newStock = validStock - (orderItem.quantity ?: 0)
+
+                // Define ícone e cor baseados no stock VÁLIDO
                 val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
                 val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
+                // Mostra apenas o Stock Válido
                 Text(
-                    "${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)",
+                    "${orderItem.quantity}x ${orderItem.name} (Stock: $validStock)",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
+
                 Text(
-                    "Stock atualizado: $newStock",
+                    "Stock após aprovação: $newStock",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
-                Icon(icon, contentDescription = null, tint = iconColor)
             }
+        }
+
+        // Ícone de estado (Check ou Cruz)
+        if (!isFinal) {
+            val validStock = product.batches
+                .filter { it.quantity > 0 && isDateValid(it.validity) }
+                .sumOf { it.quantity }
+            val newStock = validStock - (orderItem.quantity ?: 0)
+            val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
+            val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+
+            Icon(icon, contentDescription = null, tint = iconColor)
         }
     }
 }
