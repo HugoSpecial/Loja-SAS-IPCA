@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,7 +37,6 @@ import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.models.ProposalDelivery
-// Certifica-te que estes imports correspondem à localização correta no teu projeto
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.components.InfoRow
 import ipca.project.lojasas.ui.components.SectionTitle
@@ -67,16 +67,11 @@ fun OrderDetailView(
 
     LaunchedEffect(orderId) { viewModel.fetchOrder(orderId) }
 
-    LaunchedEffect(state.operationSuccess) {
-        if (state.operationSuccess) navController.popBackStack()
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // --- HEADER ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -94,17 +89,11 @@ fun OrderDetailView(
                     modifier = Modifier.size(28.dp)
                 )
             }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 48.dp)
-            ) {
+            Box(modifier = Modifier.weight(1f).padding(end = 48.dp)) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
-                    contentDescription = "Cabeçalho IPCA SAS",
-                    modifier = Modifier
-                        .heightIn(max = 55.dp)
-                        .align(Alignment.Center),
+                    contentDescription = "Cabeçalho SAS",
+                    modifier = Modifier.heightIn(max = 55.dp).align(Alignment.Center),
                     contentScale = ContentScale.Fit
                 )
             }
@@ -112,19 +101,13 @@ fun OrderDetailView(
 
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                state.isLoading -> CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                state.error != null -> Text(
-                    text = state.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-
+                state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                state.error != null -> Text(text = state.error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
                 state.order != null -> {
                     val order = state.order
+                    val latestProposal = state.proposals.firstOrNull()
+                    val isFinalState = order.accept != OrderState.PENDENTE
+                    val canApprove = !isFinalState && (state.proposals.isEmpty() || latestProposal?.confirmed == true)
 
                     Column(
                         modifier = Modifier
@@ -133,7 +116,6 @@ fun OrderDetailView(
                             .verticalScroll(rememberScrollState())
                     ) {
                         Spacer(modifier = Modifier.height(16.dp))
-
                         OrderStatusBadge(state = order.accept)
 
                         if (order.accept == OrderState.REJEITADA && !order.rejectReason.isNullOrBlank()) {
@@ -142,122 +124,66 @@ fun OrderDetailView(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-
-                        // --- Dados do beneficiário ---
                         SectionTitle("Dados do beneficiário")
                         InfoRow("Nome:", state.userName ?: "N/A")
                         InfoRow("Telemóvel:", state.userPhone ?: "N/A")
                         InfoRow("Observações:", state.userNotes ?: "N/A")
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // --- Produtos solicitados ---
                         SectionTitle("Produtos solicitados")
                         if (order.items.isEmpty()) {
-                            Text(
-                                "Nenhum produto solicitado.",
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text("Nenhum produto solicitado.", fontWeight = FontWeight.Bold)
                         } else {
-                            ProductCategoryList(order.items, state.products, order.accept != OrderState.PENDENTE)
+                            ProductCategoryList(order.items, state.products, isFinalState)
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-
-                        // --- Submissão ---
                         SectionTitle("Submissão")
-                        InfoRow(
-                            "Data do pedido",
-                            order.orderDate?.let {
-                                SimpleDateFormat(
-                                    "d 'de' MMM 'de' yyyy, HH:mm",
-                                    Locale("pt", "PT")
-                                ).format(it)
-                            } ?: "-"
-                        )
-                        InfoRow(
-                            "Data da entrega",
-                            order.surveyDate?.let {
-                                SimpleDateFormat(
-                                    "d 'de' MMM 'de' yyyy",
-                                    Locale("pt", "PT")
-                                ).format(it)
-                            } ?: "-"
-                        )
+                        InfoRow("Data do pedido", order.orderDate?.let { SimpleDateFormat("d 'de' MMM 'de' yyyy, HH:mm", Locale("pt", "PT")).format(it) } ?: "-")
+                        InfoRow("Data da entrega", order.surveyDate?.let { SimpleDateFormat("d 'de' MMM 'de' yyyy", Locale("pt", "PT")).format(it) } ?: "-")
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // --- Propostas de Data (NEGOCIAÇÃO) ---
                         if (state.proposals.isNotEmpty()) {
                             SectionTitle("Histórico de Negociação")
                             state.proposals.forEach { proposal ->
-                                CollaboratorProposalCard(
-                                    proposal = proposal,
-                                    viewModel = viewModel,
-                                    orderId = orderId
-                                )
+                                CollaboratorProposalCard(proposal, viewModel, orderId)
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                             Spacer(modifier = Modifier.height(24.dp))
                         }
 
-                        // --- Avaliação ---
                         SectionTitle("Avaliação")
                         InfoRow("Avaliado por:", state.evaluatorName ?: "-")
-                        InfoRow(
-                            "Data da avaliação:",
-                            order.evaluationDate?.let {
-                                SimpleDateFormat(
-                                    "d 'de' MMM 'de' yyyy, HH:mm",
-                                    Locale("pt", "PT")
-                                ).format(it)
-                            } ?: "-"
-                        )
+                        InfoRow("Data da avaliação:", order.evaluationDate?.let { SimpleDateFormat("d 'de' MMM 'de' yyyy, HH:mm", Locale("pt", "PT")).format(it) } ?: "-")
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        val isFinalState = order.accept != OrderState.PENDENTE
-
-                        // Botões Principais
                         if (!isFinalState) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Button(
                                     onClick = { showRejectDialog = true },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error,
-                                        contentColor = MaterialTheme.colorScheme.onError
-                                    ),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = null)
+                                    Icon(Icons.Default.Close, null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Rejeitar", fontWeight = FontWeight.Bold)
+                                    Text("Rejeitar / Data", fontWeight = FontWeight.Bold)
                                 }
 
-                                Button(
-                                    onClick = { viewModel.approveOrder(order.docId ?: "") },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(Icons.Default.Check, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Aprovar", fontWeight = FontWeight.Bold)
+                                if (canApprove) {
+                                    Button(
+                                        onClick = { viewModel.approveOrder(order.docId ?: "") },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.Check, null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Aprovar", fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
-                        } else {
-                            Text(
-                                text = "Este pedido encontra-se ${order.accept.name}",
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                fontWeight = FontWeight.Bold
-                            )
                         }
-
                         Spacer(modifier = Modifier.height(50.dp))
                     }
                 }
@@ -267,161 +193,75 @@ fun OrderDetailView(
 
     if (showRejectDialog) {
         RejectDialogWithDate(
-            reason = rejectReason,
-            isDateChange = isDateChange,
-            selectedDate = selectedDate,
-            onReasonChange = {
-                rejectReason = it
-                showReasonError = false
-            },
-            onDateChangeToggle = {
-                isDateChange = it
-                if (it) rejectReason = ""
-            },
-            onDateSelected = { selectedDate = it },
-            onDismiss = {
-                showRejectDialog = false
-                showReasonError = false
-            },
+            reason = rejectReason, isDateChange = isDateChange, selectedDate = selectedDate,
+            onReasonChange = { rejectReason = it; showReasonError = false },
+            onDateChangeToggle = { isDateChange = it; if (it) rejectReason = "" },
+            onDateSelected = { selectedDate = it }, onDismiss = { showRejectDialog = false },
             onConfirm = {
-                if (!isDateChange && rejectReason.isBlank()) {
-                    showReasonError = true
-                    return@RejectDialogWithDate
-                }
-
-                viewModel.rejectOrProposeDate(
-                    orderId = orderId,
-                    reason = if (isDateChange) "" else rejectReason,
-                    proposedDate = selectedDate?.let { Date(it) }
-                )
-
+                if (!isDateChange && rejectReason.isBlank()) { showReasonError = true; return@RejectDialogWithDate }
+                viewModel.rejectOrProposeDate(orderId, if (isDateChange) "" else rejectReason, selectedDate?.let { Date(it) })
                 showRejectDialog = false
             }
-        )
-    }
-
-    if (showReasonError) {
-        Text(
-            text = "É obrigatório inserir um motivo para rejeição",
-            color = MaterialTheme.colorScheme.error,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
         )
     }
 }
 
-// --- Componentes auxiliares ---
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun CollaboratorProposalCard(
-    proposal: ProposalDelivery,
-    viewModel: OrderDetailViewModel,
-    orderId: String
-) {
+private fun CollaboratorProposalCard(proposal: ProposalDelivery, viewModel: OrderDetailViewModel, orderId: String) {
     val auth = Firebase.auth
     val currentUser = auth.currentUser?.uid
-
     val proposals = viewModel.uiState.value.proposals
-    val latestPendingProposal = proposals
-        .filter { it.confirmed == false }
-        .maxByOrNull { it.proposalDate?.time ?: 0L }
 
-    val showButtons = proposal.confirmed == false &&
-            proposal.proposedBy != currentUser &&
-            proposal == latestPendingProposal
+    val isNegotiationClosed = proposals.any { it.confirmed == true }
+    val latestPendingProposal = proposals.filter { it.confirmed == false }.maxByOrNull { it.proposalDate?.time ?: 0L }
+
+    val showButtons = !isNegotiationClosed && proposal.confirmed == false && proposal.proposedBy != currentUser && proposal == latestPendingProposal
 
     var showDatePicker by remember { mutableStateOf(false) }
-
-    var displayedYearMonth by remember {
-        mutableStateOf(
-            proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()?.let {
-                YearMonth.of(it.year, it.monthValue)
-            } ?: YearMonth.now()
-        )
-    }
-    var selectedDate by remember {
-        mutableStateOf(
-            proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
-                ?: LocalDate.now()
-        )
-    }
+    // Estado para armazenar a data selecionada no diálogo de "Mudar"
+    var selectedLocalDate by remember { mutableStateOf(proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate() ?: LocalDate.now()) }
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = if (proposal.confirmed == true) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            val proposalDateStr = proposal.proposalDate?.let {
-                SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("pt", "PT")).format(it)
-            } ?: "--"
+            val proposalDateStr = proposal.proposalDate?.let { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("pt", "PT")).format(it) } ?: "--"
+            val newDateStr = proposal.newDate?.let { SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT")).format(it) } ?: "--"
+            val sender = if (proposal.proposedBy == currentUser) "Colaborador" else (viewModel.uiState.value.userName ?: "Beneficiário")
 
-            val newDateStr = proposal.newDate?.let {
-                SimpleDateFormat("dd MMM yyyy", Locale("pt", "PT")).format(it)
-            } ?: "--"
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("De: $sender em: $proposalDateStr", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
 
-            val beneficiaryName = viewModel.uiState.value.userName ?: "Beneficiário"
-            val collaboratorName = viewModel.uiState.value.currentCollaboratorName ?: "Colaborador"
-
-            val proposedByLabel = if (proposal.proposedBy == currentUser) {
-                collaboratorName
-            } else {
-                beneficiaryName
+                if (proposal.confirmed == true) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(4.dp))
+                        Text("DATA ACEITE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
 
-            Text(
-                "Proposta enviada por $proposedByLabel em: $proposalDateStr",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                "Nova data sugerida: $newDateStr",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
+            Text("Nova data sugerida: $newDateStr", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (proposal.confirmed == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+
+            if (proposal.confirmed == true && proposal.proposedBy == currentUser) {
+                Text("O beneficiário aceitou esta data.", fontSize = 12.sp, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+            }
 
             if (showButtons) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = { viewModel.acceptProposal(orderId, proposal.docId ?: "") },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .height(40.dp)
-                            .weight(1f)
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = "Aceitar")
-                        Spacer(modifier = Modifier.width(6.dp))
+                    Button(onClick = { viewModel.acceptProposal(orderId, proposal.docId ?: "") }, modifier = Modifier.height(40.dp).weight(1f)) {
                         Text("Aceitar", fontWeight = FontWeight.Bold)
                     }
-
-                    Button(
-                        onClick = { showDatePicker = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .height(40.dp)
-                            .weight(1f)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Contra-propor")
-                        Spacer(modifier = Modifier.width(6.dp))
+                    Button(onClick = { showDatePicker = true }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier.height(40.dp).weight(1f)) {
                         Text("Mudar", fontWeight = FontWeight.Bold)
                     }
                 }
@@ -429,33 +269,29 @@ private fun CollaboratorProposalCard(
         }
     }
 
+    // --- DIÁLOGO DO BOTÃO MUDAR ---
     if (showDatePicker) {
         AlertDialog(
             onDismissRequest = { showDatePicker = false },
-            containerColor = MaterialTheme.colorScheme.surface,
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        val dateAsDate = Date.from(selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant())
-                        viewModel.rejectOrProposeDate(orderId, reason = "", proposedDate = dateAsDate)
-                        showDatePicker = false
-                    }
-                ) { Text("Enviar Contra-proposta", color = MaterialTheme.colorScheme.primary) }
+                TextButton(onClick = {
+                    val dateAsDate = Date.from(selectedLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant())
+                    viewModel.rejectOrProposeDate(orderId, "", dateAsDate)
+                    showDatePicker = false
+                }) { Text("Confirmar Contra-proposta", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.error)
-                }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
             },
             text = {
                 Column {
-                    Text("Selecione uma nova data para sugerir ao beneficiário:", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Selecione uma nova data para sugerir:", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
                     DynamicCalendarView(
-                        displayedYearMonth = displayedYearMonth,
-                        selectedDate = selectedDate,
-                        onMonthChange = { displayedYearMonth = it },
-                        onDateSelected = { date -> selectedDate = date }
+                        displayedYearMonth = YearMonth.from(selectedLocalDate),
+                        selectedDate = selectedLocalDate,
+                        onMonthChange = { /* opcional */ },
+                        onDateSelected = { selectedLocalDate = it }
                     )
                 }
             }
@@ -464,261 +300,79 @@ private fun CollaboratorProposalCard(
 }
 
 @Composable
-private fun OrderStatusBadge(state: OrderState) {
-    val mainColor = when (state) {
-        OrderState.PENDENTE -> Color(0xFFEF6C00)
-        OrderState.ACEITE -> MaterialTheme.colorScheme.primary
-        OrderState.REJEITADA -> MaterialTheme.colorScheme.error
-    }
-
-    StatusBadge(
-        label = state.name,
-        backgroundColor = mainColor.copy(alpha = 0.1f),
-        contentColor = mainColor
-    )
-}
-
-@Composable
-private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<Product>, isFinal: Boolean) {
-    val itemsByCategory = allProducts.groupBy { it.category }
-
-    itemsByCategory.forEach { (category, productsInCategory) ->
-        val requested = orderItems.filter { orderItem ->
-            productsInCategory.any { it.name == orderItem.name }
-        }
-        if (requested.isEmpty()) return@forEach
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                category,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        requested.forEach { orderItem ->
-            val product = productsInCategory.find { it.name == orderItem.name }
-            if (product != null) ProductStockRow(orderItem, product, isFinal)
-        }
-    }
-}
-
-// --- FUNÇÃO CORRIGIDA COM IMAGEM ---
-@Composable
 private fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = if (isFinal) 16.dp else 20.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // --- 1. IMAGEM DO PRODUTO ---
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            // Tenta carregar imagem
+        Box(modifier = Modifier.size(50.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
             val imageBitmap = remember(product.imageUrl) {
                 try {
                     if (!product.imageUrl.isNullOrBlank()) {
                         val decodedBytes = Base64.decode(product.imageUrl, Base64.DEFAULT)
                         BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
                     } else null
-                } catch (e: Exception) {
-                    null
-                }
+                } catch (e: Exception) { null }
             }
-
-            if (imageBitmap != null) {
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                // Ícone de fallback
-                Icon(
-                    imageVector = Icons.Outlined.ShoppingCart,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            if (imageBitmap != null) Image(imageBitmap, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            else Icon(Icons.Outlined.ShoppingCart, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
         }
 
         Spacer(modifier = Modifier.width(16.dp))
-
-        // --- 2. INFO TEXTO ---
         Column(modifier = Modifier.weight(1f)) {
-            if (isFinal) {
-                Text(
-                    "${orderItem.quantity}x ${orderItem.name}",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            } else {
-                // --- CÁLCULO DE STOCK VÁLIDO ---
-                val validStock = product.batches
-                    .filter { it.quantity > 0 && isDateValid(it.validity) }
-                    .sumOf { it.quantity }
-
-                val newStock = validStock - (orderItem.quantity ?: 0)
-
-                Text(
-                    "${orderItem.quantity}x ${orderItem.name}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Text(
-                    "Stock Atual: $validStock | Após: $newStock",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                )
+            Text("${orderItem.quantity}x ${orderItem.name}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            if (!isFinal) {
+                val validStock = product.batches.filter { it.quantity > 0 && isDateValid(it.validity) }.sumOf { it.quantity }
+                Text("Stock: $validStock | Após: ${validStock - (orderItem.quantity ?: 0)}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
             }
-        }
-
-        if (!isFinal) {
-            val validStock = product.batches
-                .filter { it.quantity > 0 && isDateValid(it.validity) }
-                .sumOf { it.quantity }
-            val newStock = validStock - (orderItem.quantity ?: 0)
-            val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
-            val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(icon, contentDescription = null, tint = iconColor)
         }
     }
 }
 
-private fun isDateValid(date: Date?): Boolean {
+@Composable
+private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<Product>, isFinal: Boolean) {
+    allProducts.groupBy { it.category }.forEach { (category, productsInCategory) ->
+        val requested = orderItems.filter { item -> productsInCategory.any { it.name == item.name } }
+        if (requested.isEmpty()) return@forEach
+        Text(category, fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.padding(vertical = 8.dp))
+        requested.forEach { ProductStockRow(it, productsInCategory.find { p -> p.name == it.name }!!, isFinal) }
+    }
+}
+
+fun isDateValid(date: Date?): Boolean {
     if (date == null) return false
-    val today = java.util.Calendar.getInstance()
-    today.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    today.set(java.util.Calendar.MINUTE, 0)
-    today.set(java.util.Calendar.SECOND, 0)
-    today.set(java.util.Calendar.MILLISECOND, 0)
+    val today = java.util.Calendar.getInstance().apply { set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }
+    val check = java.util.Calendar.getInstance().apply { time = date; set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }
+    return !check.before(today.time)
+}
 
-    val checkDate = java.util.Calendar.getInstance()
-    checkDate.time = date
-    checkDate.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    checkDate.set(java.util.Calendar.MINUTE, 0)
-    checkDate.set(java.util.Calendar.SECOND, 0)
-    checkDate.set(java.util.Calendar.MILLISECOND, 0)
-
-    return !checkDate.before(today)
+@Composable
+fun OrderStatusBadge(state: OrderState) {
+    val color = when (state) { OrderState.PENDENTE -> Color(0xFFEF6C00); OrderState.ACEITE -> MaterialTheme.colorScheme.primary; OrderState.REJEITADA -> MaterialTheme.colorScheme.error }
+    StatusBadge(state.name, color.copy(alpha = 0.1f), color)
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RejectDialogWithDate(
-    reason: String,
-    isDateChange: Boolean,
-    selectedDate: Long?,
-    onReasonChange: (String) -> Unit,
-    onDateChangeToggle: (Boolean) -> Unit,
-    onDateSelected: (Long?) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    var displayedYearMonth by remember {
-        mutableStateOf(
-            selectedDate?.let {
-                Date(it).toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
-                    .let { ld -> YearMonth.of(ld.year, ld.monthValue) }
-            } ?: YearMonth.now()
-        )
-    }
-
-    var selectedLocalDate by remember {
-        mutableStateOf(
-            selectedDate?.let {
-                Date(it).toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
-            } ?: LocalDate.now()
-        )
-    }
-
+private fun RejectDialogWithDate(reason: String, isDateChange: Boolean, selectedDate: Long?, onReasonChange: (String) -> Unit, onDateChangeToggle: (Boolean) -> Unit, onDateSelected: (Long?) -> Unit, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    var selectedLocalDate by remember { mutableStateOf(selectedDate?.let { Date(it).toInstant().atZone(ZoneId.systemDefault()).toLocalDate() } ?: LocalDate.now()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        confirmButton = {
-            TextButton(onClick = {
-                val millis = if (isDateChange) {
-                    Date.from(selectedLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant()).time
-                } else null
-                onDateSelected(millis)
-                onConfirm()
-            }) {
-                Text("Confirmar", color = MaterialTheme.colorScheme.primary)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-            }
-        },
+        confirmButton = { TextButton(onClick = { onDateSelected(if (isDateChange) Date.from(selectedLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant()).time else null); onConfirm() }) { Text("Confirmar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
         text = {
             Column {
                 if (!isDateChange) {
-                    Text(
-                        "Motivo da rejeição",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = reason,
-                        onValueChange = onReasonChange,
-                        placeholder = { Text("Escreva o motivo...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(Modifier.height(16.dp))
+                    Text("Motivo da rejeição", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(value = reason, onValueChange = onReasonChange, modifier = Modifier.fillMaxWidth())
                 }
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = isDateChange,
-                        onCheckedChange = onDateChangeToggle,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                    Text("Propor nova data?", color = MaterialTheme.colorScheme.onSurface)
+                    Checkbox(checked = isDateChange, onCheckedChange = onDateChangeToggle)
+                    Text("Propor nova data?")
                 }
-
                 if (isDateChange) {
-                    Spacer(Modifier.height(12.dp))
-                    DynamicCalendarView(
-                        displayedYearMonth = displayedYearMonth,
-                        selectedDate = selectedLocalDate,
-                        onMonthChange = { displayedYearMonth = it },
-                        onDateSelected = { date -> selectedLocalDate = date }
-                    )
+                    DynamicCalendarView(YearMonth.now(), selectedLocalDate, onMonthChange = {}, onDateSelected = { selectedLocalDate = it })
                 }
             }
         }
