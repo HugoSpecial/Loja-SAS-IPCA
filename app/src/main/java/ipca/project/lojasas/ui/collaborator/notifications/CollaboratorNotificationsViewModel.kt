@@ -5,16 +5,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Notification
 
 data class NotificationListState(
-    val notifications: List<Notification> = emptyList(),
-    val allNotifications: List<Notification> = emptyList(),
+    val notifications: List<Notification> = emptyList(),     // Lista visível (filtrada)
+    val allNotifications: List<Notification> = emptyList(),  // Lista completa (backup)
     val unreadCount: Int = 0,
-    val selectedFilter: String? = null,
+    val selectedFilter: String? = null,                      // Null = "Tudo"
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -29,6 +28,20 @@ class NotificationsCollaboratorViewModel : ViewModel() {
 
     init {
         fetchNotifications()
+    }
+
+    // --- LÓGICA DE FILTRAGEM CENTRALIZADA ---
+    // Define aqui quais tipos pertencem a qual botão
+    private fun matchesFilter(notification: Notification, filterKey: String?): Boolean {
+        if (filterKey == null) return true // "Tudo"
+
+        return when (filterKey) {
+            "GROUP_PEDIDOS" -> notification.type in listOf("pedido_novo", "pedido_agendado", "pedido_estado", "resposta_entrega")
+            "GROUP_CANDIDATURAS" -> notification.type in listOf("candidatura_nova", "candidatura_estado")
+            "GROUP_JUSTIFICACOES" -> notification.type == "resposta_entrega_rejeitada"
+            "GROUP_SISTEMA" -> notification.type in listOf("validade_alerta", "sistema_aviso")
+            else -> notification.type == filterKey // Fallback
+        }
     }
 
     fun fetchNotifications() {
@@ -51,8 +64,10 @@ class NotificationsCollaboratorViewModel : ViewModel() {
                 } ?: emptyList()
 
                 val naoLidas = list.count { !it.read }
+
+                // Reaplica o filtro atual automaticamente quando chegam novos dados
                 val currentFilter = uiState.value.selectedFilter
-                val filteredList = if (currentFilter == null) list else list.filter { it.type == currentFilter }
+                val filteredList = list.filter { matchesFilter(it, currentFilter) }
 
                 uiState.value = uiState.value.copy(
                     allNotifications = list,
@@ -63,19 +78,23 @@ class NotificationsCollaboratorViewModel : ViewModel() {
                 )
             }
     }
-    fun filterByType(type: String?) {
+
+    fun filterByType(filterKey: String?) {
         val masterList = uiState.value.allNotifications
-        val newList = if (type == null) masterList else masterList.filter { it.type == type }
-        uiState.value = uiState.value.copy(selectedFilter = type, notifications = newList)
+        val newList = masterList.filter { matchesFilter(it, filterKey) }
+
+        uiState.value = uiState.value.copy(selectedFilter = filterKey, notifications = newList)
     }
 
     fun markAsRead(notificationId: String) {
+        if (notificationId.isEmpty()) return
         db.collection("notifications").document(notificationId)
             .update("read", true)
             .addOnFailureListener { Log.e("NotifVM", "Erro ao marcar como lida", it) }
     }
 
-    // --- NOVA FUNÇÃO: Verificar se já tem razão ---
+    // --- JUSTIFICAÇÕES & DETALHES ---
+
     fun checkDeliveryStatus(deliveryId: String, onResult: (String?) -> Unit) {
         if (deliveryId.isEmpty()) {
             onResult(null)
@@ -83,7 +102,6 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         }
         db.collection("delivery").document(deliveryId).get()
             .addOnSuccessListener { document ->
-                // Devolve a razão se existir e não for vazia
                 val reason = document.getString("reason")
                 if (!reason.isNullOrBlank()) {
                     onResult(reason)
@@ -91,9 +109,21 @@ class NotificationsCollaboratorViewModel : ViewModel() {
                     onResult(null)
                 }
             }
-            .addOnFailureListener {
-                onResult(null)
+            .addOnFailureListener { onResult(null) }
+    }
+
+    fun fetchBeneficiaryDetails(userId: String, onResult: (String, String) -> Unit) {
+        if (userId.isEmpty()) {
+            onResult("Desconhecido", "--")
+            return
+        }
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val name = doc.getString("name") ?: "Sem nome"
+                val phone = doc.getString("phone") ?: "--"
+                onResult(name, phone)
             }
+            .addOnFailureListener { onResult("Erro ao carregar", "--") }
     }
 
     fun handleJustificationDecision(notification: Notification, accepted: Boolean, onSuccess: () -> Unit) {
@@ -103,7 +133,7 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         if (deliveryId.isEmpty()) return
 
         if (accepted) {
-            JustifyBeneficiary(deliveryId) {
+            justifyBeneficiary(deliveryId) {
                 markAsRead(notification.docId)
                 onSuccess()
             }
@@ -120,10 +150,8 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         }
     }
 
-    private fun JustifyBeneficiary(deliveryId: String, onComplete: () -> Unit) {
+    private fun justifyBeneficiary(deliveryId: String, onComplete: () -> Unit) {
         uiState.value = uiState.value.copy(isLoading = true)
-
-        // Atualizamos Reason E State ao mesmo tempo
         db.collection("delivery").document(deliveryId)
             .update(
                 mapOf(
@@ -148,9 +176,11 @@ class NotificationsCollaboratorViewModel : ViewModel() {
 
         db.runTransaction { transaction ->
             val userSnapshot = transaction.get(userRef)
-
             val currentFaults = (userSnapshot.getLong("fault") ?: 0).toInt()
+
+            // Incrementa faltas
             val newFaults = currentFaults + 1
+            // Se tiver 2 ou mais faltas, perde estatuto de beneficiário (exemplo)
             val isBeneficiary = newFaults < 2
 
             transaction.update(userRef, "fault", newFaults)
@@ -166,21 +196,5 @@ class NotificationsCollaboratorViewModel : ViewModel() {
         }.addOnFailureListener { e ->
             uiState.value = uiState.value.copy(isLoading = false, error = "Erro: ${e.message}")
         }
-    }
-
-    fun fetchBeneficiaryDetails(userId: String, onResult: (String, String) -> Unit) {
-        if (userId.isEmpty()) {
-            onResult("Desconhecido", "--")
-            return
-        }
-        db.collection("users").document(userId).get()
-            .addOnSuccessListener { doc ->
-                val name = doc.getString("name") ?: "Sem nome"
-                val phone = doc.getString("phone") ?: "--"
-                onResult(name, phone)
-            }
-            .addOnFailureListener {
-                onResult("Erro ao carregar", "--")
-            }
     }
 }

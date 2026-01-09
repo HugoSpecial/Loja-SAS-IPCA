@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
@@ -42,6 +41,8 @@ fun CollaboratorNotificationView(
     viewModel: NotificationsCollaboratorViewModel = viewModel()
 ) {
     val state by remember { viewModel.uiState }
+
+    // Estados para o Dialog de Justificação
     var notificationForDialog by remember { mutableStateOf<Notification?>(null) }
     var existingReason by remember { mutableStateOf<String?>(null) }
 
@@ -52,7 +53,7 @@ fun CollaboratorNotificationView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 24.dp)
     ) {
         Spacer(modifier = Modifier.height(40.dp))
@@ -64,12 +65,13 @@ fun CollaboratorNotificationView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Cabeçalho
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
                 "Notificações",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary // Verde
+                color = MaterialTheme.colorScheme.primary
             )
             if (state.unreadCount > 0) {
                 Spacer(modifier = Modifier.width(8.dp))
@@ -87,9 +89,11 @@ fun CollaboratorNotificationView(
             modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
 
+        // Filtros Atualizados
         FilterSection(state.selectedFilter) { viewModel.filterByType(it) }
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Lista
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.notifications.isEmpty() -> CircularProgressIndicator(
@@ -114,17 +118,24 @@ fun CollaboratorNotificationView(
                             NotificationCard(
                                 notification = notification,
                                 onClick = {
+                                    // Marcar como lida (exceto se for justificação, que requer ação)
                                     if (notification.type != "resposta_entrega_rejeitada" && !notification.read) {
                                         viewModel.markAsRead(notification.docId)
                                     }
 
-                                    if (notification.type == "resposta_entrega_rejeitada") {
-                                        existingReason = null
-                                        notificationForDialog = notification
-                                    } else if (notification.type == "resposta_entrega") {
-                                        navController.navigate("delivery_details/${notification.relatedId}")
-                                    } else if (notification.type == "pedido_novo") {
-                                        navController.navigate("order_details/${notification.relatedId}")
+                                    // Ações de clique
+                                    when (notification.type) {
+                                        "resposta_entrega_rejeitada" -> {
+                                            existingReason = null
+                                            notificationForDialog = notification
+                                        }
+                                        "resposta_entrega", "pedido_novo", "pedido_agendado" -> {
+                                            navController.navigate("order_details/${notification.relatedId}")
+                                        }
+                                        "candidatura_nova", "candidatura_estado" -> {
+                                            navController.navigate("candidature_details/${notification.relatedId}")
+                                        }
+                                        // "validade_alerta" não navega para lado nenhum por enquanto
                                     }
                                 }
                             )
@@ -136,6 +147,7 @@ fun CollaboratorNotificationView(
     }
 
     // --- POPUP: JUSTIFICAR FALTA ---
+    // (Mantive a tua lógica original do Popup, apenas garantindo que usa as variáveis do ViewModel corretamente)
     if (notificationForDialog != null) {
         val notif = notificationForDialog!!
         val dateFormat = SimpleDateFormat("dd/MM/yyyy às HH:mm", Locale.getDefault())
@@ -154,168 +166,60 @@ fun CollaboratorNotificationView(
             } else {
                 beneficiaryName = "Desconhecido"
             }
-
             viewModel.checkDeliveryStatus(notif.relatedId) { reasonFromDb ->
                 existingReason = reasonFromDb
             }
         }
 
-        val isDecided = existingReason != null &&
-                !existingReason!!.contains("urgente", ignoreCase = true)
+        val isDecided = existingReason != null && !existingReason!!.contains("urgente", ignoreCase = true)
 
         AlertDialog(
             onDismissRequest = { notificationForDialog = null },
-            containerColor = MaterialTheme.colorScheme.surface, // Branco/Cinza Escuro
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
-                Column {
-                    Text(
-                        text = "Justificação de Falta",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
-                }
+                Text("Justificação de Falta", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Beneficiário:",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = beneficiaryName,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (beneficiaryPhone.isNotEmpty() && beneficiaryPhone != "--") {
-                        Text(
-                            text = "Contacto: $beneficiaryPhone",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), thickness = 0.5.dp)
+                    Text("Beneficiário: $beneficiaryName", fontWeight = FontWeight.SemiBold)
+                    if (beneficiaryPhone.isNotEmpty()) Text("Contacto: $beneficiaryPhone", fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = notif.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = dateString,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(notif.title, fontWeight = FontWeight.Bold)
+                    Text(notif.body, fontSize = 14.sp)
 
-                    Surface(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = notif.body,
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
-                            modifier = Modifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    // SÓ MOSTRA A CAIXA DE ESTADO SE JÁ ESTIVER DECIDIDO
                     if (isDecided) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Text(
-                            text = "Estado Atual:",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
-                        val isAccepted = existingReason!!.contains("Justificado", ignoreCase = true)
-
-                        // Cores dinâmicas para a caixa de status
-                        val statusBg = if (isAccepted)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-
-                        val statusText = if (isAccepted)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error
-
+                        Spacer(modifier = Modifier.height(16.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(statusBg, RoundedCornerShape(8.dp))
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
+                                .background(MaterialTheme.colorScheme.primary.copy(0.1f), RoundedCornerShape(8.dp))
+                                .padding(8.dp)
                         ) {
-                            Text(
-                                text = existingReason!!,
-                                color = statusText,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
+                            Text("Estado: $existingReason", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }
             },
             confirmButton = {
                 if (!isDecided) {
-                    Button(
-                        onClick = {
-                            viewModel.handleJustificationDecision(notif, accepted = true) {
-                                existingReason = "Justificado (Falta não aplicada)"
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Aceitar justificação")
-                    }
+                    Button(onClick = {
+                        viewModel.handleJustificationDecision(notif, accepted = true) {
+                            existingReason = "Justificado (Falta não aplicada)"
+                        }
+                    }) { Text("Aceitar") }
                 } else {
-                    TextButton(onClick = { notificationForDialog = null }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Fechar", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                    }
+                    TextButton(onClick = { notificationForDialog = null }) { Text("Fechar") }
                 }
             },
             dismissButton = {
                 if (!isDecided) {
-                    Button(
-                        onClick = {
-                            viewModel.handleJustificationDecision(notif, accepted = false) {
-                                existingReason = "Justificação Rejeitada (Falta Aplicada)"
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Recusar / Aplicar falta")
+                    TextButton(onClick = {
+                        viewModel.handleJustificationDecision(notif, accepted = false) {
+                            existingReason = "Rejeitada (Falta Aplicada)"
+                        }
+                    }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                        Text("Recusar")
                     }
                 }
             }
@@ -323,13 +227,16 @@ fun CollaboratorNotificationView(
     }
 }
 
+// --- HELPER FUNCTIONS ATUALIZADAS ---
+
 @Composable
 fun getIconForType(type: String): ImageVector {
     return when (type) {
-        "candidatura_nova" -> Icons.Default.AccountBox
-        "pedido_novo" -> ImageVector.vectorResource(id = R.drawable.shopping_cart)
+        "candidatura_nova", "candidatura_estado" -> Icons.Default.AccountBox
+        "pedido_novo", "pedido_estado" -> ImageVector.vectorResource(id = R.drawable.shopping_cart)
         "pedido_agendado" -> Icons.Default.DateRange
         "validade_alerta" -> Icons.Default.Warning
+        "sistema_aviso" -> Icons.Default.Info
         "resposta_entrega" -> Icons.Default.Email
         "resposta_entrega_rejeitada" -> Icons.Default.Cancel
         else -> Icons.Default.Notifications
@@ -338,12 +245,20 @@ fun getIconForType(type: String): ImageVector {
 
 @Composable
 fun FilterSection(selectedFilter: String?, onFilterSelected: (String?) -> Unit) {
-    val filters = listOf(null to "Tudo", "resposta_entrega_rejeitada" to "Justificações", "candidatura_nova" to "Candidaturas", "pedido_novo" to "Pedidos")
+    // Usamos chaves de GRUPO aqui para coincidir com o ViewModel
+    val filters = listOf(
+        null to "Tudo",
+        "GROUP_PEDIDOS" to "Pedidos",
+        "GROUP_CANDIDATURAS" to "Candidaturas",
+        "GROUP_JUSTIFICACOES" to "Justificações",
+        "GROUP_SISTEMA" to "Alertas"
+    )
+
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        items(filters) { (type, label) ->
-            val isSelected = selectedFilter == type
+        items(filters) { (key, label) ->
+            val isSelected = selectedFilter == key
             Button(
-                onClick = { onFilterSelected(type) },
+                onClick = { onFilterSelected(key) },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                     contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -377,7 +292,7 @@ fun NotificationCard(notification: Notification, onClick: () -> Unit) {
                     modifier = Modifier
                         .size(42.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)) // Fundo verde transparente
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         .align(Alignment.Center),
                     contentAlignment = Alignment.Center
                 ) {
@@ -400,7 +315,7 @@ fun NotificationCard(notification: Notification, onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         text = notification.title,
                         fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold,
@@ -413,21 +328,16 @@ fun NotificationCard(notification: Notification, onClick: () -> Unit) {
                     Text(
                         text = dateString,
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(start = 8.dp)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = notification.body,
                     fontSize = 14.sp,
-                    color = if (isUnread)
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (isUnread) 1f else 0.6f),
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 20.sp
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

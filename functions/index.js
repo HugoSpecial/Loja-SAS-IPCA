@@ -245,10 +245,7 @@ exports.notificarAtualizacaoPedido = functions.firestore
   });
 
 // ==================================================================
-// 5. VALIDADES (Cron Job -> Avisa COLABORADOR)
-// ==================================================================
-// ==================================================================
-// 5. VALIDADES (Cron Job -> Avisa COLABORADOR aos 15 e 7 dias)
+// 5. VALIDADES (Cron Job -> Avisa COLABORADOR aos 30, 15 e 7 dias)
 // ==================================================================
 exports.verificarValidades = functions.pubsub
   .schedule('every 24 hours')
@@ -278,6 +275,7 @@ exports.verificarValidades = functions.pubsub
             const diffTempo = dataValidade.getTime() - hoje.getTime();
             const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
 
+            // Verifica os dias exatos
             if (diffDias === 7) {
               criticos7Dias.push(`${produto.name}`);
             } else if (diffDias === 15) {
@@ -289,8 +287,10 @@ exports.verificarValidades = functions.pubsub
         });
       });
 
-      // Se não houver nada para avisar hoje, encerra
-      if (criticos7Dias.length === 0 && aviso15Dias.length === 0 && aviso30Dias.length) return null;
+      if (criticos7Dias.length === 0 && aviso15Dias.length === 0 && aviso30Dias.length === 0) {
+        console.log("Nenhum produto a expirar nas datas alvo (7, 15 ou 30 dias).");
+        return null;
+      }
 
       // Montagem da mensagem
       let titulo = "Alerta de Validade";
@@ -306,8 +306,14 @@ exports.verificarValidades = functions.pubsub
         corpoMsg += `CRÍTICO: ${criticos7Dias.slice(0, 3).join(", ")} expiram em 1 semana!`;
       }
 
+      // SEGURANÇA EXTRA: Se a mensagem estiver vazia, não envia nada
+      if (!corpoMsg || corpoMsg.trim() === "") {
+         return null;
+      }
+
       // Buscar tokens dos colaboradores
       const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
+      
       if (colabs.empty) return null;
 
       const tokens = [];
@@ -338,9 +344,144 @@ exports.verificarValidades = functions.pubsub
         });
       }
 
+      console.log("Notificação de validade enviada com sucesso.");
       return null;
     } catch (erro) {
       console.error("Erro no cron de validades:", erro);
       return null;
+    }
+  });
+
+  // ==================================================================
+// 6. NOVA JUSTIFICAÇÃO (Ação do BENEFICIÁRIO -> Avisa COLABORADOR)
+// ==================================================================
+exports.notificarJustificacao = functions.firestore
+.document('delivery/{deliveryId}')
+.onUpdate(async (change, context) => {
+
+  const dadosNovos = change.after.data();
+  const dadosAntigos = change.before.data();
+  const deliveryId = context.params.deliveryId;
+
+  // Lógica: Se o campo 'reason' foi alterado e agora tem texto,
+  // e antes estava vazio (ou o estado mudou para algo que indique justificação)
+  // Ajusta esta condição conforme a tua lógica de app (ex: state == "JUSTIFICACAO_PENDENTE")
+  const novaJustificacao = dadosNovos.reason && dadosNovos.reason !== dadosAntigos.reason;
+  
+  // Se não for uma justificação nova, ignora
+  if (!novaJustificacao) return null;
+
+  // Buscar dados do aluno para meter o nome na notificação
+  let nomeAluno = "Um beneficiário";
+  if (dadosNovos.userId) {
+      const userDoc = await admin.firestore().collection('users').doc(dadosNovos.userId).get();
+      if (userDoc.exists) {
+          nomeAluno = userDoc.data().name || "Aluno";
+      }
+  }
+
+  try {
+    // Buscar Colaboradores
+    const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
+    if (colabs.empty) return null;
+
+    const batch = admin.firestore().batch();
+    const tokens = [];
+
+    colabs.forEach(doc => {
+      const adminData = doc.data();
+      if (adminData.fcmToken) tokens.push(adminData.fcmToken);
+
+      const notifRef = admin.firestore().collection('notifications').doc();
+      batch.set(notifRef, {
+        recipientId: doc.id,
+        title: "Justificação de Falta",
+        body: `${nomeAluno} enviou uma justificação.`,
+        date: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        type: "resposta_entrega_rejeitada", // O TIPO QUE A APP ESPERA
+        relatedId: deliveryId,
+        senderId: dadosNovos.userId || "", // Importante para o popup saber quem é
+        targetProfile: "COLABORADOR"
+      });
+    });
+
+    await batch.commit();
+
+    if (tokens.length > 0) {
+      await admin.messaging().sendEachForMulticast({
+        notification: { 
+          title: "Justificação de Falta", 
+          body: `${nomeAluno} enviou uma justificação.` 
+        },
+        tokens: tokens
+      });
+    }
+    return null;
+  } catch (error) { 
+    console.error("Erro notificação justificação:", error);
+    return null; 
+  }
+});
+
+// ==================================================================
+// 7. DECISÃO JUSTIFICATIVA (Ação do COLABORADOR -> Avisa BENEFICIÁRIO)
+// ==================================================================
+exports.notificarDecisaoJustificacao = functions.firestore
+  .document('delivery/{deliveryId}')
+  .onUpdate(async (change, context) => {
+
+    const dadosNovos = change.after.data();
+    const dadosAntigos = change.before.data();
+    
+    // Verifica se a razão mudou (sinal que o colaborador tomou uma decisão)
+    // E garante que há um user associado para receber a notificação
+    if (dadosNovos.reason === dadosAntigos.reason) return null;
+    if (!dadosNovos.userId) return null;
+
+    let titulo = "";
+    let corpo = "";
+
+    // Lógica baseada nas strings que usas no Android ViewModel
+    if (dadosNovos.reason.includes("Justificado")) {
+      titulo = "Justificação Aceite";
+      corpo = "A sua falta foi justificada com sucesso.";
+    } else if (dadosNovos.reason.includes("Rejeitada") || dadosNovos.reason.includes("Falta Aplicada")) {
+      titulo = "Justificação Recusada";
+      corpo = "A justificação não foi aceite. Foi registada uma falta.";
+    } else {
+      // Se for apenas o aluno a submeter a justificação inicial, ignoramos aqui 
+      // (porque isso é tratado na função 'notificarJustificacao')
+      return null;
+    }
+
+    try {
+      // Buscar Token do Aluno
+      const userDoc = await admin.firestore().collection('users').doc(dadosNovos.userId).get();
+      const userToken = userDoc.exists ? userDoc.data().fcmToken : null;
+
+      // Gravar no histórico do Aluno
+      await admin.firestore().collection('notifications').add({
+        recipientId: dadosNovos.userId,
+        title: titulo,
+        body: corpo,
+        date: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        type: "pedido_estado", // Reutilizamos este tipo ou crias um novo "justificacao_decisao"
+        relatedId: context.params.deliveryId,
+        targetProfile: "BENEFICIARIO"
+      });
+
+      // Enviar Push
+      if (userToken) {
+        await admin.messaging().send({
+          notification: { title: titulo, body: corpo },
+          token: userToken
+        });
+      }
+      return null;
+    } catch (error) { 
+      console.error("Erro decisão justificação:", error);
+      return null; 
     }
   });
