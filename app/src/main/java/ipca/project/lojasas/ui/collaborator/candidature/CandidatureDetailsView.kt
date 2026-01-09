@@ -1,11 +1,17 @@
 package ipca.project.lojasas.ui.collaborator.candidature
 
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.pdf.PdfRenderer
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.os.ParcelFileDescriptor
+import android.provider.MediaStore
 import android.util.Base64
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +26,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Face // Icone para visualizar
+import androidx.compose.material.icons.outlined.KeyboardArrowDown // Icone para download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +51,7 @@ import ipca.project.lojasas.ui.components.SectionTitle
 import ipca.project.lojasas.ui.components.StatusBadge
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +70,9 @@ fun CandidatureDetailsView(
     var selectedImageBase64 by remember { mutableStateOf<String?>(null) }
     var selectedPdfFile by remember { mutableStateOf<File?>(null) }
 
+    // --- NOVO: Estado para o documento selecionado para opções (View/Download) ---
+    var selectedDocumentForOptions by remember { mutableStateOf<DocumentAttachment?>(null) }
+
     LaunchedEffect(candidatureId) {
         viewModel.fetchCandidature(candidatureId)
     }
@@ -71,13 +83,41 @@ fun CandidatureDetailsView(
         }
     }
 
-    // --- DIÁLOGOS (Preview e Rejeição) ---
+    // --- DIÁLOGOS ---
+
+    // 1. Dialog de Opções (Visualizar / Download)
+    if (selectedDocumentForOptions != null) {
+        DocumentOptionsDialog(
+            document = selectedDocumentForOptions!!,
+            onDismiss = { selectedDocumentForOptions = null },
+            onView = { doc ->
+                // Lógica de visualização
+                val name = doc.name.lowercase()
+                if (name.endsWith(".pdf")) {
+                    val file = saveBase64ToTempFile(context, doc.base64, doc.name)
+                    selectedPdfFile = file
+                } else {
+                    selectedImageBase64 = doc.base64
+                }
+                selectedDocumentForOptions = null
+            },
+            onDownload = { doc ->
+                // Lógica de Download
+                saveToDownloads(context, doc.base64, doc.name)
+                selectedDocumentForOptions = null
+            }
+        )
+    }
+
+    // 2. Previews
     if (selectedImageBase64 != null) {
         ImagePreviewDialog(base64String = selectedImageBase64!!, onDismiss = { selectedImageBase64 = null })
     }
     if (selectedPdfFile != null) {
         PdfPreviewDialog(file = selectedPdfFile!!, onDismiss = { selectedPdfFile = null })
     }
+
+    // 3. Rejeição
     if (showRejectDialog) {
         RejectDialog(
             reason = rejectReason,
@@ -97,7 +137,7 @@ fun CandidatureDetailsView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // 1. HEADER
         Row(
@@ -151,12 +191,10 @@ fun CandidatureDetailsView(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Badge de Estado
                     CandidatureStatusBadge(state = cand.state)
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- DADOS DO ALUNO ---
                     SectionTitle("Dados do aluno")
                     InfoRow("Email:", cand.email)
                     InfoRow("Telemóvel:", cand.mobilePhone)
@@ -164,7 +202,6 @@ fun CandidatureDetailsView(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- DADOS ACADÉMICOS ---
                     SectionTitle("Dados Académicos / Profissionais")
                     InfoRow("Tipo:", cand.type?.name ?: "-")
                     InfoRow("N.º Cartão:", cand.cardNumber)
@@ -173,7 +210,6 @@ fun CandidatureDetailsView(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- PRODUTOS SOLICITADOS ---
                     SectionTitle("Produtos solicitados")
                     BooleanStatusRow("Alimentares", cand.foodProducts)
                     BooleanStatusRow("Higiene Pessoal", cand.hygieneProducts)
@@ -181,7 +217,6 @@ fun CandidatureDetailsView(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- SITUAÇÃO SOCIOECONÓMICA ---
                     SectionTitle("Situação Socioeconómica")
                     InfoRow("Beneficiário FAES:", if (cand.faesSupport == true) "Sim" else "Não")
                     InfoRow("Bolseiro:", if (cand.scholarshipSupport == true) "Sim" else "Não")
@@ -211,13 +246,8 @@ fun CandidatureDetailsView(
                             FileListItem(
                                 attachment = attachment,
                                 onClick = {
-                                    val name = attachment.name.lowercase()
-                                    if (name.endsWith(".pdf")) {
-                                        val file = saveBase64ToTempFile(context, attachment.base64, attachment.name)
-                                        selectedPdfFile = file
-                                    } else {
-                                        selectedImageBase64 = attachment.base64
-                                    }
+                                    // Ao clicar, abrimos o diálogo de opções em vez de abrir direto
+                                    selectedDocumentForOptions = attachment
                                 }
                             )
                         }
@@ -225,14 +255,12 @@ fun CandidatureDetailsView(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- DECLARAÇÕES ---
                     SectionTitle("Declarações")
                     BooleanStatusRow("Compromisso de Honra (Veracidade)", cand.truthfulnessDeclaration)
                     BooleanStatusRow("Autorização RGPD", cand.dataAuthorization)
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- FINALIZAÇÃO ---
                     SectionTitle("Finalização")
                     val subDate = cand.signatureDate.ifEmpty { "Data indisponível" }
                     InfoRow("Data de submissão:", subDate)
@@ -240,7 +268,6 @@ fun CandidatureDetailsView(
 
                     Spacer(modifier = Modifier.height(40.dp))
 
-                    // --- BOTÕES DE AÇÃO ---
                     val isFinalState = cand.state == CandidatureState.ACEITE || cand.state == CandidatureState.REJEITADA
 
                     if (!isFinalState) {
@@ -248,7 +275,6 @@ fun CandidatureDetailsView(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Botão Rejeitar
                             Button(
                                 onClick = { showRejectDialog = true },
                                 colors = ButtonDefaults.buttonColors(
@@ -263,7 +289,6 @@ fun CandidatureDetailsView(
                                 Text("Rejeitar", fontWeight = FontWeight.Bold)
                             }
 
-                            // Botão Aprovar
                             Button(
                                 onClick = { viewModel.approveCandidature(cand.docId) },
                                 colors = ButtonDefaults.buttonColors(
@@ -301,8 +326,148 @@ fun CandidatureDetailsView(
 }
 
 // ----------------------------------------------------
-// --- COMPONENTES VISUAIS ---
+// --- DIÁLOGOS E FUNÇÕES AUXILIARES ---
 // ----------------------------------------------------
+
+@Composable
+fun DocumentOptionsDialog(
+    document: DocumentAttachment,
+    onDismiss: () -> Unit,
+    onView: (DocumentAttachment) -> Unit,
+    onDownload: (DocumentAttachment) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = document.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1
+            )
+        },
+        text = {
+            Text("O que deseja fazer com este documento?")
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        // Adicionamos os botões de ação como conteúdo extra ou usamos um Column no text
+        // Aqui vou usar uma estrutura personalizada dentro do texto para listar as opções
+    )
+
+    // Como o AlertDialog padrão é limitado para listas, vamos usar um Dialog customizado ou
+    // simplesmente usar o AlertDialog e colocar os botões no 'confirmButton' se fossem só texto.
+    // Mas para ficar bonito (Lista de Opções), vou reescrever usando Dialog simples:
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = document.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Opção Visualizar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onView(document) }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info, // Ou outro ícone de olho/ver
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Visualizar Documento", fontSize = 16.sp)
+                }
+
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
+                // Opção Download
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDownload(document) }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check, // Ou ícone de download se tiveres
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Fazer Download", fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Botão Cancelar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- FUNÇÃO DE DOWNLOAD (Salvar na pasta Downloads) ---
+fun saveToDownloads(context: Context, base64String: String, fileName: String) {
+    try {
+        val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            // Tenta adivinhar o tipo MIME
+            val mimeType = when {
+                fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                else -> "application/octet-stream"
+            }
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+        if (uri != null) {
+            val outputStream: OutputStream? = resolver.openOutputStream(uri)
+            outputStream?.use {
+                it.write(decodedBytes)
+            }
+            Toast.makeText(context, "Download concluído: $fileName", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(context, "Erro ao criar ficheiro de download", Toast.LENGTH_SHORT).show()
+        }
+
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "Erro ao fazer download: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+// --- COMPONENTES VISUAIS (Mantidos iguais ao original, apenas reposicionados se necessário) ---
 
 @Composable
 private fun BooleanStatusRow(label: String, isChecked: Boolean) {
@@ -337,7 +502,6 @@ private fun BooleanStatusRow(label: String, isChecked: Boolean) {
 
 @Composable
 private fun CandidatureStatusBadge(state: CandidatureState) {
-    // Cores adaptáveis com transparência para o fundo
     val (bg, color) = when (state) {
         CandidatureState.PENDENTE -> Color(0xFFEF6C00).copy(alpha = 0.1f) to Color(0xFFEF6C00)
         CandidatureState.ACEITE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) to MaterialTheme.colorScheme.primary
@@ -369,9 +533,8 @@ private fun FileListItem(attachment: DocumentAttachment, onClick: () -> Unit) {
     }
 }
 
-// ----------------------------------------------------
-// --- DIÁLOGOS AUXILIARES ---
-// ----------------------------------------------------
+// --- OUTROS DIÁLOGOS (Reject, ImagePreview, PdfPreview, Helpers) ---
+// (Estes mantêm-se iguais ao teu código original, incluídos aqui para completude)
 
 @Composable
 fun RejectDialog(
@@ -383,10 +546,8 @@ fun RejectDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface, // Branco ou Cinza Escuro
-        title = {
-            Text(text, color = MaterialTheme.colorScheme.onSurface)
-        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text(text, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column {
                 Text("Motivo da rejeição:", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
@@ -417,7 +578,6 @@ fun RejectDialog(
     )
 }
 
-// --- Preview de Imagem e PDF ---
 @Composable
 fun ImagePreviewDialog(base64String: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
@@ -440,11 +600,7 @@ fun ImagePreviewDialog(base64String: String, onDismiss: () -> Unit) {
                     )
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd)) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Fechar",
-                        tint = Color.Black // Ícone preto para contraste sobre a imagem (geralmente clara) ou fundo
-                    )
+                    Icon(Icons.Default.Close, contentDescription = "Fechar", tint = Color.Black)
                 }
             }
         }
@@ -483,7 +639,6 @@ fun PdfPreviewDialog(file: File, onDismiss: () -> Unit) {
     }
 }
 
-// Funções utilitárias (File, PDF)
 private fun saveBase64ToTempFile(context: Context, base64String: String, fileName: String): File? {
     return try {
         val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
@@ -502,7 +657,6 @@ private fun pdfToBitmaps(file: File): List<Bitmap> {
         val renderer = PdfRenderer(fileDescriptor)
         for (i in 0 until renderer.pageCount) {
             val page = renderer.openPage(i)
-            // Renderiza com fundo branco para garantir visibilidade
             val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
             bitmap.eraseColor(android.graphics.Color.WHITE)
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
