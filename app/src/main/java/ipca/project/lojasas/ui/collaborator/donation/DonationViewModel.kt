@@ -27,7 +27,6 @@ data class DonationState(
     var currentValidity: Date? = null,
     var currentImageBase64: String? = null,
 
-    // Lista de categorias disponíveis
     val categories: List<String> = listOf("Alimentos", "Higiene", "Limpeza"),
 
     var productsToAdd: MutableList<Product> = mutableListOf(),
@@ -35,7 +34,7 @@ data class DonationState(
     var donorName: String = "",
     var selectedCampaign: Campaign? = null,
     var activeCampaigns: List<Campaign> = emptyList(),
-    var existingProducts: List<Product> = emptyList(), // Lista local para validação
+    var existingProducts: List<Product> = emptyList(),
     var filteredProducts: List<Product> = emptyList(),
     var isLoading: Boolean = false,
     var error: String? = null,
@@ -68,7 +67,6 @@ class DonationViewModel : ViewModel() {
     }
 
     private fun fetchAllProducts() {
-        // Carrega todos os produtos para memória para validação rápida
         db.collection("products").get().addOnSuccessListener { result ->
             val products = mutableListOf<Product>()
             for (doc in result) {
@@ -153,8 +151,34 @@ class DonationViewModel : ViewModel() {
         val qty = state.currentQuantity.toInt()
         val validDate = state.currentValidity ?: Date()
 
+        // --- NOVA VALIDAÇÃO: Pelo menos 7 dias a partir de hoje ---
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, 7) // Adiciona 7 dias a hoje
+
+        // Zera as horas para comparar apenas a data (evita erros de hora)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val minDate = calendar.time
+
+        // Normaliza também a data escolhida para garantir comparação justa
+        val selectedCal = Calendar.getInstance()
+        selectedCal.time = validDate
+        selectedCal.set(Calendar.HOUR_OF_DAY, 0)
+        selectedCal.set(Calendar.MINUTE, 0)
+        selectedCal.set(Calendar.SECOND, 0)
+        selectedCal.set(Calendar.MILLISECOND, 0)
+        val normalizedValidDate = selectedCal.time
+
+        if (normalizedValidDate.before(minDate)) {
+            uiState.value = uiState.value.copy(error = "A validade tem de ser pelo menos 7 dias a partir de hoje!")
+            return
+        }
+        // ------------------------------------------------------------
+
         val newProduct = Product(
-            name = state.currentName.trim(), // Importante: Trim para evitar espaços extra
+            name = state.currentName.trim(),
             category = state.currentCategory,
             imageUrl = state.currentImageBase64 ?: "",
             batches = mutableListOf(ProductBatch(validity = validDate, quantity = qty))
@@ -189,7 +213,6 @@ class DonationViewModel : ViewModel() {
 
     fun onDonorNameChange(text: String) { uiState.value = uiState.value.copy(donorName = text) }
 
-    // --- LÓGICA DE GUARDAR (CORRIGIDA) ---
     fun saveDonation(onSuccess: () -> Unit) {
         val state = uiState.value
 
@@ -215,19 +238,14 @@ class DonationViewModel : ViewModel() {
             campaignId = state.selectedCampaign?.docId
         )
 
-        // 1. Criar a Doação
         db.collection("donations").add(donation)
             .addOnSuccessListener { docRef ->
                 val newDonationId = docRef.id
-
-                // 2. Atualizar Campanha (se aplicável)
                 val campaignId = state.selectedCampaign?.docId
                 if (!campaignId.isNullOrEmpty()) {
                     db.collection("campaigns").document(campaignId)
                         .update("donations", FieldValue.arrayUnion(newDonationId))
                 }
-
-                // 3. Atualizar Stock de Produtos (Agrupado e Seguro)
                 updateStockForList(state.productsToAdd, onSuccess)
             }
             .addOnFailureListener {
@@ -237,10 +255,7 @@ class DonationViewModel : ViewModel() {
 
     private fun updateStockForList(products: List<Product>, onComplete: () -> Unit) {
         if (products.isEmpty()) { onComplete(); return }
-
-        // Agrupa produtos pelo nome para evitar conflitos de escrita
         val groupedProducts = products.groupBy { it.name.trim() }
-
         var processedCount = 0
         val totalGroups = groupedProducts.size
 
@@ -255,7 +270,6 @@ class DonationViewModel : ViewModel() {
                 if (!p.imageUrl.isNullOrEmpty()) finalImage = p.imageUrl
             }
 
-            // Chama a função de atualização com a lista de lotes consolidada
             updateSingleProductStock(name, finalCategory, allNewBatches, finalImage) {
                 processedCount++
                 if (processedCount == totalGroups) {
@@ -273,22 +287,16 @@ class DonationViewModel : ViewModel() {
         img: String?,
         onDone: () -> Unit
     ) {
-        // 1. Verifica na lista local se já existe um produto com este nome (ignora maiúsculas/minúsculas)
         val localMatch = uiState.value.existingProducts.find {
             it.name.trim().equals(name.trim(), ignoreCase = true)
         }
 
         if (localMatch != null && !localMatch.docId.isNullOrEmpty()) {
-            // --- O Produto JÁ EXISTE (Encontrado localmente) ---
             val docRef = db.collection("products").document(localMatch.docId)
-
             docRef.get().addOnSuccessListener { snapshot ->
                 val existingProduct = snapshot.toObject(Product::class.java)
-
                 if (existingProduct != null) {
                     val currentBatches = existingProduct.batches
-
-                    // Fundir lotes
                     for (newBatch in newBatches) {
                         var found = false
                         for (existingBatch in currentBatches) {
@@ -302,42 +310,26 @@ class DonationViewModel : ViewModel() {
                             currentBatches.add(newBatch)
                         }
                     }
-
                     val updates = mutableMapOf<String, Any>("batches" to currentBatches)
                     if (!img.isNullOrEmpty()) updates["imageUrl"] = img
-                    // updates["category"] = category // Descomente para atualizar categoria
-
                     docRef.update(updates).addOnCompleteListener { onDone() }
                 } else {
-                    // Se falhar a leitura do objeto, tenta criar novo (fallback raro)
                     createNewProduct(name, category, newBatches, img, onDone)
                 }
-            }.addOnFailureListener {
-                onDone()
-            }
-
+            }.addOnFailureListener { onDone() }
         } else {
-            // --- Produto NÃO encontrado localmente -> Tentar Query Firestore ou Criar Novo ---
             db.collection("products").whereEqualTo("name", name.trim()).get()
                 .addOnSuccessListener { docs ->
                     if (!docs.isEmpty) {
-                        // Encontrou na base de dados (lista local podia estar desatualizada)
                         val product = docs.documents[0].toObject(Product::class.java)
                         product?.docId = docs.documents[0].id
-
                         if (product != null) {
-                            // Atualiza lista local e tenta novamente a lógica de update
                             val newList = uiState.value.existingProducts.toMutableList()
                             newList.add(product)
                             uiState.value = uiState.value.copy(existingProducts = newList)
-
-                            // Recursividade segura para ir ao bloco "if (localMatch != null)"
                             updateSingleProductStock(product.name, category, newBatches, img, onDone)
-                        } else {
-                            onDone()
-                        }
+                        } else { onDone() }
                     } else {
-                        // Definitivamente não existe -> Criar Novo
                         createNewProduct(name, category, newBatches, img, onDone)
                     }
                 }
@@ -352,12 +344,10 @@ class DonationViewModel : ViewModel() {
             batches = newBatches.toMutableList()
         )
         db.collection("products").add(newItem).addOnSuccessListener { docRef ->
-            // Adiciona logo à lista local para evitar duplicados na mesma sessão
             newItem.docId = docRef.id
             val newList = uiState.value.existingProducts.toMutableList()
             newList.add(newItem)
             uiState.value = uiState.value.copy(existingProducts = newList)
-
             onDone()
         }
     }

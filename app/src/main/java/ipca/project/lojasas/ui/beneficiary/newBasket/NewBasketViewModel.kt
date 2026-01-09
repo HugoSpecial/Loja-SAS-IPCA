@@ -32,22 +32,48 @@ class NewBasketViewModel : ViewModel() {
 
     private fun fetchProducts() {
         uiState.value = uiState.value.copy(isLoading = true)
+
         db.collection("products").orderBy("name", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     uiState.value = uiState.value.copy(isLoading = false, error = error.message)
                     return@addSnapshotListener
                 }
+
                 val productList = mutableListOf<Product>()
+                val today = Date()
+
                 for (doc in snapshot?.documents ?: emptyList()) {
                     try {
                         val product = doc.toObject(Product::class.java)
                         product?.docId = doc.id
-                        if (product != null) productList.add(product)
+
+                        if (product != null) {
+                            val validBatchesForDisplay = product.batches.filter { batch ->
+                                val isValidDate = batch.validity?.after(today) == true || isSameDay(batch.validity, today)
+                                isValidDate && batch.quantity > 0
+                            }.toMutableList()
+
+                            // Substituímos os lotes do objeto local apenas para cálculo de UI
+                            product.batches = validBatchesForDisplay
+
+                            // Só mostramos o produto se tiver stock VÁLIDO > 0
+                            if (product.batches.isNotEmpty()) {
+                                productList.add(product)
+                            }
+                        }
                     } catch (e: Exception) { Log.e("NewBasketVM", "Erro", e) }
                 }
                 uiState.value = uiState.value.copy(products = productList, isLoading = false, error = null)
             }
+    }
+
+    private fun isSameDay(date1: Date?, date2: Date?): Boolean {
+        if (date1 == null || date2 == null) return false
+        val cal1 = java.util.Calendar.getInstance().apply { time = date1 }
+        val cal2 = java.util.Calendar.getInstance().apply { time = date2 }
+        return cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR) &&
+                cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
     }
 
     fun createOrder(selectedDate: Date, selectedProducts: Map<String, Int>, onSubmitResult: (Boolean) -> Unit) {

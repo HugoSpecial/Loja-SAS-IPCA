@@ -285,7 +285,6 @@ class OrderDetailViewModel : ViewModel() {
             }
     }
 
-    // --- REMOVER DO STOCK (FIFO) ---
     private fun removeStockFIFO(items: List<OrderItem>, onComplete: (Boolean) -> Unit) {
         if (items.isEmpty()) {
             onComplete(true)
@@ -294,6 +293,7 @@ class OrderDetailViewModel : ViewModel() {
 
         var processedCount = 0
         var hasError = false
+        val today = Date()
 
         for (item in items) {
             val name = item.name ?: continue
@@ -319,16 +319,23 @@ class OrderDetailViewModel : ViewModel() {
                                 var remaining = qtyRequired
 
                                 val iterator = sortedBatches.listIterator()
+
                                 while (iterator.hasNext() && remaining > 0) {
                                     val batch = iterator.next()
+
+                                    if (batch.validity != null && batch.validity!!.before(today)) {
+                                        continue
+                                    }
+
                                     if (batch.quantity <= remaining) {
                                         remaining -= batch.quantity
-                                        iterator.remove()
+                                        iterator.remove() // Remove o lote se ficar a 0 (apenas se for válido)
                                     } else {
                                         batch.quantity -= remaining
                                         remaining = 0
                                     }
                                 }
+
                                 transaction.update(productRef, "batches", sortedBatches)
                             }
                         }.addOnCompleteListener {

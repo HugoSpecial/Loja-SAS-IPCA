@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,11 +37,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.Product
-import ipca.project.lojasas.ui.components.EmptyState
+import ipca.project.lojasas.models.ProductBatch
 import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalFoundationApi::class) // Necessário para o stickyHeader
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StockView(
     navController: NavController,
@@ -50,9 +54,9 @@ fun StockView(
     var selectedItem by remember { mutableStateOf<Product?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val categories = listOf("Todos", "Alimentos", "Higiene", "Limpeza")
+    val categories = listOf("Todos", "Fora de validade", "Alimentos", "Higiene", "Limpeza")
 
-    // --- DIÁLOGOS (Mantidos iguais) ---
+    // --- DIÁLOGOS ---
     if (selectedItem != null) {
         ProductBatchesDialog(
             item = selectedItem!!,
@@ -110,15 +114,14 @@ fun StockView(
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
 
-        // Usamos LazyColumn em vez de Column + LazyVerticalGrid
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding()),
-            contentPadding = PaddingValues(bottom = 80.dp) // Espaço para o FAB não tapar o último item
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
 
-            // 1. CABEÇALHO (Logo e Títulos) - Isto vai fazer scroll e desaparecer
+            // 1. CABEÇALHO
             item {
                 Column(
                     modifier = Modifier
@@ -152,14 +155,13 @@ fun StockView(
                 }
             }
 
-            // 2. STICKY HEADER (Barra de Pesquisa e Filtros) - Isto vai fixar no topo
+            // 2. STICKY HEADER (Filtros)
             stickyHeader {
-                // É CRUCIAL ter um background aqui, senão os itens passam por trás transparentes
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)
-                        .padding(vertical = 8.dp) // Padding vertical para dar ar
+                        .padding(vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 12.dp)) {
                         OutlinedTextField(
@@ -181,9 +183,6 @@ fun StockView(
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                                cursorColor = MaterialTheme.colorScheme.primary,
-                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             singleLine = true
                         )
@@ -197,8 +196,12 @@ fun StockView(
                     ) {
                         items(categories) { category ->
                             val isSelected = category == state.selectedCategory
-                            val chipBg = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-                            val chipBorder = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            val isExpiredCat = category == "Fora de validade"
+
+                            val activeColor = if (isExpiredCat) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+
+                            val chipBg = if (isSelected) activeColor else Color.Transparent
+                            val chipBorder = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                             val chipText = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
 
                             Box(
@@ -213,7 +216,6 @@ fun StockView(
                             }
                         }
                     }
-                    // Linha separadora subtil quando fixa (opcional)
                     Divider(
                         modifier = Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
@@ -221,7 +223,7 @@ fun StockView(
                 }
             }
 
-            // 3. CONTEÚDO (Grelha simulada)
+            // 3. CONTEÚDO
             if (state.isLoading) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -230,10 +232,23 @@ fun StockView(
                 }
             } else if (filteredItems.isEmpty()) {
                 item {
-                    EmptyState(message = "Nenhum produto encontrado.", icon = Icons.Outlined.ShoppingCart)
+                    // --- AQUI ESTÁ A ALTERAÇÃO ---
+                    // Substituí o EmptyState por um Box com Text simples
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 50.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Nenhum produto encontrado nesta categoria.",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             } else {
-                // Chunked(2) cria pares de produtos para simular a grelha de 2 colunas
                 items(filteredItems.chunked(2)) { rowItems ->
                     Row(
                         modifier = Modifier
@@ -241,17 +256,17 @@ fun StockView(
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Primeiro item
                         ProductCard(
                             item = rowItems[0],
+                            currentCategory = state.selectedCategory,
                             onClick = { selectedItem = rowItems[0] },
                             modifier = Modifier.weight(1f)
                         )
 
-                        // Segundo item (se existir) ou espaço vazio para alinhar
                         if (rowItems.size > 1) {
                             ProductCard(
                                 item = rowItems[1],
+                                currentCategory = state.selectedCategory,
                                 onClick = { selectedItem = rowItems[1] },
                                 modifier = Modifier.weight(1f)
                             )
@@ -265,25 +280,33 @@ fun StockView(
     }
 }
 
-// Atualizei o ProductCard para aceitar Modifier, para funcionar com weight(1f) na grelha
+// --- PRODUCT CARD ---
 @Composable
 fun ProductCard(
     item: Product,
+    currentCategory: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val totalQuantity = item.batches.sumOf { it.quantity }
-    val validitiesCount = item.batches.count { it.validity != null && it.quantity > 0 }
+    val validBatches = item.batches.filter { it.quantity > 0 && isDateValid(it.validity) }
+    val expiredBatches = item.batches.filter { it.quantity > 0 && !isDateValid(it.validity) }
+
+    val validQuantity = validBatches.sumOf { it.quantity }
+    val expiredQuantity = expiredBatches.sumOf { it.quantity }
+
+    val showExpiredInfo = currentCategory == "Fora de validade"
+
+    val quantityToShow = if (showExpiredInfo) expiredQuantity else validQuantity
+    val labelToShow = if (showExpiredInfo) "Stock Expirado" else "Stock Válido"
+    val colorToShow = if (showExpiredInfo) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
 
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = modifier // Usa o modificador passado (importante para o layout da grelha)
-            .clickable { onClick() }
+        modifier = modifier.clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Imagem do Produto
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -310,7 +333,7 @@ fun ProductCard(
                 } else {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Sem imagem",
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                         modifier = Modifier.size(40.dp)
                     )
@@ -336,27 +359,32 @@ fun ProductCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Total: $totalQuantity un",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                text = "$labelToShow: $quantityToShow un",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorToShow
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = if (validitiesCount > 0) "$validitiesCount validades" else "Sem validade",
-                fontSize = 12.sp,
-                color = if (validitiesCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+            if (!showExpiredInfo && expiredQuantity > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(10.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Tem $expiredQuantity expirados",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     }
 }
 
-// O resto do código (ProductBatchesDialog) mantém-se igual,
-// apenas certifique-se de que a função existe no ficheiro.
+// --- DIÁLOGO DE DETALHES ---
 @Composable
 fun ProductBatchesDialog(
     item: Product,
@@ -364,8 +392,9 @@ fun ProductBatchesDialog(
     onEdit: () -> Unit,
     onDeleteRequest: () -> Unit
 ) {
-    // ... (O teu código do dialog original aqui) ...
-    // Podes copiar o bloco original do teu código para aqui se não o tiveres noutro ficheiro
+    val validBatches = item.batches.filter { it.quantity > 0 && isDateValid(it.validity) }.sortedBy { it.validity }
+    val expiredBatches = item.batches.filter { it.quantity > 0 && !isDateValid(it.validity) }.sortedBy { it.validity }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -378,19 +407,14 @@ fun ProductBatchesDialog(
                     text = item.name,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 24.sp,
+                    fontSize = 20.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-
                 Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                    }
-                    IconButton(onClick = onDeleteRequest) {
-                        Icon(Icons.Default.Delete, contentDescription = "Apagar", tint = MaterialTheme.colorScheme.error)
-                    }
+                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }
+                    IconButton(onClick = onDeleteRequest) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
                 }
             }
         },
@@ -399,44 +423,84 @@ fun ProductBatchesDialog(
                 Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Detalhes por validade:", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                Spacer(modifier = Modifier.height(12.dp))
-
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.heightIn(max = 300.dp)
+                    modifier = Modifier.heightIn(max = 350.dp)
                 ) {
-                    val batches = item.batches.filter { it.quantity > 0 }.sortedBy { it.validity }
-                    if (batches.isEmpty()) {
-                        item {
-                            Text("Sem stock disponível.", fontSize = 14.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                        }
+                    if (validBatches.isNotEmpty()) {
+                        item { Text("Lotes Válidos", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
+                        items(validBatches) { batch -> BatchCard(batch, isExpired = false) }
+                    } else if (expiredBatches.isEmpty()) {
+                        item { Text("Sem stock disponível.", fontSize = 14.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic) }
                     }
-                    items(batches) { batch ->
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-                            elevation = CardDefaults.cardElevation(0.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Column {
-                                    Text("Validade", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                    val dateStr = batch.validity?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Sem data"
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(dateStr, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                                Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) {
-                                    Text(text = "${batch.quantity} un", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
-                                }
-                            }
+
+                    if (expiredBatches.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("⚠️ Lotes Expirados", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                         }
+                        items(expiredBatches) { batch -> BatchCard(batch, isExpired = true) }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fechar", color = MaterialTheme.colorScheme.primary, fontSize = 16.sp) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Fechar") } },
         containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(16.dp)
     )
+}
+
+@Composable
+fun BatchCard(batch: ProductBatch, isExpired: Boolean) {
+    val bgColor = if (isExpired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.background
+    val textColor = if (isExpired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.cardElevation(0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(if(isExpired) "Expirou em" else "Validade", fontSize = 10.sp, color = textColor.copy(alpha = 0.7f))
+                val dateStr = batch.validity?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Sem data"
+                Text(dateStr, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = textColor)
+            }
+            Surface(
+                color = if(isExpired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text(
+                    text = "${batch.quantity} un",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+fun isDateValid(date: Date?): Boolean {
+    if (date == null) return false
+    val today = Calendar.getInstance()
+    today.set(Calendar.HOUR_OF_DAY, 0)
+    today.set(Calendar.MINUTE, 0)
+    today.set(Calendar.SECOND, 0)
+    today.set(Calendar.MILLISECOND, 0)
+
+    val checkDate = Calendar.getInstance()
+    checkDate.time = date
+    checkDate.set(Calendar.HOUR_OF_DAY, 0)
+    checkDate.set(Calendar.MINUTE, 0)
+    checkDate.set(Calendar.SECOND, 0)
+    checkDate.set(Calendar.MILLISECOND, 0)
+
+    return !checkDate.before(today)
 }

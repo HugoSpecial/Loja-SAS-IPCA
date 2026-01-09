@@ -6,13 +6,15 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Product
+import java.util.Calendar
+import java.util.Date
 
 data class StockState(
     val items: List<Product> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val searchText: String = "",
-    val selectedCategory: String = "Todos" // <--- Novo Estado para a categoria
+    val selectedCategory: String = "Todos"
 )
 
 class StockViewModel : ViewModel() {
@@ -62,12 +64,11 @@ class StockViewModel : ViewModel() {
         uiState.value = uiState.value.copy(searchText = text)
     }
 
-    // --- Nova função para mudar a categoria ---
     fun onCategoryChange(category: String) {
         uiState.value = uiState.value.copy(selectedCategory = category)
     }
 
-    // --- Lógica de Filtro Atualizada ---
+    // --- LÓGICA DE FILTRO ATUALIZADA ---
     fun getFilteredItems(): List<Product> {
         val query = uiState.value.searchText.lowercase()
         val currentCategory = uiState.value.selectedCategory
@@ -76,15 +77,20 @@ class StockViewModel : ViewModel() {
             // 1. Filtra pelo texto de pesquisa
             val matchesName = product.name.lowercase().contains(query)
 
-            // 2. Filtra pela categoria
-            val matchesCategory = if (currentCategory == "Todos") {
-                true // Se for "Todos", aceita tudo
-            } else {
-                // Compara ignorando maiúsculas/minúsculas (ex: "Alimentos" == "alimentos")
-                product.category.equals(currentCategory, ignoreCase = true)
+            // 2. Verifica Validade dos lotes
+            val hasValidBatches = product.batches.any { it.quantity > 0 && isDateValid(it.validity) }
+            val hasExpiredBatches = product.batches.any { it.quantity > 0 && !isDateValid(it.validity) }
+
+            // 3. Lógica da Categoria
+            val matchesCategory = when (currentCategory) {
+                "Fora de validade" -> hasExpiredBatches // Mostra se tiver algum expirado
+                "Todos" -> hasValidBatches // Mostra apenas se tiver stock válido
+                else -> {
+                    // Se for uma categoria específica (Alimentos, etc), tem de bater certo a categoria E ter stock válido
+                    product.category.equals(currentCategory, ignoreCase = true) && hasValidBatches
+                }
             }
 
-            // Retorna apenas se corresponder a ambos
             matchesName && matchesCategory
         }
     }
@@ -95,5 +101,24 @@ class StockViewModel : ViewModel() {
         db.collection("products").document(docId).delete()
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { e -> Log.e("StockViewModel", "Erro ao apagar", e) }
+    }
+
+    // Função auxiliar para verificar se a data é válida (Hoje ou Futuro)
+    private fun isDateValid(date: Date?): Boolean {
+        if (date == null) return false
+        val today = Calendar.getInstance()
+        today.set(Calendar.HOUR_OF_DAY, 0)
+        today.set(Calendar.MINUTE, 0)
+        today.set(Calendar.SECOND, 0)
+        today.set(Calendar.MILLISECOND, 0)
+
+        val checkDate = Calendar.getInstance()
+        checkDate.time = date
+        checkDate.set(Calendar.HOUR_OF_DAY, 0)
+        checkDate.set(Calendar.MINUTE, 0)
+        checkDate.set(Calendar.SECOND, 0)
+        checkDate.set(Calendar.MILLISECOND, 0)
+
+        return !checkDate.before(today)
     }
 }

@@ -97,7 +97,6 @@ class BeneficiaryOrderViewModel : ViewModel() {
             .add(proposal)
     }
 
-    // Aceitar proposta do Colaborador
     fun acceptProposal(orderId: String, proposalId: String) {
         val proposal = uiState.proposals.find { it.docId == proposalId } ?: return
         val newDate = proposal.newDate ?: return
@@ -106,7 +105,6 @@ class BeneficiaryOrderViewModel : ViewModel() {
         val orderRef = db.collection("orders").document(orderId)
         val proposalRef = orderRef.collection("proposals").document(proposalId)
 
-        // Atualiza a data oficial e marca proposta como confirmada
         batch.update(orderRef, "surveyDate", newDate)
         batch.update(proposalRef, "confirmed", true)
 
