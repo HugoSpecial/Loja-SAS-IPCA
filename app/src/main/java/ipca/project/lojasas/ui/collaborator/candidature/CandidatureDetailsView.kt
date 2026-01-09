@@ -336,32 +336,7 @@ fun DocumentOptionsDialog(
     onView: (DocumentAttachment) -> Unit,
     onDownload: (DocumentAttachment) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = document.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1
-            )
-        },
-        text = {
-            Text("O que deseja fazer com este documento?")
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        // Adicionamos os botões de ação como conteúdo extra ou usamos um Column no text
-        // Aqui vou usar uma estrutura personalizada dentro do texto para listar as opções
-    )
-
-    // Como o AlertDialog padrão é limitado para listas, vamos usar um Dialog customizado ou
-    // simplesmente usar o AlertDialog e colocar os botões no 'confirmButton' se fossem só texto.
-    // Mas para ficar bonito (Lista de Opções), vou reescrever usando Dialog simples:
+    // --- CORREÇÃO: Removi o AlertDialog que estava aqui a mais ---
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -387,7 +362,7 @@ fun DocumentOptionsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info, // Ou outro ícone de olho/ver
+                        imageVector = Icons.Outlined.Face, // Ou Icons.Default.Info
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -406,7 +381,7 @@ fun DocumentOptionsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Check, // Ou ícone de download se tiveres
+                        imageVector = Icons.Outlined.KeyboardArrowDown, // Ou Icons.Filled.Check
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
