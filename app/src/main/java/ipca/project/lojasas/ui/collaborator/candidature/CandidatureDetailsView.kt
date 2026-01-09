@@ -52,6 +52,8 @@ import ipca.project.lojasas.ui.components.StatusBadge
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -362,7 +364,7 @@ fun DocumentOptionsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Face, // Ou Icons.Default.Info
+                        imageVector = ImageVector.vectorResource(id=R.drawable.file_dock), // Ou Icons.Default.Info
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -381,7 +383,7 @@ fun DocumentOptionsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.KeyboardArrowDown, // Ou Icons.Filled.Check
+                        imageVector = ImageVector.vectorResource(id=R.drawable.file_download), // Ou Icons.Filled.Check
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -405,35 +407,45 @@ fun DocumentOptionsDialog(
     }
 }
 
-// --- FUNÇÃO DE DOWNLOAD (Salvar na pasta Downloads) ---
+// --- FUNÇÃO DE DOWNLOAD COMPATÍVEL (API 24+) ---
 fun saveToDownloads(context: Context, base64String: String, fileName: String) {
     try {
         val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
 
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            // Tenta adivinhar o tipo MIME
-            val mimeType = when {
-                fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
-                fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
-                fileName.endsWith(".png", ignoreCase = true) -> "image/png"
-                else -> "application/octet-stream"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                val mimeType = when {
+                    fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                    fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                    fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                    else -> "application/octet-stream"
+                }
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             }
-            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-        }
 
-        val resolver = context.contentResolver
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            val resolver = context.contentResolver
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
 
-        if (uri != null) {
-            val outputStream: OutputStream? = resolver.openOutputStream(uri)
-            outputStream?.use {
-                it.write(decodedBytes)
+            if (uri != null) {
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(decodedBytes)
+                }
+                Toast.makeText(context, "Download concluído (Galeria/Downloads)", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "Erro ao criar ficheiro", Toast.LENGTH_SHORT).show()
             }
-            Toast.makeText(context, "Download concluído: $fileName", Toast.LENGTH_LONG).show()
+
         } else {
-            Toast.makeText(context, "Erro ao criar ficheiro de download", Toast.LENGTH_SHORT).show()
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloadsDir, fileName)
+
+            FileOutputStream(file).use { fos ->
+                fos.write(decodedBytes)
+            }
+
+            Toast.makeText(context, "Download guardado em: ${file.absolutePath}", Toast.LENGTH_LONG).show()
         }
 
     } catch (e: Exception) {
