@@ -437,7 +437,7 @@ fun ProductBatchesDialog(
                     if (expiredBatches.isNotEmpty()) {
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("⚠️ Lotes Expirados", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                            Text("Lotes Expirados", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                         }
                         items(expiredBatches) { batch -> BatchCard(batch, isExpired = true) }
                     }
