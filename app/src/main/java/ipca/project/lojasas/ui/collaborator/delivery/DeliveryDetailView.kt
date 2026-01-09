@@ -1,6 +1,8 @@
 package ipca.project.lojasas.ui.collaborator.delivery
 
+import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Base64
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -12,11 +14,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +90,7 @@ fun DeliveryDetailView(
                     color = MaterialTheme.colorScheme.primary
                 )
                 state.error != null -> Text(
-                    text = state.error,
+                    text = state.error!!,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
@@ -176,6 +181,7 @@ fun DeliveryDetailView(
 
                             // --- Botões ---
                             val now = Calendar.getInstance()
+                            // Adiciona 1 dia à data de entrega para permitir botões se passou o dia
                             val deliveryDate = Calendar.getInstance().apply { delivery.surveyDate?.let { time = it } }
                             deliveryDate.add(Calendar.DAY_OF_MONTH, 1)
 
@@ -285,14 +291,54 @@ private fun ProductCategoryList(
     }
 }
 
+// --- ROW COM IMAGEM ---
 @Composable
 fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = if (isFinal) 16.dp else 32.dp, bottom = 6.dp),
+            .padding(horizontal = if (isFinal) 16.dp else 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // 1. IMAGEM DO PRODUTO
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            val imageBitmap = remember(product.imageUrl) {
+                try {
+                    if (product.imageUrl.isNotBlank()) {
+                        val decodedBytes = Base64.decode(product.imageUrl, Base64.DEFAULT)
+                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+                    } else null
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            if (imageBitmap != null) {
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.ShoppingCart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // 2. TEXTO E STOCK
         Column(modifier = Modifier.weight(1f)) {
             if (isFinal) {
                 Text(
@@ -301,23 +347,62 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
             } else {
-                val totalStock = product.batches.sumOf { it.quantity }
-                val newStock = totalStock - (orderItem.quantity ?: 0)
+                // Cálculo de Stock Válido (igual ao OrderDetail)
+                val validStock = product.batches
+                    .filter { it.quantity > 0 && isDateValid(it.validity) }
+                    .sumOf { it.quantity }
+
+                val newStock = validStock - (orderItem.quantity ?: 0)
+
                 val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
                 val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
                 Text(
-                    "${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)",
+                    "${orderItem.quantity}x ${orderItem.name} (Stock Válido: $validStock)",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    "Stock atualizado: $newStock",
+                    "Stock após entrega: $newStock",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
-                Icon(icon, contentDescription = null, tint = iconColor)
+
+                // Ícone movido para dentro da lógica visual se preferires,
+                // ou mantido fora como estava (aqui mantive na coluna para simplificar o layout com a imagem)
             }
         }
+
+        // 3. ÍCONE (Apenas se não for Final)
+        if (!isFinal) {
+            val validStock = product.batches
+                .filter { it.quantity > 0 && isDateValid(it.validity) }
+                .sumOf { it.quantity }
+            val newStock = validStock - (orderItem.quantity ?: 0)
+            val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
+            val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(icon, contentDescription = null, tint = iconColor)
+        }
     }
+}
+
+// Função auxiliar (private para evitar conflitos com outros ficheiros)
+private fun isDateValid(date: Date?): Boolean {
+    if (date == null) return false
+    val today = Calendar.getInstance()
+    today.set(Calendar.HOUR_OF_DAY, 0)
+    today.set(Calendar.MINUTE, 0)
+    today.set(Calendar.SECOND, 0)
+    today.set(Calendar.MILLISECOND, 0)
+
+    val checkDate = Calendar.getInstance()
+    checkDate.time = date
+    checkDate.set(Calendar.HOUR_OF_DAY, 0)
+    checkDate.set(Calendar.MINUTE, 0)
+    checkDate.set(Calendar.SECOND, 0)
+    checkDate.set(Calendar.MILLISECOND, 0)
+
+    return !checkDate.before(today)
 }

@@ -10,7 +10,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.Order
-import ipca.project.lojasas.models.OrderState
+import ipca.project.lojasas.models.Product // Certifica-te que tens este import
 import ipca.project.lojasas.models.ProposalDelivery
 import java.util.Date
 
@@ -20,7 +20,8 @@ data class BeneficiaryOrderState(
     val selectedOrder: Order? = null,
     val error: String? = null,
     val proposals: List<ProposalDelivery> = emptyList(),
-    val currentUserName: String? = null // Nome do Beneficiário logado
+    val currentUserName: String? = null,
+    val products: List<Product> = emptyList() // <--- NOVO: Lista de produtos para as imagens
 )
 
 class BeneficiaryOrderViewModel : ViewModel() {
@@ -30,6 +31,21 @@ class BeneficiaryOrderViewModel : ViewModel() {
 
     private val db = Firebase.firestore
     private var proposalsListener: ListenerRegistration? = null
+
+    init {
+        // Buscar produtos assim que o ViewModel inicia para ter as imagens prontas
+        fetchProducts()
+    }
+
+    // --- NOVA FUNÇÃO PARA BUSCAR PRODUTOS ---
+    private fun fetchProducts() {
+        db.collection("products").addSnapshotListener { value, error ->
+            if (error != null) return@addSnapshotListener
+
+            val list = value?.toObjects(Product::class.java) ?: emptyList()
+            uiState = uiState.copy(products = list)
+        }
+    }
 
     fun fetchOrder(orderId: String) {
         uiState = uiState.copy(isLoading = true)

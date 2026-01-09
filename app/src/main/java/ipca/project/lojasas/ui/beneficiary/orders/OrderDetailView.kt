@@ -1,21 +1,28 @@
 package ipca.project.lojasas.ui.beneficiary.orders
 
+import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Base64
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +31,7 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.OrderState
+import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.models.ProposalDelivery
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.components.InfoRow
@@ -104,7 +112,8 @@ fun BeneficiaryOrderDetailView(
                     if (order.items.isEmpty()) {
                         Text("Nenhum produto.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
                     } else {
-                        ProductList(order.items)
+                        // AGORA 'state.products' JÁ EXISTE NO VIEWMODEL
+                        ProductList(order.items, state.products)
                     }
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -144,13 +153,11 @@ fun BeneficiaryProposalCard(
 ) {
     val currentUser = FirebaseAuth.getInstance().currentUser?.uid
 
-    // Nomes para exibição
     val myName = viewModel.uiState.currentUserName ?: "Eu"
     val otherName = "Colaborador"
 
     val isNegotiationClosed = viewModel.uiState.proposals.any { it.confirmed == true }
 
-    // Identificar a proposta pendente mais recente
     val latestPendingProposal = viewModel.uiState.proposals
         .filter { it.confirmed == false }
         .maxByOrNull { it.proposalDate?.time ?: 0L }
@@ -270,8 +277,10 @@ fun OrderStatusBadge(state: OrderState) {
 }
 
 @Composable
-fun ProductList(items: List<OrderItem>) {
+fun ProductList(items: List<OrderItem>, allProducts: List<Product>) {
     items.forEach { item ->
+        val product = allProducts.find { it.name == item.name }
+
         Card(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -279,10 +288,60 @@ fun ProductList(items: List<OrderItem>) {
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(item.name ?: "-", fontWeight = FontWeight.Bold)
-                Text("x${item.quantity}", color = MaterialTheme.colorScheme.primary)
+                // Lado Esquerdo: Imagem + Nome
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    // Caixa da Imagem
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val imageBitmap = remember(product?.imageUrl) {
+                            try {
+                                if (!product?.imageUrl.isNullOrBlank()) {
+                                    val decodedBytes = Base64.decode(product!!.imageUrl, Base64.DEFAULT)
+                                    BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+                                } else null
+                            } catch (e: Exception) { null }
+                        }
+
+                        if (imageBitmap != null) {
+                            Image(
+                                bitmap = imageBitmap,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.ShoppingCart,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = item.name ?: "-",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                // Lado Direito: Quantidade
+                Text(
+                    text = "x${item.quantity}",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

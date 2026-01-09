@@ -1,5 +1,7 @@
 package ipca.project.lojasas.ui.collaborator.donation
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,11 +10,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.ShoppingCart // Ícone para fallback
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,10 +40,10 @@ fun DonationListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
 
-        // --- CABEÇALHO (Seta + Logótipo) ---
+        // --- CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -81,7 +86,6 @@ fun DonationListView(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // TÍTULO
             Text(
                 text = "Histórico de Doações",
                 style = MaterialTheme.typography.headlineMedium.copy(
@@ -91,11 +95,9 @@ fun DonationListView(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // SUBTÍTULO
             Text(
                 text = "Aqui pode consultar todas as doações registadas.",
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                // Texto cinza adaptável
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -147,7 +149,7 @@ fun DonationCard(donation: Donation) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
@@ -158,7 +160,7 @@ fun DonationCard(donation: Donation) {
                 .fillMaxWidth()
         ) {
 
-            // --- CABEÇALHO ---
+            // --- CABEÇALHO DO CARD ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -190,40 +192,84 @@ fun DonationCard(donation: Donation) {
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            // Divider subtil adaptável
             Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- PRODUTOS ---
             Text(
                 text = "Produtos doados",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp)) // Mais espaço antes da lista
 
+            // --- LISTA DE PRODUTOS COM IMAGEM ---
             donation.products.forEach { product ->
                 val qty = product.batches.sumOf { it.quantity }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(vertical = 6.dp), // Mais espaço vertical entre itens
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "• ${product.name}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    // Lado Esquerdo: Imagem + Nome
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f) // Ocupa o espaço disponível
+                    ) {
+                        // Caixa da Imagem
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Tenta descodificar a imagem Base64
+                            val imageBitmap = remember(product.imageUrl) {
+                                try {
+                                    if (!product.imageUrl.isNullOrBlank()) {
+                                        val decodedBytes = Base64.decode(product.imageUrl, Base64.DEFAULT)
+                                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+                                    } else null
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
 
+                            if (imageBitmap != null) {
+                                Image(
+                                    bitmap = imageBitmap,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                // Fallback se não houver imagem
+                                Icon(
+                                    imageVector = Icons.Outlined.ShoppingCart,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Nome do Produto
+                        Text(
+                            text = product.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Lado Direito: Quantidade
                     Surface(
-                        // Fundo verde claro adaptável
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
@@ -237,7 +283,7 @@ fun DonationCard(donation: Donation) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Total de itens: $totalItems",

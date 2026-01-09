@@ -1,22 +1,27 @@
 package ipca.project.lojasas.ui.collaborator.orders
 
+import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Base64
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +36,7 @@ import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.models.OrderItem
 import ipca.project.lojasas.models.Product
 import ipca.project.lojasas.models.ProposalDelivery
+// Certifica-te que estes imports correspondem à localização correta no teu projeto
 import ipca.project.lojasas.ui.beneficiary.newBasket.DynamicCalendarView
 import ipca.project.lojasas.ui.components.InfoRow
 import ipca.project.lojasas.ui.components.SectionTitle
@@ -112,7 +118,7 @@ fun OrderDetailView(
                 )
 
                 state.error != null -> Text(
-                    text = state.error,
+                    text = state.error!!,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
@@ -210,7 +216,7 @@ fun OrderDetailView(
 
                         val isFinalState = order.accept != OrderState.PENDENTE
 
-                        // Botões Principais (Só aparecem se não for estado final)
+                        // Botões Principais
                         if (!isFinalState) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -304,30 +310,11 @@ fun OrderDetailView(
     }
 }
 
-// Função auxiliar para verificar validade
-fun isDateValid(date: Date?): Boolean {
-    if (date == null) return false
-    val today = java.util.Calendar.getInstance()
-    today.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    today.set(java.util.Calendar.MINUTE, 0)
-    today.set(java.util.Calendar.SECOND, 0)
-    today.set(java.util.Calendar.MILLISECOND, 0)
-
-    val checkDate = java.util.Calendar.getInstance()
-    checkDate.time = date
-    checkDate.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    checkDate.set(java.util.Calendar.MINUTE, 0)
-    checkDate.set(java.util.Calendar.SECOND, 0)
-    checkDate.set(java.util.Calendar.MILLISECOND, 0)
-
-    return !checkDate.before(today)
-}
-
 // --- Componentes auxiliares ---
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun CollaboratorProposalCard(
+private fun CollaboratorProposalCard(
     proposal: ProposalDelivery,
     viewModel: OrderDetailViewModel,
     orderId: String
@@ -335,20 +322,17 @@ fun CollaboratorProposalCard(
     val auth = Firebase.auth
     val currentUser = auth.currentUser?.uid
 
-    // Determina a proposta pendente mais recente
     val proposals = viewModel.uiState.value.proposals
     val latestPendingProposal = proposals
         .filter { it.confirmed == false }
         .maxByOrNull { it.proposalDate?.time ?: 0L }
 
-    // Mostrar botões se: não confirmada, não fui eu que propus, e é a mais recente
     val showButtons = proposal.confirmed == false &&
             proposal.proposedBy != currentUser &&
             proposal == latestPendingProposal
 
     var showDatePicker by remember { mutableStateOf(false) }
 
-    // Configuração inicial do calendário para a data proposta
     var displayedYearMonth by remember {
         mutableStateOf(
             proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()?.let {
@@ -409,7 +393,6 @@ fun CollaboratorProposalCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Botão Aceitar Proposta
                     Button(
                         onClick = { viewModel.acceptProposal(orderId, proposal.docId ?: "") },
                         colors = ButtonDefaults.buttonColors(
@@ -417,14 +400,15 @@ fun CollaboratorProposalCard(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(40.dp).weight(1f)
+                        modifier = Modifier
+                            .height(40.dp)
+                            .weight(1f)
                     ) {
                         Icon(Icons.Default.Check, contentDescription = "Aceitar")
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Aceitar Data", fontWeight = FontWeight.Bold)
+                        Text("Aceitar", fontWeight = FontWeight.Bold)
                     }
 
-                    // Botão Contra-propor (Recusar esta e sugerir outra)
                     Button(
                         onClick = { showDatePicker = true },
                         colors = ButtonDefaults.buttonColors(
@@ -432,11 +416,13 @@ fun CollaboratorProposalCard(
                             contentColor = MaterialTheme.colorScheme.onError
                         ),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.height(40.dp).weight(1f)
+                        modifier = Modifier
+                            .height(40.dp)
+                            .weight(1f)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = "Contra-propor")
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Mudar Data", fontWeight = FontWeight.Bold)
+                        Text("Mudar", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -480,9 +466,9 @@ fun CollaboratorProposalCard(
 @Composable
 private fun OrderStatusBadge(state: OrderState) {
     val mainColor = when (state) {
-        OrderState.PENDENTE -> Color(0xFFEF6C00) // Laranja
-        OrderState.ACEITE -> MaterialTheme.colorScheme.primary // Verde
-        OrderState.REJEITADA -> MaterialTheme.colorScheme.error // Vermelho
+        OrderState.PENDENTE -> Color(0xFFEF6C00)
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error
     }
 
     StatusBadge(
@@ -492,7 +478,6 @@ private fun OrderStatusBadge(state: OrderState) {
     )
 }
 
-// --- Produtos ---
 @Composable
 private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<Product>, isFinal: Boolean) {
     val itemsByCategory = allProducts.groupBy { it.category }
@@ -524,14 +509,56 @@ private fun ProductCategoryList(orderItems: List<OrderItem>, allProducts: List<P
     }
 }
 
+// --- FUNÇÃO CORRIGIDA COM IMAGEM ---
 @Composable
-fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
+private fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = if (isFinal) 16.dp else 32.dp, bottom = 6.dp),
+            .padding(horizontal = if (isFinal) 16.dp else 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // --- 1. IMAGEM DO PRODUTO ---
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            // Tenta carregar imagem
+            val imageBitmap = remember(product.imageUrl) {
+                try {
+                    if (!product.imageUrl.isNullOrBlank()) {
+                        val decodedBytes = Base64.decode(product.imageUrl, Base64.DEFAULT)
+                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+                    } else null
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            if (imageBitmap != null) {
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Ícone de fallback
+                Icon(
+                    imageVector = Icons.Outlined.ShoppingCart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // --- 2. INFO TEXTO ---
         Column(modifier = Modifier.weight(1f)) {
             if (isFinal) {
                 Text(
@@ -547,26 +574,21 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
 
                 val newStock = validStock - (orderItem.quantity ?: 0)
 
-                // Define ícone e cor baseados no stock VÁLIDO
-                val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
-                val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-
-                // Mostra apenas o Stock Válido
                 Text(
-                    "${orderItem.quantity}x ${orderItem.name} (Stock: $validStock)",
+                    "${orderItem.quantity}x ${orderItem.name}",
                     fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Text(
-                    "Stock após aprovação: $newStock",
+                    "Stock Atual: $validStock | Após: $newStock",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
             }
         }
 
-        // Ícone de estado (Check ou Cruz)
         if (!isFinal) {
             val validStock = product.batches
                 .filter { it.quantity > 0 && isDateValid(it.validity) }
@@ -575,15 +597,34 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
             val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
             val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
+            Spacer(modifier = Modifier.width(8.dp))
             Icon(icon, contentDescription = null, tint = iconColor)
         }
     }
 }
 
+private fun isDateValid(date: Date?): Boolean {
+    if (date == null) return false
+    val today = java.util.Calendar.getInstance()
+    today.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    today.set(java.util.Calendar.MINUTE, 0)
+    today.set(java.util.Calendar.SECOND, 0)
+    today.set(java.util.Calendar.MILLISECOND, 0)
+
+    val checkDate = java.util.Calendar.getInstance()
+    checkDate.time = date
+    checkDate.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    checkDate.set(java.util.Calendar.MINUTE, 0)
+    checkDate.set(java.util.Calendar.SECOND, 0)
+    checkDate.set(java.util.Calendar.MILLISECOND, 0)
+
+    return !checkDate.before(today)
+}
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RejectDialogWithDate(
+private fun RejectDialogWithDate(
     reason: String,
     isDateChange: Boolean,
     selectedDate: Long?,
