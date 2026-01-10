@@ -7,10 +7,13 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import ipca.project.lojasas.models.Delivery
+import ipca.project.lojasas.models.DeliveryState
 
 data class DeliveryDetailState(
     val notificationTitle: String = "",
     val notificationBody: String = "",
+    val delivery: Delivery? = null,
     val userNote: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -105,6 +108,59 @@ class DeliveryDetailViewModel : ViewModel() {
             }
             .addOnFailureListener {
                 uiState = uiState.copy(isLoading = false, isSaved = true)
+            }
+    }
+
+    fun fetchDeliveryData(orderId: String) {
+        if (orderId.isEmpty()) return
+
+        uiState = uiState.copy(isLoading = true)
+
+        db.collection("delivery").document(orderId).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val evaluatedByUid = document.getString("evaluatedBy")
+                    val delivery = Delivery(
+                        docId = document.id,
+                        orderId = document.getString("orderId"),
+                        delivered = document.getBoolean("delivered") ?: false,
+                        state = document.getString("state")?.let { DeliveryState.valueOf(it) } ?: DeliveryState.PENDENTE,
+                        reason = document.getString("reason"),
+                        surveyDate = document.getTimestamp("surveyDate")?.toDate(),
+                        evaluatedBy = evaluatedByUid,
+                        evaluationDate = document.getTimestamp("evaluationDate")?.toDate(),
+                        beneficiaryNote = document.getString("beneficiaryNote"),
+                        justificationStatus = document.getString("justificationStatus")
+                    )
+
+                    getCollaboratorName(evaluatedByUid) { name ->
+                        uiState = uiState.copy(
+                            delivery = delivery.copy(evaluatedBy = name),
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    uiState = uiState.copy(isLoading = false)
+                }
+            }
+            .addOnFailureListener {
+                uiState = uiState.copy(isLoading = false, error = "Erro ao carregar dados da entrega.")
+            }
+    }
+
+    fun getCollaboratorName(uid: String?, onResult: (String) -> Unit) {
+        if (uid.isNullOrEmpty()) {
+            onResult("Colaborador")
+            return
+        }
+
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                val name = doc.getString("name") ?: "Colaborador"
+                onResult(name)
+            }
+            .addOnFailureListener {
+                onResult("Colaborador")
             }
     }
 }

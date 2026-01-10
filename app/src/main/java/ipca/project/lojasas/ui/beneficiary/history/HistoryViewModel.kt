@@ -1,6 +1,5 @@
 package ipca.project.lojasas.ui.beneficiary.history
 
-import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
@@ -54,7 +53,6 @@ class BeneficiaryHistoryViewModel : ViewModel() {
                     isLoading = false
                 )
 
-                // 🔥 AQUI: depois de ter orders, buscar deliveries
                 fetchDeliveriesForOrders(orders.mapNotNull { it.docId })
             }
     }

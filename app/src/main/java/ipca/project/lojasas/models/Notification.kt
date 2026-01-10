@@ -1,6 +1,5 @@
 package ipca.project.lojasas.models
 
-import androidx.privacysandbox.ads.adservices.adid.AdId
 import java.util.Date
 
 data class Notification(

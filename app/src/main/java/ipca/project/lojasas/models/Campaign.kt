@@ -8,11 +8,11 @@ enum class CampaignType {
 }
 
 data class Campaign(
-    var docId: String = "",              // Adicionado = ""
-    var collaboradorId: String = "",     // Adicionado = ""
-    var name: String = "",               // Adicionado = ""
-    var startDate: Date = Date(),        // Adicionado = Date()
-    var endDate: Date = Date(),          // Adicionado = Date()
-    var campaignType: CampaignType = CampaignType.INTERNO, // Adicionado valor padrão
+    var docId: String = "",
+    var collaboradorId: String = "",
+    var name: String = "",
+    var startDate: Date = Date(),
+    var endDate: Date = Date(),
+    var campaignType: CampaignType = CampaignType.INTERNO,
     var donations: List<String> = emptyList()
 )

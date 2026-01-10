@@ -148,7 +148,7 @@ fun NewBasketView(
                     if (productsToShow.isEmpty()) {
                         Box(modifier = Modifier.height(150.dp)) {
                             EmptyState(
-                                message = "O cabaz está vazio. Volte à Home para adicionar produtos.",
+                                message = "O cabaz está vazio. Volte ao Início para adicionar produtos.",
                                 icon = Icons.Outlined.ShoppingCart
                             )
                         }

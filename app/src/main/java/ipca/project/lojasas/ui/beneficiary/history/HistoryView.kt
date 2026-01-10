@@ -41,9 +41,9 @@ fun BeneficiaryHistoryView(
     var selectedFilter by remember { mutableStateOf("Todos") }
     val filters = listOf("Todos", "Pedidos", "Levantamentos")
 
-    // Filtra o histórico com base no filtro selecionado
     val filteredHistory = remember(state.orders, state.deliveries, selectedFilter) {
         when (selectedFilter) {
+            "Todos" -> state.orders + state.deliveries
             "Pedidos" -> state.orders
             "Levantamentos" -> state.deliveries
             else -> state.orders + state.deliveries
@@ -126,10 +126,12 @@ fun BeneficiaryHistoryView(
                 ) {
                     items(filteredHistory) { item ->
                         when (item) {
-                            is Order -> HistoryCard(item) {
+                            is Order -> HistoryCardOrder(item) {
                                 navController.navigate("beneficiary_order_details/${item.docId}")
                             }
-                            is Delivery -> DeliveryHistoryCard(item)
+                            is Delivery -> HistoryCardDelivery(item) {
+                                navController.navigate("beneficiary_delivery_detail/${item.docId}/sem_notificacao")
+                            }
                         }
                     }
                 }
@@ -139,7 +141,6 @@ fun BeneficiaryHistoryView(
 }
 
 // --- COMPONENTES AUXILIARES ---
-
 @Composable
 fun FilterChipButton(
     text: String,
@@ -152,10 +153,7 @@ fun FilterChipButton(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         ),
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-        ),
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(50),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         modifier = Modifier.height(36.dp)
@@ -169,16 +167,14 @@ fun FilterChipButton(
 }
 
 @Composable
-fun HistoryCard(order: Order, onClick: () -> Unit) {
+fun HistoryCardOrder(order: Order, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -192,6 +188,7 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
+
                 OrderStatusBadge(order.accept)
             }
 
@@ -208,16 +205,14 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
 }
 
 @Composable
-fun DeliveryHistoryCard(delivery: Delivery) {
+fun HistoryCardDelivery(delivery: Delivery, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { },
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -231,6 +226,7 @@ fun DeliveryHistoryCard(delivery: Delivery) {
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
+
                 DeliveryStatusBadge(delivery.state)
             }
 
@@ -263,16 +259,16 @@ private fun OrderStatusBadge(state: OrderState) {
 
 @Composable
 private fun DeliveryStatusBadge(state: DeliveryState) {
-    val (bgColor, contentColor) = when (state) {
-        DeliveryState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
-        DeliveryState.ENTREGUE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
-        DeliveryState.CANCELADO -> Color(0xFFFFCDD2) to Color(0xFFC62828)
-        DeliveryState.EM_ANALISE -> Color(0xFFFFEB3B) to Color(0xFFFFC107)
+    val mainColor = when (state) {
+        DeliveryState.PENDENTE -> Color(0xFFFFA000)
+        DeliveryState.ENTREGUE -> MaterialTheme.colorScheme.primary
+        DeliveryState.CANCELADO -> MaterialTheme.colorScheme.error
+        DeliveryState.EM_ANALISE -> Color(0xFF0288D1)
     }
 
     StatusBadge(
         label = state.name,
-        backgroundColor = bgColor,
-        contentColor = contentColor
+        backgroundColor = mainColor.copy(alpha = 0.1f),
+        contentColor = mainColor
     )
 }

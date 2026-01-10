@@ -2,7 +2,6 @@ package ipca.project.lojasas.models
 
 import java.util.Date
 
-// Garante que tens estes Enums definidos aqui ou noutro ficheiro
 enum class CandidatureState {
     PENDENTE,
     ACEITE,
@@ -29,15 +28,15 @@ data class Candidature(
     var updateDate: Date? = null,
 
     // --- DADOS PESSOAIS ---
-    var academicYear: String = "",    // Corrigido de "anoLetivo"
-    var birthDate: String = "",       // Corrigido de "dataNascimento"
-    var mobilePhone: String = "",     // Corrigido de "telemovel"
+    var academicYear: String = "",    // "anoLetivo"
+    var birthDate: String = "",       // "dataNascimento"
+    var mobilePhone: String = "",     // "telemovel"
     var email: String = "",
 
     // --- DADOS ACADÉMICOS ---
-    var type: Type? = null,           // Corrigido de "tipo"
-    var course: String? = null,       // Corrigido de "curso"
-    var cardNumber: String = "",      // Corrigido de "numeroCartao"
+    var type: Type? = null,           // "tipo"
+    var course: String? = null,       // "curso"
+    var cardNumber: String = "",      // "numeroCartao"
 
     // --- PRODUTOS ---
     var foodProducts: Boolean = false,    // "produtosAlimentares"
