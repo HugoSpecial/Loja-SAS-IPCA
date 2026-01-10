@@ -1,6 +1,5 @@
 package ipca.project.lojasas.ui.components
 
-import ipca.project.lojasas.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +14,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import ipca.project.lojasas.R
 
 sealed class BottomBarItemCollaborator(val title: String, val route: String) {
     object Home : BottomBarItemCollaborator("Início", "collaborator")
@@ -36,18 +36,7 @@ fun CollaboratorBottomBar(
         BottomBarItemCollaborator.BeneficiaryList
     )
 
-    var selectedItem by remember { mutableStateOf(items[0]) }
-
-    // Atualiza o item selecionado quando a rota muda
-    LaunchedEffect(currentRoute) {
-        if (currentRoute != null) {
-            items.find { it.route == currentRoute }?.let {
-                if (it != selectedItem) selectedItem = it
-            }
-        }
-    }
-
-    // Cores do tema
+    // Cores
     val barBackgroundColor = MaterialTheme.colorScheme.surface
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -59,28 +48,49 @@ fun CollaboratorBottomBar(
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
-                // NOTA: Removeu-se o navigationBarsPadding daqui para a cor ir até ao fundo
-                // NOTA: Removeu-se a altura fixa para o sistema calcular o padding automaticamente
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
             containerColor = barBackgroundColor,
             tonalElevation = 10.dp,
-            // Isto garante que o conteúdo sobe, mas o fundo fica
             windowInsets = NavigationBarDefaults.windowInsets
         ) {
+            // 1. ITENS DA ESQUERDA
             items.take(2).forEach { item ->
+                // LÓGICA MÁGICA: Só é true se a rota bater certo.
+                // Se a rota for "stock", isto dá false e o ícone fica cinzento.
+                val isSelected = currentRoute == item.route
+
                 NavigationBarItem(
-                    selected = selectedItem == item,
+                    selected = isSelected,
                     onClick = {
-                        selectedItem = item
-                        navController.navigate(item.route) { launchSingleTop = true; restoreState = true }
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                // O popUpTo ajuda a não criar pilhas infinitas ao voltar para a home
+                                popUpTo("collaborator") { saveState = true }
+                            }
+                        }
                     },
                     icon = {
                         if (item == BottomBarItemCollaborator.Notification && unreadCount > 0) {
-                            BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White) { Text("$unreadCount") } }) {
-                                Icon(painter = painterResource(id = getCollaboratorIconRes(item)), contentDescription = null, modifier = Modifier.size(24.dp))
+                            BadgedBox(badge = {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = Color.White
+                                ) { Text("$unreadCount") }
+                            }) {
+                                Icon(
+                                    painter = painterResource(id = getCollaboratorIconRes(item)),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         } else {
-                            Icon(painter = painterResource(id = getCollaboratorIconRes(item)), contentDescription = null, modifier = Modifier.size(24.dp))
+                            Icon(
+                                painter = painterResource(id = getCollaboratorIconRes(item)),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     },
                     label = { Text(text = item.title, fontSize = 10.sp, maxLines = 1) },
@@ -89,19 +99,30 @@ fun CollaboratorBottomBar(
                 )
             }
 
-            // ESPAÇO CENTRAL
+            // 2. ESPAÇO CENTRAL (Para o botão flutuante)
             Spacer(modifier = Modifier.weight(1f))
 
-            // ITENS DA DIREITA (Histórico e Beneficiários)
+            // 3. ITENS DA DIREITA
             items.takeLast(2).forEach { item ->
+                val isSelected = currentRoute == item.route
+
                 NavigationBarItem(
-                    selected = selectedItem == item,
+                    selected = isSelected,
                     onClick = {
-                        selectedItem = item
-                        navController.navigate(item.route) { launchSingleTop = true; restoreState = true }
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo("collaborator") { saveState = true }
+                            }
+                        }
                     },
                     icon = {
-                        Icon(painter = painterResource(id = getCollaboratorIconRes(item)), contentDescription = null, modifier = Modifier.size(24.dp))
+                        Icon(
+                            painter = painterResource(id = getCollaboratorIconRes(item)),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
                     },
                     label = { Text(text = item.title, fontSize = 10.sp, maxLines = 1) },
                     colors = navItemsColorsCollaborator(),
@@ -111,17 +132,27 @@ fun CollaboratorBottomBar(
         }
 
         // --- BOTÃO CENTRAL (STOCK) ---
+        // Verifica se estamos no ecrã de stock para pintar o ícone de forma diferente (opcional)
+        val isStockActive = currentRoute == "stock"
+
         Box(
             modifier = Modifier
-                .navigationBarsPadding() // O botão MANTÉM o padding para não descer demais
-                .offset(y = (-28).dp) // Ajuste para ficar "flutuante" no meio
+                .navigationBarsPadding() // Mantém padding do sistema
+                .offset(y = (-28).dp)    // Sobe para ficar a meio da barra
                 .align(Alignment.BottomCenter)
         ) {
             Surface(
-                onClick = { navController.navigate("stock") },
+                onClick = {
+                    if (currentRoute != "stock") {
+                        navController.navigate("stock") {
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
                 shape = CircleShape,
                 color = primaryColor,
-                // Borda da mesma cor da barra para criar o efeito de recorte
+                // A borda cria o efeito de "corte" na barra de baixo
                 border = BorderStroke(4.dp, barBackgroundColor),
                 shadowElevation = 4.dp,
                 modifier = Modifier.size(64.dp)
@@ -130,7 +161,8 @@ fun CollaboratorBottomBar(
                     Icon(
                         painter = painterResource(id = R.drawable.box_storage),
                         contentDescription = "Stock",
-                        tint = Color.White,
+                        // Se estivermos no Stock fica Branco Brilhante, senão fica ligeiramente transparente
+                        tint = if (isStockActive) Color.White else Color.White.copy(alpha = 0.8f),
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -139,7 +171,8 @@ fun CollaboratorBottomBar(
     }
 }
 
-// Função auxiliar para mapear ícones
+// --- FUNÇÕES AUXILIARES ---
+
 @Composable
 fun getCollaboratorIconRes(item: BottomBarItemCollaborator): Int {
     return when (item) {
@@ -156,5 +189,6 @@ fun navItemsColorsCollaborator() = NavigationBarItemDefaults.colors(
     selectedTextColor = MaterialTheme.colorScheme.primary,
     unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+    // Define transparente para não aparecer a "bolha" de seleção por trás do ícone
     indicatorColor = Color.Transparent
 )
