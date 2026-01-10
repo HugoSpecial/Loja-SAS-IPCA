@@ -36,7 +36,7 @@ fun DeliveryListView(
     viewModel: DeliveryViewModel = viewModel()
 ) {
     val state = viewModel.uiState.value
-    val context = LocalContext.current // Necessário para gerar ficheiro
+    val context = LocalContext.current
     var selectedFilter by remember { mutableStateOf<DeliveryState?>(null) }
 
     val filteredList = remember(state.deliveries, selectedFilter) {

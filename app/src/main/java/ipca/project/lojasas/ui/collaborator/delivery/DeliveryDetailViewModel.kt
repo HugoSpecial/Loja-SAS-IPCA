@@ -20,6 +20,7 @@ data class DeliveryDetailState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val operationSuccess: Boolean = false,
+    val justificationStatus: String? = null
 )
 
 class DeliveryDetailViewModel : ViewModel() {
@@ -33,9 +34,13 @@ class DeliveryDetailViewModel : ViewModel() {
         uiState.value = uiState.value.copy(isLoading = true, error = null)
 
         db.collection("delivery").document(deliveryId)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    uiState.value = uiState.value.copy(isLoading = false, error = error.message)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
                     try {
                         val delivery = Delivery(
                             docId = snapshot.id,
@@ -45,6 +50,8 @@ class DeliveryDetailViewModel : ViewModel() {
                                 DeliveryState.valueOf(snapshot.getString("state") ?: "PENDENTE")
                             }.getOrDefault(DeliveryState.PENDENTE),
                             reason = snapshot.getString("reason"),
+                            beneficiaryNote = snapshot.getString("beneficiaryNote"),
+                            justificationStatus = snapshot.getString("justificationStatus"),
                             surveyDate = snapshot.getDate("surveyDate"),
                             evaluatedBy = snapshot.getString("evaluatedBy"),
                             evaluationDate = snapshot.getDate("evaluationDate")
@@ -55,11 +62,9 @@ class DeliveryDetailViewModel : ViewModel() {
                         delivery.evaluatedBy?.let { fetchUser(it, isEvaluator = true) }
 
                         delivery.orderId?.let { orderId ->
-                            db.collection("orders").document(orderId)
-                                .get()
+                            db.collection("orders").document(orderId).get()
                                 .addOnSuccessListener { orderSnapshot ->
                                     val order = orderSnapshot.toObject(Order::class.java)?.apply { docId = orderSnapshot.id }
-
                                     uiState.value = uiState.value.copy(
                                         order = order,
                                         userName = order?.userName,
@@ -68,36 +73,81 @@ class DeliveryDetailViewModel : ViewModel() {
                                     order?.userId?.let { fetchUser(it, isEvaluator = false) }
                                     fetchProducts()
                                 }
-                                .addOnFailureListener { e ->
-                                    uiState.value = uiState.value.copy(error = e.message, isLoading = false)
-                                }
                         } ?: run {
                             uiState.value = uiState.value.copy(isLoading = false)
                         }
 
                     } catch (e: Exception) {
                         Log.e("DeliveryDetailVM", "Erro no parse", e)
-                        uiState.value = uiState.value.copy(isLoading = false, error = "Erro ao ler dados: ${e.message}")
                     }
                 } else {
                     uiState.value = uiState.value.copy(isLoading = false, error = "Entrega não encontrada.")
                 }
             }
-            .addOnFailureListener { e ->
-                uiState.value = uiState.value.copy(isLoading = false, error = e.message)
+    }
+
+    // --- LÓGICA DE JUSTIFICAÇÃO ATUALIZADA (COM RESET) ---
+    fun handleJustification(deliveryId: String, accept: Boolean) {
+        val userId = uiState.value.order?.userId ?: return
+        val deliveryRef = db.collection("delivery").document(deliveryId)
+        val userRef = db.collection("users").document(userId)
+
+        uiState.value = uiState.value.copy(isLoading = true)
+
+        if (accept) {
+            // Se ACEITE: Apenas atualiza a entrega
+            deliveryRef.update("justificationStatus", "ACEITE")
+                .addOnSuccessListener {
+                    uiState.value = uiState.value.copy(isLoading = false, justificationStatus = "ACEITE")
+                }
+                .addOnFailureListener { e ->
+                    uiState.value = uiState.value.copy(isLoading = false, error = e.message)
+                }
+        } else {
+            // Se RECUSADA: Transação para ler faltas e bloquear se necessário
+            db.runTransaction { transaction ->
+                // 1. Ler dados atuais do utilizador
+                val userSnapshot = transaction.get(userRef)
+                val currentFaults = userSnapshot.getLong("fault")?.toInt() ?: 0
+
+                // 2. Calcular novas faltas
+                val newFaults = currentFaults + 1
+
+                // 3. Lógica de atualização
+                if (newFaults >= 2) {
+                    // SE ATINGIU O LIMITE (2):
+                    // - Revoga estatuto de beneficiário
+                    // - Limpa as faltas (reseta para 0)
+                    // - Limpa o ID da candidatura (para obrigar nova candidatura)
+                    transaction.update(userRef, "isBeneficiary", false)
+                    transaction.update(userRef, "fault", 0)
+                    transaction.update(userRef, "candidatureId", "") // Limpa o ID
+                } else {
+                    // SE AINDA NÃO ATINGIU O LIMITE:
+                    // - Apenas incrementa as faltas
+                    transaction.update(userRef, "fault", newFaults)
+                }
+
+                // 4. Atualiza estado da entrega
+                transaction.update(deliveryRef, "justificationStatus", "RECUSADA")
             }
+                .addOnSuccessListener {
+                    uiState.value = uiState.value.copy(isLoading = false, justificationStatus = "RECUSADA")
+                }
+                .addOnFailureListener { e ->
+                    uiState.value = uiState.value.copy(isLoading = false, error = "Erro ao atualizar faltas: ${e.message}")
+                }
+        }
     }
 
     private fun fetchUser(userId: String?, isEvaluator: Boolean) {
         if (userId.isNullOrBlank()) return
-
-        db.collection("users").document(userId)
-            .get()
+        db.collection("users").document(userId).get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.exists()) {
-                    val name = snapshot.getString("name") ?: ""
-                    val phone = snapshot.getString("phone") ?: ""
-                    val notes = snapshot.getString("preferences") ?: ""
+                    val name = snapshot.getString("name")
+                    val phone = snapshot.getString("phone")
+                    val notes = snapshot.getString("preferences")
 
                     uiState.value = if (isEvaluator) {
                         uiState.value.copy(evaluatorName = name)
@@ -115,7 +165,6 @@ class DeliveryDetailViewModel : ViewModel() {
         }
     }
 
-    // --- APROVAR ENTREGA: Não mexe no stock (já foi retirado antes) ---
     fun approveDelivery(deliveryId: String) {
         val currentDelivery = uiState.value.delivery ?: return
         if (currentDelivery.state != DeliveryState.PENDENTE) return
@@ -150,7 +199,7 @@ class DeliveryDetailViewModel : ViewModel() {
                 uiState.value = uiState.value.copy(isLoading = false, error = e.message)
             }
     }
-    
+
     fun rejectDelivery(deliveryId: String) {
         val currentDelivery = uiState.value.delivery ?: return
         if (currentDelivery.state != DeliveryState.PENDENTE) return
@@ -242,7 +291,6 @@ class DeliveryDetailViewModel : ViewModel() {
                                         val targetBatch = batches.maxByOrNull { it.validity?.time ?: 0L }
                                         if (targetBatch != null) {
                                             targetBatch.quantity += quantity
-                                            Log.d("DeliveryVM", "Stock devolvido: $name (+ $quantity)")
                                         }
                                     } else {
                                         batches.add(ProductBatch(validity = Date(), quantity = quantity))

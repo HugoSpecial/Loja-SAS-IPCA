@@ -19,4 +19,5 @@ data class Delivery (
     var evaluatedBy: String? = null,
     var evaluationDate: Date? = null,
     var beneficiaryNote: String? = null,
+    var justificationStatus: String? = null
 )

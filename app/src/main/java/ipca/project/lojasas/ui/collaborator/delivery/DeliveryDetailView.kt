@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -108,9 +110,79 @@ fun DeliveryDetailView(
                         // Status da entrega
                         DeliveryStatusBadge(state = delivery.state)
 
-                        if (delivery.state == DeliveryState.CANCELADO && !delivery.reason.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            InfoRow("Motivo da rejeição:", delivery.reason ?: "-")
+                        // --- MOTIVO DE NÃO ENTREGA (SE EXISTIR) ---
+                        if (delivery.state == DeliveryState.CANCELADO) {
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Motivo do Cancelamento:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(delivery.reason ?: "Não especificado", fontSize = 14.sp)
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // --- JUSTIFICAÇÃO DO BENEFICIÁRIO ---
+                                    if (!delivery.beneficiaryNote.isNullOrBlank()) {
+                                        Text("Justificação do Beneficiário:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                                        Text(delivery.beneficiaryNote!!, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        // Se ainda não foi avaliada (null), mostra botões. Se já foi, mostra o estado.
+                                        if (delivery.justificationStatus == null) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = { viewModel.handleJustification(deliveryId, accept = true) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(16.dp))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Aceitar")
+                                                }
+
+                                                Button(
+                                                    onClick = { viewModel.handleJustification(deliveryId, accept = false) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(Icons.Default.ThumbDown, null, modifier = Modifier.size(16.dp))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Recusar")
+                                                }
+                                            }
+                                            Text(
+                                                "Ao recusar, será adicionada uma falta ao beneficiário.",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                modifier = Modifier.padding(top = 8.dp)
+                                            )
+                                        } else {
+                                            val isAccepted = delivery.justificationStatus == "ACEITE"
+                                            val statusColor = if (isAccepted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                            val icon = if (isAccepted) Icons.Default.Check else Icons.Default.Close
+
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(icon, null, tint = statusColor, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(
+                                                    text = "Justificação ${if(isAccepted) "ACEITE" else "RECUSADA"}",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = statusColor
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Text("O beneficiário ainda não justificou a falta.", fontSize = 13.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    }
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -181,7 +253,6 @@ fun DeliveryDetailView(
 
                             // --- Botões ---
                             val now = Calendar.getInstance()
-                            // Adiciona 1 dia à data de entrega para permitir botões se passou o dia
                             val deliveryDate = Calendar.getInstance().apply { delivery.surveyDate?.let { time = it } }
                             deliveryDate.add(Calendar.DAY_OF_MONTH, 1)
 
@@ -221,11 +292,14 @@ fun DeliveryDetailView(
                                     }
                                 }
                             } else {
-                                Text(
-                                    text = "Esta entrega encontra-se ${delivery.state.name}",
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                    fontWeight = FontWeight.Bold
-                                )
+                                // Se não houver botões de acção, mostra mensagem de estado
+                                if (delivery.state != DeliveryState.CANCELADO) { // Para não duplicar info
+                                    Text(
+                                        text = "Esta entrega encontra-se ${delivery.state.name}",
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(50.dp))
@@ -239,15 +313,13 @@ fun DeliveryDetailView(
 // --- Componentes auxiliares ---
 @Composable
 private fun DeliveryStatusBadge(state: DeliveryState) {
-    // Cores adaptáveis
     val mainColor = when (state) {
-        DeliveryState.PENDENTE -> Color(0xFFEF6C00) // Laranja
-        DeliveryState.ENTREGUE -> MaterialTheme.colorScheme.primary // Verde
-        DeliveryState.CANCELADO -> MaterialTheme.colorScheme.error // Vermelho
-        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4) // Azul
+        DeliveryState.PENDENTE -> Color(0xFFEF6C00)
+        DeliveryState.ENTREGUE -> MaterialTheme.colorScheme.primary
+        DeliveryState.CANCELADO -> MaterialTheme.colorScheme.error
+        DeliveryState.EM_ANALISE -> Color(0xFF00BCD4)
     }
 
-    // Fundo com transparência
     StatusBadge(
         label = state.name,
         backgroundColor = mainColor.copy(alpha = 0.1f),
@@ -255,7 +327,6 @@ private fun DeliveryStatusBadge(state: DeliveryState) {
     )
 }
 
-// --- Produtos ---
 @Composable
 private fun ProductCategoryList(
     orderItems: List<OrderItem>,
@@ -291,7 +362,6 @@ private fun ProductCategoryList(
     }
 }
 
-// --- ROW COM IMAGEM ---
 @Composable
 fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
     Row(
@@ -300,7 +370,7 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
             .padding(horizontal = if (isFinal) 16.dp else 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. IMAGEM DO PRODUTO
+        // IMAGEM
         Box(
             modifier = Modifier
                 .size(50.dp)
@@ -314,9 +384,7 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
                         val decodedBytes = Base64.decode(product.imageUrl, Base64.DEFAULT)
                         BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
                     } else null
-                } catch (e: Exception) {
-                    null
-                }
+                } catch (e: Exception) { null }
             }
 
             if (imageBitmap != null) {
@@ -338,7 +406,7 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // 2. TEXTO E STOCK
+        // TEXTO
         Column(modifier = Modifier.weight(1f)) {
             if (isFinal) {
                 Text(
@@ -347,62 +415,24 @@ fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
             } else {
-                // Cálculo de Stock Válido (igual ao OrderDetail)
-                val validStock = product.batches
-                    .filter { it.quantity > 0 && isDateValid(it.validity) }
-                    .sumOf { it.quantity }
-
-                val newStock = validStock - (orderItem.quantity ?: 0)
-
+                val totalStock = product.batches.sumOf { it.quantity }
+                val newStock = totalStock - (orderItem.quantity ?: 0)
                 val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
                 val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
                 Text(
-                    "${orderItem.quantity}x ${orderItem.name} (Stock Válido: $validStock)",
+                    "${orderItem.quantity}x ${orderItem.name} (Stock: $totalStock)",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    "Stock após entrega: $newStock",
+                    "Stock atualizado: $newStock",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
 
-                // Ícone movido para dentro da lógica visual se preferires,
-                // ou mantido fora como estava (aqui mantive na coluna para simplificar o layout com a imagem)
+                // Ícone na Row principal abaixo
             }
         }
-
-        // 3. ÍCONE (Apenas se não for Final)
-        if (!isFinal) {
-            val validStock = product.batches
-                .filter { it.quantity > 0 && isDateValid(it.validity) }
-                .sumOf { it.quantity }
-            val newStock = validStock - (orderItem.quantity ?: 0)
-            val icon = if (newStock >= 0) Icons.Default.Check else Icons.Default.Close
-            val iconColor = if (newStock >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(icon, contentDescription = null, tint = iconColor)
-        }
     }
-}
-
-// Função auxiliar (private para evitar conflitos com outros ficheiros)
-private fun isDateValid(date: Date?): Boolean {
-    if (date == null) return false
-    val today = Calendar.getInstance()
-    today.set(Calendar.HOUR_OF_DAY, 0)
-    today.set(Calendar.MINUTE, 0)
-    today.set(Calendar.SECOND, 0)
-    today.set(Calendar.MILLISECOND, 0)
-
-    val checkDate = Calendar.getInstance()
-    checkDate.time = date
-    checkDate.set(Calendar.HOUR_OF_DAY, 0)
-    checkDate.set(Calendar.MINUTE, 0)
-    checkDate.set(Calendar.SECOND, 0)
-    checkDate.set(Calendar.MILLISECOND, 0)
-
-    return !checkDate.before(today)
 }

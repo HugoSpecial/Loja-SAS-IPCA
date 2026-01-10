@@ -74,6 +74,20 @@ class MainActivity : ComponentActivity() {
         setContent {
 
             val navController = rememberNavController()
+
+            // 1. Inicializa o MainViewModel para vigiar o estado do utilizador
+            val mainViewModel: MainViewModel = viewModel()
+
+            // 2. Observa se deve fazer logout (se o user perder o estatuto)
+            LaunchedEffect(mainViewModel.shouldLogout.value) {
+                if (mainViewModel.shouldLogout.value) {
+                    mainViewModel.onLogoutHandled() // Limpa o listener e faz signOut
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true } // Limpa backstack
+                    }
+                }
+            }
+
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
@@ -125,6 +139,7 @@ class MainActivity : ComponentActivity() {
                         composable("splash") { SplashView() }
                         composable("login") { LoginView(navController = navController) }
 
+                        // --- ROTAS DO COLABORADOR ---
                         composable("collaborator") { CollaboratorHomeView(navController = navController) }
                         composable("notification-collaborador") {
                             CollaboratorNotificationView(
@@ -149,7 +164,6 @@ class MainActivity : ComponentActivity() {
 
                         composable("reports_history") { ReportsView(navController = navController) }
 
-
                         composable("deliveries") { DeliveryListView(navController = navController) }
                         composable(
                             route = "delivery_details/{deliveryId}",
@@ -164,23 +178,8 @@ class MainActivity : ComponentActivity() {
                         composable("urgent_delivery") {
                             UrgentDeliveryView(navController = navController)
                         }
-                        composable(
-                            route = "beneficiary_delivery_detail/{deliveryId}/{notificationId}",
-                            arguments = listOf(
-                                navArgument("deliveryId") { type = NavType.StringType },
-                                navArgument("notificationId") { type = NavType.StringType }
-                            )
-                        ) { backStackEntry ->
-                            val idDaRota = backStackEntry.arguments?.getString("deliveryId") ?: ""
-                            val notifId = backStackEntry.arguments?.getString("notificationId") ?: ""
 
-                            ipca.project.lojasas.ui.beneficiary.delivery.DeliveryDetailView(
-                                navController = navController,
-                                orderId = idDaRota,
-                                notificationId = notifId
-                            )
-                        }
-
+                        // --- ROTAS DE CAMPANHA ---
                         composable("campaigns") { CampaignsView(navController = navController) }
                         composable("new-campaign") { NewCampaignView(navController = navController) }
                         composable(
@@ -192,6 +191,8 @@ class MainActivity : ComponentActivity() {
                                 CampaignDetailsView(navController = navController, campaignId = campaignId)
                             }
                         }
+
+                        // --- ROTAS DE CANDIDATURA (COLABORADOR) ---
                         composable("candidature_list") { CandidatureListView(navController = navController) }
                         composable("candidature_details/{candidatureId}") { backStackEntry ->
                             val id = backStackEntry.arguments?.getString("candidatureId")
@@ -199,6 +200,8 @@ class MainActivity : ComponentActivity() {
                                 CandidatureDetailsView(navController = navController, candidatureId = id)
                             }
                         }
+
+                        // --- ROTAS DE DOAÇÃO ---
                         composable(
                             route = "product?productId={productId}",
                             arguments = listOf(navArgument("productId") {
@@ -211,6 +214,7 @@ class MainActivity : ComponentActivity() {
                             DonationView(navController, productId)
                         }
 
+                        // --- ROTAS DO BENEFICIÁRIO ---
                         composable("candidature") { CandidatureView(navController = navController) }
 
                         composable(
@@ -238,6 +242,7 @@ class MainActivity : ComponentActivity() {
                         composable("newbasket") { NewBasketView(navController = navController) }
                         composable("history") { BeneficiaryHistoryView(navController = navController) }
                         composable("profile") { ProfileView(navController = navController) }
+
                         composable(
                             route = "beneficiary_order_details/{orderId}",
                             arguments = listOf(navArgument("orderId") { type = NavType.StringType })
@@ -246,6 +251,23 @@ class MainActivity : ComponentActivity() {
                             if (orderId != null) {
                                 BeneficiaryOrderDetailView(navController = navController, orderId = orderId)
                             }
+                        }
+
+                        composable(
+                            route = "beneficiary_delivery_detail/{deliveryId}/{notificationId}",
+                            arguments = listOf(
+                                navArgument("deliveryId") { type = NavType.StringType },
+                                navArgument("notificationId") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val idDaRota = backStackEntry.arguments?.getString("deliveryId") ?: ""
+                            val notifId = backStackEntry.arguments?.getString("notificationId") ?: ""
+
+                            ipca.project.lojasas.ui.beneficiary.delivery.DeliveryDetailView(
+                                navController = navController,
+                                orderId = idDaRota,
+                                notificationId = notifId
+                            )
                         }
                     }
                 }
