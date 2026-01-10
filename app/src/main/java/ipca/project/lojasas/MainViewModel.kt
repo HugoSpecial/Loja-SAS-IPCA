@@ -12,7 +12,7 @@ class MainViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
     private var userListener: ListenerRegistration? = null
 
-    // Estado para controlar a navegação
+    // Estado para controlar a navegação (Logout forçado)
     var shouldLogout = mutableStateOf(false)
         private set
 
@@ -23,32 +23,33 @@ class MainViewModel : ViewModel() {
     private fun startListeningToUserStatus() {
         val uid = auth.currentUser?.uid ?: return
 
-        // Remove listener anterior se existir
         userListener?.remove()
 
-        // Ouve o documento do utilizador em tempo real
         userListener = db.collection("users").document(uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
 
                 if (snapshot != null && snapshot.exists()) {
                     val isBeneficiary = snapshot.getBoolean("isBeneficiary") ?: false
+                    val isCollaborator = snapshot.getBoolean("isCollaborator") ?: false
+                    val candidatureId = snapshot.getString("candidatureId")
 
-                    // Se o utilizador deixar de ser beneficiário e estiver logado
-                    if (!isBeneficiary) {
-                        shouldLogout.value = true
-                    }
+                    if (isCollaborator) return@addSnapshotListener
+
+                    if (isBeneficiary) return@addSnapshotListener
+
+                    if (!candidatureId.isNullOrBlank()) return@addSnapshotListener
+
+                    shouldLogout.value = true
+
                 } else {
-                    // Se o documento do utilizador for apagado (caso raro)
                     shouldLogout.value = true
                 }
             }
     }
 
-    // Função para limpar o estado após o logout ser tratado na UI
     fun onLogoutHandled() {
         shouldLogout.value = false
-        // Opcional: fazer o signOut do Firebase aqui também
         auth.signOut()
         userListener?.remove()
     }
