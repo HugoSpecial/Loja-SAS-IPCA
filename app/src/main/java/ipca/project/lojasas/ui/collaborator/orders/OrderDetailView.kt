@@ -48,6 +48,8 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
+// ... (O resto do código OrderDetailView mantém-se igual até ao RejectDialogWithDate)
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +74,7 @@ fun OrderDetailView(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        // ... (Header e restante UI mantêm-se iguais) ...
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -115,6 +118,7 @@ fun OrderDetailView(
                             .padding(horizontal = 20.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
+                        // ... (Conteúdo da view mantém-se igual) ...
                         Spacer(modifier = Modifier.height(16.dp))
                         OrderStatusBadge(state = order.accept)
 
@@ -219,7 +223,6 @@ private fun CollaboratorProposalCard(proposal: ProposalDelivery, viewModel: Orde
     val showButtons = !isNegotiationClosed && proposal.confirmed == false && proposal.proposedBy != currentUser && proposal == latestPendingProposal
 
     var showDatePicker by remember { mutableStateOf(false) }
-    // Estado para armazenar a data selecionada no diálogo de "Mudar"
     var selectedLocalDate by remember { mutableStateOf(proposal.newDate?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate() ?: LocalDate.now()) }
 
     Card(
@@ -269,8 +272,11 @@ private fun CollaboratorProposalCard(proposal: ProposalDelivery, viewModel: Orde
         }
     }
 
-    // --- DIÁLOGO DO BOTÃO MUDAR ---
+    // --- CORREÇÃO AQUI (Parte 1/2) ---
     if (showDatePicker) {
+        // Criamos estado para o mês visível no calendário
+        var displayedYearMonth by remember { mutableStateOf(YearMonth.from(selectedLocalDate)) }
+
         AlertDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
@@ -287,10 +293,12 @@ private fun CollaboratorProposalCard(proposal: ProposalDelivery, viewModel: Orde
                 Column {
                     Text("Selecione uma nova data para sugerir:", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
+
+                    // Passamos o estado e o callback para atualizar o mês
                     DynamicCalendarView(
-                        displayedYearMonth = YearMonth.from(selectedLocalDate),
+                        displayedYearMonth = displayedYearMonth,
                         selectedDate = selectedLocalDate,
-                        onMonthChange = { /* opcional */ },
+                        onMonthChange = { displayedYearMonth = it }, // Atualiza o mês aqui
                         onDateSelected = { selectedLocalDate = it }
                     )
                 }
@@ -298,6 +306,8 @@ private fun CollaboratorProposalCard(proposal: ProposalDelivery, viewModel: Orde
         )
     }
 }
+
+// ... (ProductStockRow, ProductCategoryList, isDateValid, OrderStatusBadge mantêm-se iguais) ...
 
 @Composable
 private fun ProductStockRow(orderItem: OrderItem, product: Product, isFinal: Boolean) {
@@ -352,11 +362,16 @@ fun OrderStatusBadge(state: OrderState) {
     StatusBadge(state.name, color.copy(alpha = 0.1f), color)
 }
 
+// --- CORREÇÃO AQUI (Parte 2/2) ---
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RejectDialogWithDate(reason: String, isDateChange: Boolean, selectedDate: Long?, onReasonChange: (String) -> Unit, onDateChangeToggle: (Boolean) -> Unit, onDateSelected: (Long?) -> Unit, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     var selectedLocalDate by remember { mutableStateOf(selectedDate?.let { Date(it).toInstant().atZone(ZoneId.systemDefault()).toLocalDate() } ?: LocalDate.now()) }
+
+    // Criamos estado para o mês visível no calendário
+    var displayedYearMonth by remember { mutableStateOf(YearMonth.now()) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onDateSelected(if (isDateChange) Date.from(selectedLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant()).time else null); onConfirm() }) { Text("Confirmar") } },
@@ -372,7 +387,13 @@ private fun RejectDialogWithDate(reason: String, isDateChange: Boolean, selected
                     Text("Propor nova data?")
                 }
                 if (isDateChange) {
-                    DynamicCalendarView(YearMonth.now(), selectedLocalDate, onMonthChange = {}, onDateSelected = { selectedLocalDate = it })
+                    // Passamos o estado e o callback para atualizar o mês
+                    DynamicCalendarView(
+                        displayedYearMonth = displayedYearMonth,
+                        selectedDate = selectedLocalDate,
+                        onMonthChange = { displayedYearMonth = it }, // Atualiza o mês aqui
+                        onDateSelected = { selectedLocalDate = it }
+                    )
                 }
             }
         }
