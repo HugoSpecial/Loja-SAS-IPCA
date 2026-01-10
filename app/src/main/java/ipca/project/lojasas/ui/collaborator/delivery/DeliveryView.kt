@@ -1,22 +1,24 @@
 package ipca.project.lojasas.ui.collaborator.delivery
 
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.PictureAsPdf // Ícone PDF
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,7 +27,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
 import ipca.project.lojasas.models.DeliveryState
-//import ipca.project.lojasas.models.DeliveryWithUser
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -35,6 +36,7 @@ fun DeliveryListView(
     viewModel: DeliveryViewModel = viewModel()
 ) {
     val state = viewModel.uiState.value
+    val context = LocalContext.current // Necessário para gerar ficheiro
     var selectedFilter by remember { mutableStateOf<DeliveryState?>(null) }
 
     val filteredList = remember(state.deliveries, selectedFilter) {
@@ -45,15 +47,16 @@ fun DeliveryListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // --- CABEÇALHO COM LOGÓTIPO ---
+        // --- CABEÇALHO ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp, bottom = 8.dp),
+                .padding(top = 16.dp, bottom = 8.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Botão Voltar
             IconButton(
                 onClick = { navController.popBackStack() },
                 modifier = Modifier.padding(start = 8.dp)
@@ -66,10 +69,9 @@ fun DeliveryListView(
                 )
             }
 
+            // Logótipo (Centrado com weight)
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 48.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
@@ -79,6 +81,31 @@ fun DeliveryListView(
                         .align(Alignment.Center),
                     contentScale = ContentScale.Fit
                 )
+            }
+
+            // --- BOTÃO GERAR PDF ---
+            IconButton(
+                onClick = {
+                    if (!state.isGeneratingReport) {
+                        viewModel.generateCurrentMonthReport(context)
+                    }
+                },
+                enabled = !state.isGeneratingReport
+            ) {
+                if (state.isGeneratingReport) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.PictureAsPdf,
+                        contentDescription = "Gerar Relatório Entregas",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         }
 
@@ -149,7 +176,7 @@ fun DeliveryListView(
             // Lista de pedidos
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
-                    state.isLoading -> CircularProgressIndicator(
+                    state.isLoading && state.deliveries.isEmpty() -> CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -179,12 +206,11 @@ fun DeliveryListView(
     }
 }
 
+// ... (FilterChipButton, DeliveryCard e StatusBadgeOrder mantêm-se iguais ao que tinhas) ...
+// Vou incluir aqui para garantir que tens o ficheiro completo funcional
+
 @Composable
-fun FilterChipButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+fun FilterChipButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(

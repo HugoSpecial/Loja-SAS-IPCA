@@ -5,9 +5,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -46,13 +48,15 @@ fun ReportsView(
     val state = viewModel.uiState.value
     val context = LocalContext.current
 
-    // --- ESTADOS ---
+    // --- ESTADOS DE DATA ---
     val calendar = Calendar.getInstance()
     var selectedMonth by remember { mutableStateOf(calendar.get(Calendar.MONTH) + 1) }
     var selectedYear by remember { mutableStateOf(calendar.get(Calendar.YEAR)) }
+    var showAllDates by remember { mutableStateOf(false) } // Toggle para ignorar data
 
-    // showAll = true -> Mostra tudo | showAll = false -> Usa filtros de Mês/Ano
-    var showAll by remember { mutableStateOf(false) }
+    // --- ESTADOS DE TIPO DE RELATÓRIO ---
+    var selectedType by remember { mutableStateOf("Todos") }
+    val reportTypes = listOf("Todos", "Pedidos", "Entregas", "Stock")
 
     val yearsList = (2024..2030).toList()
     val monthsList = listOf(
@@ -60,14 +64,26 @@ fun ReportsView(
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
     )
 
-    // --- LÓGICA ---
-    val filteredList = remember(state.reports, selectedMonth, selectedYear, showAll) {
-        if (showAll) {
-            state.reports
-        } else {
-            state.reports.filter {
-                (it.month == selectedMonth) && (it.year == selectedYear)
+    // --- LÓGICA DE FILTRAGEM ---
+    val filteredList = remember(state.reports, selectedMonth, selectedYear, showAllDates, selectedType) {
+        state.reports.filter { report ->
+            // 1. Filtro de Tipo
+            val matchesType = when (selectedType) {
+                "Todos" -> true
+                "Pedidos" -> report.type == "orders_report" || report.type == "auto_backup"
+                "Entregas" -> report.type == "delivery_report"
+                "Stock" -> report.type == "stock_report"
+                else -> true
             }
+
+            // 2. Filtro de Data
+            val matchesDate = if (showAllDates) {
+                true
+            } else {
+                (report.month == selectedMonth) && (report.year == selectedYear)
+            }
+
+            matchesType && matchesDate
         }
     }
 
@@ -112,32 +128,71 @@ fun ReportsView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Título e Botão de Filtro
+            // Título
+            Text(
+                text = "Relatórios",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- 2. FILTRO DE TIPO ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                reportTypes.forEach { type ->
+                    val isSelected = (type == selectedType)
+                    val bg = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    val border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(bg)
+                            .then(if (border != null) Modifier.border(border, RoundedCornerShape(50)) else Modifier)
+                            .clickable { selectedType = type }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = type,
+                            color = contentColor,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // --- 3. BARRA DE CONTROLO DE DATA ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Relatórios",
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    text = if (showAllDates) "A mostrar todo o histórico" else "Filtrar por data",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Medium
                 )
 
-                // Botão "Mostrar Tudo"
                 FilterChip(
-                    selected = showAll,
-                    onClick = { showAll = !showAll },
-                    label = {
-                        // Lógica alterada como pediste:
-                        Text(if (showAll) "Filtrar por Data" else "Mostrar Tudo")
-                    },
+                    selected = showAllDates,
+                    onClick = { showAllDates = !showAllDates },
+                    label = { Text(if (showAllDates) "Filtrar Data" else "Ver Tudo") },
                     leadingIcon = {
                         Icon(
-                            imageVector = if (showAll) Icons.Outlined.FilterAlt else Icons.Outlined.FilterAltOff,
+                            imageVector = if (showAllDates) Icons.Outlined.FilterAlt else Icons.Outlined.FilterAltOff,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     },
                     colors = FilterChipDefaults.filterChipColors(
@@ -147,11 +202,9 @@ fun ReportsView(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- 2. ÁREA DE FILTROS (DROPDOWNS) ---
-            // Só aparecem se NÃO estivermos a ver tudo
-            if (!showAll) {
+            // --- 4. DROPDOWNS ---
+            if (!showAllDates) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -178,21 +231,20 @@ fun ReportsView(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // --- 3. LISTA ---
+            // --- 5. LISTA ---
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else if (filteredList.isEmpty()) {
-                EmptyState(
-                    message = if (showAll) "Histórico vazio." else "Sem relatórios em ${monthsList[selectedMonth-1]} de $selectedYear.",
-                    icon = Icons.Default.Description
-                )
+                val msg = if (showAllDates) "Nenhum relatório do tipo '$selectedType'."
+                          else "Sem relatórios de '$selectedType' em ${monthsList[selectedMonth-1]} de $selectedYear."
+                EmptyState(message = msg, icon = Icons.Default.Description)
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -209,7 +261,7 @@ fun ReportsView(
     }
 }
 
-// --- DROPDOWN PERSONALIZADO ---
+// --- DROPDOWN ---
 @Composable
 fun CustomDropdown(
     label: String,
@@ -279,9 +331,16 @@ fun CustomDropdown(
     }
 }
 
-// --- CARTÃO DE RELATÓRIO ---
+// --- CARD (COM A LÓGICA DE TEXTO CORRIGIDA) ---
 @Composable
 fun ReportCard(report: Report, onClick: () -> Unit) {
+
+    val iconColor = when(report.type) {
+        "stock_report" -> Color(0xFF009688)
+        "delivery_report" -> Color(0xFFEF6C00)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -298,7 +357,7 @@ fun ReportCard(report: Report, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                color = iconColor.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.size(50.dp)
             ) {
@@ -306,7 +365,7 @@ fun ReportCard(report: Report, onClick: () -> Unit) {
                     Icon(
                         imageVector = Icons.Default.Description,
                         contentDescription = "PDF",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = iconColor,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -316,7 +375,7 @@ fun ReportCard(report: Report, onClick: () -> Unit) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = report.title ?: "Relatório Mensal",
+                    text = report.title ?: "Relatório",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -327,20 +386,35 @@ fun ReportCard(report: Report, onClick: () -> Unit) {
 
                 val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
                 val dateStr = report.generatedAt?.let { dateFormat.format(it) } ?: "--"
-                val tipo = if (report.type == "auto_backup") "Automático" else "Manual"
+
+                val tipoAmigavel = when(report.type) {
+                    "stock_report" -> "Inventário"
+                    "delivery_report" -> "Entregas"
+                    "orders_report" -> "Pedidos (App)"
+                    "auto_backup" -> "Pedidos (Auto)"
+                    else -> "Geral"
+                }
 
                 Text(
-                    text = "$tipo • $dateStr",
+                    text = "$tipoAmigavel • $dateStr",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))
 
+                // --- LÓGICA DE TEXTO PEDIDA ---
+                val labelQtd = when (report.type) {
+                    "stock_report" -> "produtos"
+                    "delivery_report" -> "entregas"
+                    "orders_report", "auto_backup" -> "pedidos"
+                    else -> "registos"
+                }
+
                 Text(
-                    text = "${report.totalOrders ?: 0} pedidos incluídos",
+                    text = "${report.totalOrders ?: 0} $labelQtd incluídos",
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = iconColor,
                     fontWeight = FontWeight.SemiBold
                 )
             }

@@ -4,13 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import android.util.Base64 // Importante para o Base64
+import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
-import com.google.android.gms.tasks.Tasks // Necessário para o await
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -42,7 +42,7 @@ class OrderViewModel : ViewModel() {
     }
 
     // ====================================================================================
-    //  GERAR PDF + FETCH NOMES + BASE64
+    // LÓGICA DE GERAR PDF E GRAVAR NO FIRESTORE
     // ====================================================================================
 
     fun generateCurrentMonthReport(context: Context) {
@@ -54,7 +54,7 @@ class OrderViewModel : ViewModel() {
 
         Thread {
             try {
-                // 1. Filtrar Orders
+                // 1. Filtrar orders do mês atual
                 val ordersDoMes = uiState.value.orders.filter { order ->
                     if (order.orderDate != null) {
                         val calOrder = Calendar.getInstance()
@@ -66,28 +66,23 @@ class OrderViewModel : ViewModel() {
                     }
                 }
 
-                // 2. BUSCAR NOMES DOS COLABORADORES (NOVA PARTE)
+                // 2. BUSCAR NOMES DOS COLABORADORES
                 val collaboratorNames = mutableMapOf<String, String>()
-
-                // Obter lista de IDs únicos que avaliaram encomendas
                 val uniqueIds = ordersDoMes.mapNotNull { it.evaluatedBy }.distinct()
 
-                // Ir ao Firestore buscar o nome de cada um (Users Collection)
                 for (id in uniqueIds) {
                     if (id.isNotEmpty()) {
                         try {
-                            // Tasks.await bloqueia esta thread até termos o resultado (seguro aqui porque estamos numa Thread secundária)
                             val docSnapshot = Tasks.await(db.collection("users").document(id).get())
                             val name = docSnapshot.getString("name") ?: "Sem Nome"
                             collaboratorNames[id] = name
                         } catch (e: Exception) {
-                            Log.e("PDF", "Erro ao buscar nome do user $id", e)
                             collaboratorNames[id] = "Desconhecido"
                         }
                     }
                 }
 
-                // 3. Gerar PDF passando os nomes
+                // 3. Gerar PDF
                 val pdfFile = PdfGenerator.generateOrderReport(
                     context,
                     ordersDoMes,
@@ -96,24 +91,22 @@ class OrderViewModel : ViewModel() {
                     collaboratorNames
                 )
 
-                // 4. Voltar à UI
+                // 4. Voltar à thread principal
                 Handler(Looper.getMainLooper()).post {
                     uiState.value = uiState.value.copy(isGeneratingReport = false)
 
                     if (pdfFile != null && pdfFile.exists()) {
                         abrirPdf(context, pdfFile)
-                        // Passamos o ficheiro para o converter em Base64
                         saveReportToFirestore(currentMonth, currentYear, ordersDoMes.size, pdfFile)
                     } else {
-                        Toast.makeText(context, "Erro ao gerar PDF.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Erro ao gerar PDF local.", Toast.LENGTH_SHORT).show()
                     }
                 }
-
             } catch (e: Exception) {
                 e.printStackTrace()
                 Handler(Looper.getMainLooper()).post {
                     uiState.value = uiState.value.copy(isGeneratingReport = false)
-                    Toast.makeText(context, "Erro interno: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Erro: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }.start()
@@ -123,98 +116,115 @@ class OrderViewModel : ViewModel() {
         val currentUser = auth.currentUser
         val userId = currentUser?.uid ?: "unknown"
 
-        // Converter PDF para Base64
         val fileBytes = pdfFile.readBytes()
         val base64String = Base64.encodeToString(fileBytes, Base64.DEFAULT)
+
+        // --- AQUI ESTÁ A CORREÇÃO CRÍTICA ---
+        // Adicionámos .whereEqualTo("type", "orders_report")
+        // Assim ele só apaga os relatórios de ENCOMENDAS deste mês, não toca nas Entregas.
 
         db.collection("reports")
             .whereEqualTo("month", month)
             .whereEqualTo("year", year)
+            .whereEqualTo("type", "orders_report") // <--- FILTRO DE TIPO
             .get()
             .addOnSuccessListener { snapshot ->
+
                 val batch = db.batch()
 
-                // Apagar antigos
+                // Apagar apenas os relatórios antigos DESTE TIPO
                 for (document in snapshot.documents) {
                     batch.delete(document.reference)
                 }
 
-                // Gravar Novo com Base64
+                // Criar o novo registo
                 val newReportRef = db.collection("reports").document()
                 val reportData = hashMapOf(
-                    "title" to "Relatório Mensal - $month/$year",
+                    "title" to "Relatório de Pedidos - $month/$year",
                     "month" to month,
                     "year" to year,
                     "totalOrders" to totalOrders,
                     "generatedAt" to com.google.firebase.Timestamp.now(),
                     "generatedBy" to userId,
-                    "type" to "local_pdf_app",
+                    "type" to "orders_report", // <--- TIPO ESPECÍFICO
                     "status" to "created",
-                    "fileBase64" to base64String // <--- AQUI ESTÁ O PDF
+                    "fileBase64" to base64String
                 )
 
                 batch.set(newReportRef, reportData)
 
                 batch.commit()
-                    .addOnSuccessListener { Log.d("Firestore", "Relatório e Base64 gravados.") }
-                    .addOnFailureListener { e -> Log.e("Firestore", "Erro ao gravar", e) }
+                    .addOnSuccessListener {
+                        Log.d("Firestore", "Relatório de Encomendas atualizado.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("Firestore", "Erro ao gravar relatório", e)
+                    }
             }
-            .addOnFailureListener { e -> Log.e("Firestore", "Erro verificação", e) }
     }
 
     private fun abrirPdf(context: Context, file: File) {
         try {
-            val uri = FileProvider.getUriForFile(
-                context, "${context.packageName}.provider", file
-            )
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
             val intent = Intent(Intent.ACTION_VIEW)
             intent.setDataAndType(uri, "application/pdf")
             intent.flags = Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_GRANT_READ_URI_PERMISSION
             context.startActivity(Intent.createChooser(intent, "Abrir Relatório"))
         } catch (e: Exception) {
-            Toast.makeText(context, "Sem app de PDF instalada.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Não tem nenhuma App para ler PDFs instalada.", Toast.LENGTH_LONG).show()
         }
     }
 
-    // --- FETCH ORDERS (Mantém-se igual) ---
+    // ====================================================================================
+    // LÓGICA DE LISTAGEM
+    // ====================================================================================
+
     private fun fetchOrders() {
         uiState.value = uiState.value.copy(isLoading = true)
-        db.collection("orders").addSnapshotListener { value, error ->
-            if (error != null) {
-                uiState.value = uiState.value.copy(isLoading = false, error = error.message)
-                return@addSnapshotListener
-            }
-            val list = mutableListOf<Order>()
-            for (doc in value?.documents ?: emptyList()) {
-                try {
-                    val o = Order()
-                    o.docId = doc.id
-                    o.userId = doc.getString("userId") ?: "--"
-                    o.userName = doc.getString("userName") ?: "--"
-                    o.orderDate = doc.getTimestamp("orderDate")?.toDate()
-                    o.surveyDate = doc.getTimestamp("surveyDate")?.toDate()
 
-                    // Campos Avaliação
-                    o.evaluatedBy = doc.getString("evaluatedBy")
-                    o.evaluationDate = doc.getTimestamp("evaluationDate")?.toDate()
+        db.collection("orders")
+            .addSnapshotListener { value, error ->
 
-                    val stateStr = doc.getString("accept") ?: "PENDENTE"
-                    try { o.accept = OrderState.valueOf(stateStr) } catch (e: Exception) { o.accept = OrderState.PENDENTE }
+                if (error != null) {
+                    uiState.value = uiState.value.copy(isLoading = false, error = error.message)
+                    return@addSnapshotListener
+                }
 
-                    val itemsRaw = doc.get("items") as? List<Map<String, Any>>
-                    if (itemsRaw != null) {
-                        for (itemMap in itemsRaw) {
-                            o.items.add(OrderItem(
-                                name = itemMap["name"] as? String,
-                                quantity = (itemMap["quantity"] as? Long)?.toInt() ?: 0
-                            ))
+                val list = mutableListOf<Order>()
+
+                for (doc in value?.documents ?: emptyList()) {
+                    try {
+                        val o = Order()
+                        o.docId = doc.id
+                        o.userId = doc.getString("userId") ?: "--"
+                        o.userName = doc.getString("userName") ?: "--"
+                        o.orderDate = doc.getTimestamp("orderDate")?.toDate()
+                        o.surveyDate = doc.getTimestamp("surveyDate")?.toDate()
+                        o.evaluatedBy = doc.getString("evaluatedBy")
+                        o.evaluationDate = doc.getTimestamp("evaluationDate")?.toDate()
+
+                        val stateStr = doc.getString("accept") ?: "PENDENTE"
+                        try { o.accept = OrderState.valueOf(stateStr) } catch (e: Exception) { o.accept = OrderState.PENDENTE }
+
+                        val itemsRaw = doc.get("items") as? List<Map<String, Any>>
+                        if (itemsRaw != null) {
+                            for (itemMap in itemsRaw) {
+                                o.items.add(OrderItem(
+                                    name = itemMap["name"] as? String,
+                                    quantity = (itemMap["quantity"] as? Long)?.toInt() ?: 0
+                                ))
+                            }
                         }
-                    }
-                    list.add(o)
-                } catch (e: Exception) { Log.e("OrderVM", "Erro leitura", e) }
+                        list.add(o)
+                    } catch (e: Exception) { Log.e("OrderVM", "Erro leitura", e) }
+                }
+
+                val sortedList = list.sortedWith(compareBy<Order> { it.accept != OrderState.PENDENTE }.thenByDescending { it.orderDate })
+                uiState.value = uiState.value.copy(
+                    orders = sortedList,
+                    pendingCount = list.count { it.accept == OrderState.PENDENTE },
+                    isLoading = false
+                )
             }
-            val sortedList = list.sortedWith(compareBy<Order> { it.accept != OrderState.PENDENTE }.thenByDescending { it.orderDate })
-            uiState.value = uiState.value.copy(orders = sortedList, pendingCount = list.count { it.accept == OrderState.PENDENTE }, isLoading = false)
-        }
     }
 }

@@ -38,7 +38,7 @@ class ReportsViewModel : ViewModel() {
         uiState.value = uiState.value.copy(isLoading = true)
 
         db.collection("reports")
-            .orderBy("generatedAt", Query.Direction.DESCENDING) // Mais recentes primeiro
+            .orderBy("generatedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     uiState.value = uiState.value.copy(isLoading = false, error = error.message)
@@ -50,16 +50,14 @@ class ReportsViewModel : ViewModel() {
                         val r = Report()
                         r.docId = doc.id
                         r.title = doc.getString("title")
-                        // Conversão segura de Long para Int (Firestore guarda números como Long)
                         r.month = doc.getLong("month")?.toInt()
                         r.year = doc.getLong("year")?.toInt()
                         r.totalOrders = doc.getLong("totalOrders")?.toInt()
 
                         r.generatedAt = doc.getTimestamp("generatedAt")?.toDate()
                         r.generatedBy = doc.getString("generatedBy")
-                        r.type = doc.getString("type")
+                        r.type = doc.getString("type") // Importante para o filtro
 
-                        // Campos de Ficheiro (Híbrido: URL ou Base64)
                         r.fileUrl = doc.getString("fileUrl")
                         r.fileBase64 = doc.getString("fileBase64")
 
@@ -74,19 +72,15 @@ class ReportsViewModel : ViewModel() {
             }
     }
 
-    // --- LÓGICA INTELIGENTE PARA ABRIR PDF ---
     fun openReport(context: Context, report: Report) {
         try {
-            // CASO 1: É um Backup Automático ou URL externo
             if (!report.fileUrl.isNullOrEmpty()) {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(report.fileUrl))
-                // Esta flag ajuda a garantir que abre noutra app sem crashar
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 context.startActivity(intent)
                 return
             }
 
-            // CASO 2: Foi gerado na App (tem Base64)
             if (!report.fileBase64.isNullOrEmpty()) {
                 openBase64Pdf(context, report)
                 return
@@ -102,26 +96,16 @@ class ReportsViewModel : ViewModel() {
 
     private fun openBase64Pdf(context: Context, report: Report) {
         try {
-            // 1. Converter a String Base64 de volta para Bytes
             val pdfAsBytes = Base64.decode(report.fileBase64, Base64.DEFAULT)
-
-            // 2. Criar ficheiro temporário na pasta Documents da App
             val directory = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-            val fileName = "temp_view_${report.month}_${report.year}.pdf"
+            val fileName = "temp_view_${report.type}_${report.month}_${report.year}.pdf"
             val file = File(directory, fileName)
 
-            // 3. Escrever os bytes no ficheiro
             val os = FileOutputStream(file)
             os.write(pdfAsBytes)
             os.close()
 
-            // 4. Gerar URI seguro com FileProvider (igual ao que fizemos no gerador)
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
-
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
             val intent = Intent(Intent.ACTION_VIEW)
             intent.setDataAndType(uri, "application/pdf")
             intent.flags = Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_GRANT_READ_URI_PERMISSION
