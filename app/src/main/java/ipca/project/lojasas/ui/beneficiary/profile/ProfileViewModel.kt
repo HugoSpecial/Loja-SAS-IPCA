@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 import ipca.project.lojasas.models.User
 import ipca.project.lojasas.TAG
@@ -14,9 +15,10 @@ data class ProfileState(
     val email: String = "",
     val phone: String = "",
     val preferences: String = "",
+    val fault: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: String? = null // Pode servir para mostrar um "visto" verde discreto
+    val success: String? = null
 )
 
 class ProfileViewModel : ViewModel() {
@@ -28,47 +30,26 @@ class ProfileViewModel : ViewModel() {
     private val db = Firebase.firestore
     private val auth = Firebase.auth
 
-    // --- Funções de atualização (Agora com AUTO-SAVE) ---
+    // Variável para controlar o listener (para poder desligá-lo depois)
+    private var userListener: ListenerRegistration? = null
 
-    // Nota: Nome e Email geralmente são read-only neste design,
-    // mas se forem editáveis, a lógica seria igual à do phone.
-    fun onNameChange(newValue: String) {
-        uiState.value = uiState.value.copy(name = newValue)
-    }
-
-    fun onEmailChange(newValue: String) {
-        uiState.value = uiState.value.copy(email = newValue)
-    }
+    // --- Funções de atualização (Auto-save) ---
 
     fun onPhoneChange(newValue: String) {
-        // 1. Atualiza o valor localmente para a UI responder rápido
         uiState.value = uiState.value.copy(phone = newValue)
-
-        // 2. Chama a gravação automática
         saveToFirestore()
     }
 
     fun onPreferencesChange(newValue: String) {
-        // 1. Atualiza o valor localmente
         uiState.value = uiState.value.copy(preferences = newValue)
-
-        // 2. Chama a gravação automática
         saveToFirestore()
     }
 
-    // --- Função interna para salvar na Firebase (Silenciosa) ---
+    // --- Função interna para salvar na Firebase ---
     private fun saveToFirestore() {
         val uid = auth.currentUser?.uid ?: return
 
-        // IMPORTANTE: No auto-save, NÃO colocamos isLoading = true.
-        // Se colocarmos, o teclado pode fechar ou a UI piscar enquanto o utilizador digita.
-        // uiState.value = uiState.value.copy(isLoading = true) <--- REMOVIDO
-
         val updates = hashMapOf<String, Any>(
-            // O design diz que só editamos telemóvel e preferências,
-            // mas envio tudo por segurança (ou podes remover name/email daqui)
-            "name" to uiState.value.name,
-            "email" to uiState.value.email,
             "phone" to uiState.value.phone,
             "preferences" to uiState.value.preferences
         )
@@ -76,67 +57,82 @@ class ProfileViewModel : ViewModel() {
         db.collection("users").document(uid)
             .update(updates)
             .addOnSuccessListener {
-                // Sucesso silencioso
                 uiState.value = uiState.value.copy(
                     isLoading = false,
-                    success = "Guardado", // Podes usar isto na UI para mostrar um ícone pequeno
+                    success = "Guardado",
                     error = null
                 )
-                Log.d(TAG, "Auto-save success")
             }
             .addOnFailureListener { e ->
-                // Erro silencioso (ou mostramos se for crítico)
                 uiState.value = uiState.value.copy(
                     isLoading = false,
                     error = "Erro ao salvar: ${e.message}"
                 )
-                Log.e(TAG, "Auto-save error", e)
             }
     }
 
-    // --- Função para carregar os dados iniciais ---
+    // --- LISTENER EM TEMPO REAL ---
+    // Substituímos o 'get()' pelo 'addSnapshotListener'
     fun loadUserProfile() {
         val uid = auth.currentUser?.uid ?: return
 
+        // Se já estivermos a escutar, não criamos outro listener
+        if (userListener != null) return
+
         uiState.value = uiState.value.copy(isLoading = true)
 
-        db.collection("users").document(uid).get()
-            .addOnSuccessListener { document ->
-                val user = document.toObject(User::class.java)
-
-                if (user != null) {
+        userListener = db.collection("users").document(uid)
+            .addSnapshotListener { document, error ->
+                if (error != null) {
                     uiState.value = uiState.value.copy(
-                        name = user.name ?: "",
-                        email = user.email ?: "",
-                        phone = user.phone ?: "",
-                        preferences = user.preferences ?: "",
                         isLoading = false,
-                        error = null
+                        error = error.message
                     )
+                    return@addSnapshotListener
+                }
+
+                if (document != null && document.exists()) {
+                    val user = document.toObject(User::class.java)
+
+                    if (user != null) {
+                        // Atualiza o estado sempre que a BD mudar
+                        uiState.value = uiState.value.copy(
+                            name = user.name ?: "",
+                            email = user.email ?: "",
+                            // Só atualizamos phone/prefs se o user NÃO estiver a editar no momento
+                            // (Para simplificar, aqui atualizamos sempre, mas em apps complexas
+                            // pode ser preciso verificar foco)
+                            phone = user.phone ?: "",
+                            preferences = user.preferences ?: "",
+                            fault = user.fault, // <--- Aqui as faltas atualizam sozinhas
+                            isLoading = false,
+                            error = null
+                        )
+                    }
                 } else {
                     uiState.value = uiState.value.copy(isLoading = false)
                 }
-            }
-            .addOnFailureListener { e ->
-                uiState.value = uiState.value.copy(
-                    isLoading = false,
-                    error = e.message
-                )
             }
     }
 
     // --- Logout ---
     fun logout(onLogoutSuccess: () -> Unit) {
         try {
+            // Remove o listener antes de sair para evitar erros
+            userListener?.remove()
+            userListener = null
+
             auth.signOut()
-            Log.d(TAG, "User logged out successfully")
             uiState.value = ProfileState() // Reseta o estado
             onLogoutSuccess()
         } catch (e: Exception) {
-            Log.e(TAG, "Logout failed", e)
-            uiState.value = uiState.value.copy(
-                error = e.message ?: "Erro ao fazer logout"
-            )
+            uiState.value = uiState.value.copy(error = e.message)
         }
+    }
+
+    // Limpeza quando o ViewModel é destruído (ex: sair do ecrã)
+    override fun onCleared() {
+        super.onCleared()
+        userListener?.remove()
     }
 }

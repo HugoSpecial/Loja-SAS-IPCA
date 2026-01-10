@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -52,7 +53,7 @@ fun ProfileView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fundo Adaptável
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp)
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.Start
@@ -62,15 +63,14 @@ fun ProfileView(
             text = "Perfil",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary // Verde
+            color = MaterialTheme.colorScheme.primary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "O perfil atualiza automaticamente, escreva somente o seu telemóvel e as suas preferências (se tiver).",
+            text = "O perfil atualiza automaticamente, escreva somente o seu telemóvel e as suas preferências.",
             fontSize = 12.sp,
-            // Texto cinza adaptável (Branco transparente no escuro)
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             lineHeight = 14.sp
         )
@@ -98,6 +98,20 @@ fun ProfileView(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (state.fault > 0) {
+            CustomProfileField(
+                label = "Faltas",
+                value = "${state.fault} faltas",
+                onValueChange = {},
+                icon = Icons.Default.Warning,
+                isReadOnly = true,
+                textColor = MaterialTheme.colorScheme.error,
+                iconColor = MaterialTheme.colorScheme.error
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         CustomProfileField(
             label = "Telemóvel",
@@ -160,10 +174,8 @@ fun ProfileView(
                 .fillMaxWidth()
                 .height(50.dp),
             shape = RoundedCornerShape(8.dp),
-            // Borda Vermelha (Erro)
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
             colors = ButtonDefaults.outlinedButtonColors(
-                // Fundo transparente ou Surface
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.error
             )
@@ -189,7 +201,9 @@ fun CustomProfileField(
     icon: ImageVector? = null,
     isReadOnly: Boolean = false,
     isMultiLine: Boolean = false,
-    placeholder: String = ""
+    placeholder: String = "",
+    textColor: Color? = null,
+    iconColor: Color? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -210,19 +224,21 @@ fun CustomProfileField(
 
             shape = RoundedCornerShape(12.dp),
 
-            // isReadOnly controla a lógica, enabled controla a cor visual (acinzentada)
             enabled = !isReadOnly,
             readOnly = isReadOnly,
             singleLine = !isMultiLine,
             maxLines = if (isMultiLine) 5 else 1,
+
+            textStyle = androidx.compose.ui.text.TextStyle(
+                color = textColor ?: MaterialTheme.colorScheme.onSurface
+            ),
 
             leadingIcon = if (icon != null) {
                 {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        // Ícone cinza se readOnly, Verde se editável
-                        tint = if (isReadOnly)
+                        tint = iconColor ?: if (isReadOnly)
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         else
                             MaterialTheme.colorScheme.primary
@@ -238,20 +254,15 @@ fun CustomProfileField(
             },
 
             colors = OutlinedTextFieldDefaults.colors(
-                // Bordas
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.primary,
                 disabledBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
 
-                // Fundos (Surface adapta-se a Branco/Cinza Escuro)
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), // Ligeiramente diferente para indicar disabled
+                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
 
-                // Textos
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                disabledTextColor = textColor ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         )
     }
