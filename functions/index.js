@@ -1,5 +1,6 @@
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const PDFDocument = require('pdfkit');
 
 admin.initializeApp();
 
@@ -25,7 +26,6 @@ exports.notificarNovaCandidatura = functions.firestore
         nomeDoAluno = dados.name || dados.nome || "Um aluno";
       }
 
-      // Procurar Colaboradores
       const querySnapshot = await admin.firestore()
         .collection('users')
         .where('isCollaborator', '==', true) 
@@ -219,7 +219,6 @@ exports.notificarAtualizacaoPedido = functions.firestore
       const uDoc = await admin.firestore().collection('users').doc(userId).get();
       const token = uDoc.exists ? uDoc.data().fcmToken : null;
 
-      // Avisar Beneficiário
       await admin.firestore().collection('notifications').add({
         recipientId: userId,
         title: titulo,
@@ -245,7 +244,7 @@ exports.notificarAtualizacaoPedido = functions.firestore
   });
 
 // ==================================================================
-// 5. VALIDADES (Cron Job -> Avisa COLABORADOR aos 30, 15 e 7 dias)
+// 5. VALIDADES (Cron Job -> Avisa COLABORADOR)
 // ==================================================================
 exports.verificarValidades = functions.pubsub
   .schedule('every 24 hours')
@@ -253,10 +252,10 @@ exports.verificarValidades = functions.pubsub
   .onRun(async (context) => {
     
     const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Normaliza para comparar apenas datas
+    hoje.setHours(0, 0, 0, 0); 
 
     try {
-      const snapshot = await admin.firestore().collection('product').get();
+      const snapshot = await admin.firestore().collection('product').get(); // Confirma se é 'product' ou 'products'
       
       let criticos7Dias = [];
       let aviso15Dias = [];
@@ -271,49 +270,31 @@ exports.verificarValidades = functions.pubsub
             const dataValidade = lote.validity.toDate ? lote.validity.toDate() : new Date(lote.validity);
             dataValidade.setHours(0, 0, 0, 0);
 
-            // Cálculo da diferença em dias
             const diffTempo = dataValidade.getTime() - hoje.getTime();
             const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
 
-            // Verifica os dias exatos
-            if (diffDias === 7) {
-              criticos7Dias.push(`${produto.name}`);
-            } else if (diffDias === 15) {
-              aviso15Dias.push(`${produto.name}`);
-            } else if (diffDias === 30) {
-              aviso30Dias.push(`${produto.name}`);
-            }
+            if (diffDias === 7) criticos7Dias.push(`${produto.name}`);
+            else if (diffDias === 15) aviso15Dias.push(`${produto.name}`);
+            else if (diffDias === 30) aviso30Dias.push(`${produto.name}`);
           }
         });
       });
 
       if (criticos7Dias.length === 0 && aviso15Dias.length === 0 && aviso30Dias.length === 0) {
-        console.log("Nenhum produto a expirar nas datas alvo (7, 15 ou 30 dias).");
+        console.log("Nenhum produto a expirar nas datas alvo.");
         return null;
       }
 
-      // Montagem da mensagem
       let titulo = "Alerta de Validade";
       let corpoMsg = "";
 
-      if (aviso30Dias.length > 0) {
-        corpoMsg += `Atenção: ${aviso30Dias.slice(0, 3).join(", ")} expiram em 30 dias. `;
-      }
-      if (aviso15Dias.length > 0) {
-        corpoMsg += `Atenção: ${aviso15Dias.slice(0, 3).join(", ")} expiram em 15 dias. `;
-      }
-      if (criticos7Dias.length > 0) {
-        corpoMsg += `CRÍTICO: ${criticos7Dias.slice(0, 3).join(", ")} expiram em 1 semana!`;
-      }
+      if (aviso30Dias.length > 0) corpoMsg += `Atenção: ${aviso30Dias.slice(0, 3).join(", ")} expiram em 30 dias. `;
+      if (aviso15Dias.length > 0) corpoMsg += `Atenção: ${aviso15Dias.slice(0, 3).join(", ")} expiram em 15 dias. `;
+      if (criticos7Dias.length > 0) corpoMsg += `CRÍTICO: ${criticos7Dias.slice(0, 3).join(", ")} expiram em 1 semana!`;
 
-      // SEGURANÇA EXTRA: Se a mensagem estiver vazia, não envia nada
-      if (!corpoMsg || corpoMsg.trim() === "") {
-         return null;
-      }
+      if (!corpoMsg || corpoMsg.trim() === "") return null;
 
-      // Buscar tokens dos colaboradores
       const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
-      
       if (colabs.empty) return null;
 
       const tokens = [];
@@ -343,8 +324,6 @@ exports.verificarValidades = functions.pubsub
           tokens: tokens
         });
       }
-
-      console.log("Notificação de validade enviada com sucesso.");
       return null;
     } catch (erro) {
       console.error("Erro no cron de validades:", erro);
@@ -352,7 +331,7 @@ exports.verificarValidades = functions.pubsub
     }
   });
 
-  // ==================================================================
+// ==================================================================
 // 6. NOVA JUSTIFICAÇÃO (Ação do BENEFICIÁRIO -> Avisa COLABORADOR)
 // ==================================================================
 exports.notificarJustificacao = functions.firestore
@@ -363,15 +342,9 @@ exports.notificarJustificacao = functions.firestore
   const dadosAntigos = change.before.data();
   const deliveryId = context.params.deliveryId;
 
-  // Lógica: Se o campo 'reason' foi alterado e agora tem texto,
-  // e antes estava vazio (ou o estado mudou para algo que indique justificação)
-  // Ajusta esta condição conforme a tua lógica de app (ex: state == "JUSTIFICACAO_PENDENTE")
   const novaJustificacao = dadosNovos.reason && dadosNovos.reason !== dadosAntigos.reason;
-  
-  // Se não for uma justificação nova, ignora
   if (!novaJustificacao) return null;
 
-  // Buscar dados do aluno para meter o nome na notificação
   let nomeAluno = "Um beneficiário";
   if (dadosNovos.userId) {
       const userDoc = await admin.firestore().collection('users').doc(dadosNovos.userId).get();
@@ -381,7 +354,6 @@ exports.notificarJustificacao = functions.firestore
   }
 
   try {
-    // Buscar Colaboradores
     const colabs = await admin.firestore().collection('users').where('isCollaborator', '==', true).get();
     if (colabs.empty) return null;
 
@@ -399,9 +371,9 @@ exports.notificarJustificacao = functions.firestore
         body: `${nomeAluno} enviou uma justificação.`,
         date: admin.firestore.FieldValue.serverTimestamp(),
         read: false,
-        type: "resposta_entrega_rejeitada", // O TIPO QUE A APP ESPERA
+        type: "resposta_entrega_rejeitada",
         relatedId: deliveryId,
-        senderId: dadosNovos.userId || "", // Importante para o popup saber quem é
+        senderId: dadosNovos.userId || "",
         targetProfile: "COLABORADOR"
       });
     });
@@ -410,10 +382,7 @@ exports.notificarJustificacao = functions.firestore
 
     if (tokens.length > 0) {
       await admin.messaging().sendEachForMulticast({
-        notification: { 
-          title: "Justificação de Falta", 
-          body: `${nomeAluno} enviou uma justificação.` 
-        },
+        notification: { title: "Justificação de Falta", body: `${nomeAluno} enviou uma justificação.` },
         tokens: tokens
       });
     }
@@ -434,15 +403,12 @@ exports.notificarDecisaoJustificacao = functions.firestore
     const dadosNovos = change.after.data();
     const dadosAntigos = change.before.data();
     
-    // Verifica se a razão mudou (sinal que o colaborador tomou uma decisão)
-    // E garante que há um user associado para receber a notificação
     if (dadosNovos.reason === dadosAntigos.reason) return null;
     if (!dadosNovos.userId) return null;
 
     let titulo = "";
     let corpo = "";
 
-    // Lógica baseada nas strings que usas no Android ViewModel
     if (dadosNovos.reason.includes("Justificado")) {
       titulo = "Justificação Aceite";
       corpo = "A sua falta foi justificada com sucesso.";
@@ -450,29 +416,24 @@ exports.notificarDecisaoJustificacao = functions.firestore
       titulo = "Justificação Recusada";
       corpo = "A justificação não foi aceite. Foi registada uma falta.";
     } else {
-      // Se for apenas o aluno a submeter a justificação inicial, ignoramos aqui 
-      // (porque isso é tratado na função 'notificarJustificacao')
       return null;
     }
 
     try {
-      // Buscar Token do Aluno
       const userDoc = await admin.firestore().collection('users').doc(dadosNovos.userId).get();
       const userToken = userDoc.exists ? userDoc.data().fcmToken : null;
 
-      // Gravar no histórico do Aluno
       await admin.firestore().collection('notifications').add({
         recipientId: dadosNovos.userId,
         title: titulo,
         body: corpo,
         date: admin.firestore.FieldValue.serverTimestamp(),
         read: false,
-        type: "pedido_estado", // Reutilizamos este tipo ou crias um novo "justificacao_decisao"
+        type: "pedido_estado",
         relatedId: context.params.deliveryId,
         targetProfile: "BENEFICIARIO"
       });
 
-      // Enviar Push
       if (userToken) {
         await admin.messaging().send({
           notification: { title: titulo, body: corpo },
@@ -486,158 +447,289 @@ exports.notificarDecisaoJustificacao = functions.firestore
     }
   });
 
-  // ==================================================================
-// 9. BACKUP MENSAL AUTOMÁTICO (Dia 1 de cada mês às 00:05)
+
 // ==================================================================
-exports.backupRelatorioMensal = functions
-.region('europe-west1')
-.pubsub.schedule('5 0 1 * *') // Executa: Minuto 5, Hora 0, Dia 1
-.timeZone('Europe/Lisbon')
-.onRun(async (context) => {
-    
-    // Calcular o mês anterior (o mês que acabou de fechar)
+// 9. FECHO MENSAL COMPLETO (Pedidos, Entregas, Stock)
+// ==================================================================
+exports.backupMensalCompleto = functions
+  .region('europe-west1')
+  .pubsub.schedule('5 0 1 * *') // Dia 1 de cada mês às 00:05
+  .timeZone('Europe/Lisbon')
+  .onRun(async (context) => {
+
+    const bucket = admin.storage().bucket();
+
+    // 1. Calcular Mês Anterior (O mês que vamos fechar)
     const dataRef = new Date();
     dataRef.setMonth(dataRef.getMonth() - 1);
     
-    const mesAlvo = dataRef.getMonth() + 1; // 1 a 12
+    const mesAlvo = dataRef.getMonth() + 1; 
     const anoAlvo = dataRef.getFullYear();
 
-    console.log(`>>> A iniciar Backup Automático para ${mesAlvo}/${anoAlvo}`);
+    console.log(`>>> A iniciar Fecho Mensal para ${mesAlvo}/${anoAlvo}`);
 
-    // 1. Apagar relatórios antigos desse mês (Evita duplicados do Manual ou Auto anterior)
+    // PASSO 1: LIMPEZA TOTAL (Apaga todos os relatórios desse mês, manuais e autos)
     const reportsAntigos = await admin.firestore().collection('reports')
-        .where('month', '==', mesAlvo)
-        .where('year', '==', anoAlvo)
-        .get();
+      .where('month', '==', mesAlvo)
+      .where('year', '==', anoAlvo)
+      .get();
 
     if (!reportsAntigos.empty) {
-        const batchDelete = admin.firestore().batch();
-        reportsAntigos.forEach(doc => {
-            console.log(`Apagando relatório antigo: ${doc.id}`);
-            batchDelete.delete(doc.ref);
-        });
-        await batchDelete.commit();
+      const batchDelete = admin.firestore().batch();
+      reportsAntigos.forEach(doc => {
+        batchDelete.delete(doc.ref);
+      });
+      await batchDelete.commit();
+      console.log("Limpeza de relatórios antigos concluída.");
     }
 
-    // 2. Buscar os dados do Firestore
     const startDate = new Date(anoAlvo, mesAlvo - 1, 1);
     const endDate = new Date(anoAlvo, mesAlvo, 0, 23, 59, 59);
 
-    const snapshot = await admin.firestore().collection('orders')
-        .where('orderDate', '>=', startDate)
-        .where('orderDate', '<=', endDate)
-        .orderBy('orderDate', 'desc')
-        .get();
+    // ==============================================================
+    // PASSO 2: PEDIDOS (ORDERS)
+    // ==============================================================
+    const ordersSnap = await admin.firestore().collection('orders')
+      .where('orderDate', '>=', startDate)
+      .where('orderDate', '<=', endDate)
+      .orderBy('orderDate', 'desc')
+      .get();
 
-    if (snapshot.empty) {
-        console.log("Sem dados para gerar relatório.");
-        return null;
+    if (!ordersSnap.empty) {
+        await gerarPdfEstiloAndroid(bucket, 'orders', ordersSnap, mesAlvo, anoAlvo);
     }
 
-    // 3. Preparar Tabela PDF
-    const tableBody = [
-        [
-            { text: 'Data', style: 'tableHeader' }, 
-            { text: 'Beneficiário', style: 'tableHeader' }, 
-            { text: 'Avaliado Por', style: 'tableHeader' },
-            { text: 'Itens', style: 'tableHeader' }
-        ]
-    ];
+    // ==============================================================
+    // PASSO 3: ENTREGAS (DELIVERIES)
+    // ==============================================================
+    const deliverySnap = await admin.firestore().collection('delivery')
+      .where('surveyDate', '>=', startDate)
+      .where('surveyDate', '<=', endDate)
+      .orderBy('surveyDate', 'desc')
+      .get();
 
-    snapshot.forEach(doc => {
-        const o = doc.data();
-        const dataStr = o.orderDate ? o.orderDate.toDate().toLocaleDateString('pt-PT') : '--';
-        
-        // Formatar Itens
-        let itensStr = "";
-        if(o.items && o.items.length) {
-            itensStr = o.items.map(i => `${i.name} (${i.quantity})`).join(', ');
-        }
+    if (!deliverySnap.empty) {
+        await gerarPdfEstiloAndroid(bucket, 'delivery', deliverySnap, mesAlvo, anoAlvo);
+    }
 
-        // Formatar Avaliador (usando os teus campos novos)
-        let avaliadorStr = "--";
-        if (o.accept === "ACEITE" || o.accept === "REJEITADA") {
-            avaliadorStr = o.evaluatedBy || "Colaborador";
-            if(o.evaluationDate) {
-                const dataEval = o.evaluationDate.toDate().toLocaleDateString('pt-PT');
-                avaliadorStr += ` (${dataEval})`;
-            }
-        }
+    // ==============================================================
+    // PASSO 4: STOCK (PRODUCT)
+    // ==============================================================
+    const productSnap = await admin.firestore().collection('product').get(); // Ou 'products' dependendo da tua BD
 
-        tableBody.push([
-            { text: dataStr, style: 'rowStyle' },
-            { text: o.userName || 'Anónimo', style: 'rowStyle' },
-            { text: avaliadorStr, style: 'rowStyle' },
-            { text: itensStr, style: 'rowStyle' }
-        ]);
-    });
+    if (!productSnap.empty) {
+        await gerarPdfEstiloAndroid(bucket, 'stock', productSnap, mesAlvo, anoAlvo);
+    }
 
-    const printer = new PdfPrinter({
-        Roboto: {
-            normal: 'Helvetica',
-            bold: 'Helvetica-Bold',
-            italics: 'Helvetica-Oblique',
-            bolditalics: 'Helvetica-BoldOblique'
-        }
-    });
+    console.log("Fecho mensal completo.");
+    return null;
+  });
 
-    const docDefinition = {
-        content: [
-            { text: `Relatório Mensal (Backup) - ${mesAlvo}/${anoAlvo}`, style: 'header' },
-            { text: `Total de Pedidos: ${snapshot.size}`, margin: [0, 0, 0, 10] },
-            {
-                table: {
-                    headerRows: 1,
-                    widths: ['auto', 'auto', 'auto', '*'],
-                    body: tableBody
-                },
-                layout: 'lightHorizontalLines'
-            }
-        ],
-        styles: {
-            header: { fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
-            tableHeader: { bold: true, fontSize: 10, fillColor: '#eeeeee' },
-            rowStyle: { fontSize: 9 }
-        },
-        defaultStyle: { font: 'Roboto' }
-    };
 
-    // 4. Gerar PDF e Upload
-    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+// ==================================================================
+// FUNÇÃO MESTRA DE DESENHO (Estilo Android - Canvas)
+// ==================================================================
+async function gerarPdfEstiloAndroid(bucket, tipoRelatorio, snapshot, mes, ano) {
+    
+    // Configurações Globais
+    const MARGIN = 40;
+    const PAGE_WIDTH = 595; 
+    const PAGE_HEIGHT = 842;
+
+    const doc = new PDFDocument({ margin: MARGIN, size: 'A4' });
     const chunks = [];
     
-    return new Promise((resolve, reject) => {
-        pdfDoc.on('data', chunk => chunks.push(chunk));
-        pdfDoc.on('end', async () => {
-            const buffer = Buffer.concat(chunks);
-            const fileName = `Backup_${anoAlvo}_${mesAlvo}_${Date.now()}.pdf`;
-            const file = admin.storage().bucket().file(`reports/${fileName}`);
+    doc.on('data', chunk => chunks.push(chunk));
+    
+    let pageNumber = 1;
+    let y = 50; 
 
-            await file.save(buffer, { metadata: { contentType: 'application/pdf' } });
-            
-            // URL válido por 10 anos
-            const [url] = await file.getSignedUrl({ 
-                action: 'read', 
-                expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10 
-            });
+    // --- FUNÇÕES INTERNAS DE DESENHO ---
+    
+    const desenharCabecalho = () => {
+        y = 50;
+        const titulo = getTitulo(tipoRelatorio, mes, ano);
+        
+        doc.fillColor('black').font('Helvetica-Bold').fontSize(20).text(titulo, MARGIN, y);
+        y += 30;
+        doc.font('Helvetica').fontSize(14).text(`Página ${pageNumber} (Total: ${snapshot.size})`, MARGIN, y);
+        y += 40;
 
-            // 5. Gravar Registo na Coleção
-            await admin.firestore().collection('reports').add({
-                title: `Relatório Mensal - ${mesAlvo}/${anoAlvo}`,
-                month: mesAlvo,
-                year: anoAlvo,
-                totalOrders: snapshot.size,
-                generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                generatedBy: 'SISTEMA (AUTO)',
-                type: 'auto_backup',
-                fileUrl: url,
-                storagePath: `reports/${fileName}`
-            });
-            
-            console.log("Relatório automático gerado com sucesso.");
-            resolve();
+        // Cabeçalhos da Tabela
+        doc.font('Helvetica-Bold').fontSize(11);
+        const cols = getColunas(tipoRelatorio);
+        
+        cols.forEach(col => {
+            doc.text(col.text, col.x, y);
         });
-        pdfDoc.on('error', reject);
-        pdfDoc.end();
+
+        y += 15;
+        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).stroke();
+        y += 20;
+    };
+
+    // Desenha o cabeçalho da primeira página
+    desenharCabecalho();
+
+    // Iterar dados
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+
+        // Verificar se precisa de nova página
+        if (y > PAGE_HEIGHT - 60) {
+            doc.addPage();
+            pageNumber++;
+            desenharCabecalho();
+        }
+
+        doc.font('Helvetica').fontSize(10).fillColor('black');
+
+        // DESENHAR LINHAS CONSOANTE O TIPO
+        if (tipoRelatorio === 'orders') {
+            const dataStr = data.orderDate ? data.orderDate.toDate().toLocaleDateString('pt-PT') : '--';
+            const nome = (data.userName || 'Anónimo').substring(0, 25);
+            
+            // Estado e Colaborador
+            let estadoTexto = data.accept || 'PENDENTE';
+            let detalheAvaliacao = "";
+            if (estadoTexto === 'ACEITE' || estadoTexto === 'REJEITADA') {
+                 const colab = data.evaluatedBy || "Colaborador";
+                 const dataEval = data.evaluationDate ? data.evaluationDate.toDate().toLocaleDateString('pt-PT') : "";
+                 detalheAvaliacao = `Por: ${colab} (${dataEval})`;
+            }
+
+            // Itens
+            let itemsStr = "Sem itens";
+            if (data.items && data.items.length) {
+                itemsStr = data.items.map(i => `${i.name} (${i.quantity})`).join(', ');
+            }
+            
+            // X: 40, 110, 300
+            doc.text(dataStr, 40, y);
+            doc.font('Helvetica-Bold').text(nome, 110, y);
+            
+            doc.font('Helvetica').fontSize(9).fillColor('#555');
+            doc.text(estadoTexto, 110, y + 12);
+            if(detalheAvaliacao) doc.text(detalheAvaliacao, 110, y + 22);
+
+            // Itens
+            doc.fillColor('black').fontSize(10);
+            doc.text(itemsStr, 300, y, { width: 250, align: 'left' });
+            
+            const height = doc.heightOfString(itemsStr, { width: 250 });
+            y += Math.max(40, height + 10);
+
+        } else if (tipoRelatorio === 'delivery') {
+            const dataStr = data.surveyDate ? data.surveyDate.toDate().toLocaleDateString('pt-PT') : '--';
+            const nomeBenef = (data.userName || 'Anónimo').substring(0, 25);
+            const estado = data.state || 'PENDENTE';
+            const colab = data.evaluatedBy || "--";
+
+            // X: 40, 130, 330, 430
+            doc.text(dataStr, 40, y);
+            doc.font('Helvetica-Bold').text(nomeBenef, 130, y);
+            
+            doc.font('Helvetica').text(estado, 330, y); 
+
+            doc.text(colab, 430, y);
+            if (data.evaluationDate) {
+                const evalDate = data.evaluationDate.toDate().toLocaleDateString('pt-PT');
+                doc.fontSize(8).fillColor('#555').text(evalDate, 430, y + 10);
+            }
+            y += 30;
+
+        } else if (tipoRelatorio === 'stock') {
+            const nomeProd = (data.name || 'Sem nome').substring(0, 30);
+            const categoria = data.category || '--';
+            
+            let validQty = 0;
+            let expiredQty = 0;
+            const now = new Date();
+            
+            if (data.batches) {
+                data.batches.forEach(b => {
+                    const validade = b.validity ? b.validity.toDate() : null;
+                    if (validade && validade >= now) validQty += (b.quantity || 0);
+                    else expiredQty += (b.quantity || 0);
+                });
+            }
+
+            // X: 40, 250, 380, 480
+            doc.text(nomeProd, 40, y);
+            doc.text(categoria, 250, y);
+            doc.text(`${validQty} un`, 380, y);
+            
+            if (expiredQty > 0) doc.fillColor('red').font('Helvetica-Bold');
+            else doc.fillColor('#ccc');
+            
+            doc.text(`${expiredQty} un`, 480, y);
+            
+            y += 25;
+        }
     });
-});
+
+    doc.end();
+
+    return new Promise((resolve, reject) => {
+        doc.on('end', async () => {
+            try {
+                const buffer = Buffer.concat(chunks);
+                const dbName = getDbName(tipoRelatorio);
+                const fileName = `AUTO_${dbName}_${ano}_${mes}_${Date.now()}.pdf`;
+                const file = bucket.file(`reports/${fileName}`);
+
+                await file.save(buffer, { metadata: { contentType: 'application/pdf' } });
+                
+                const [url] = await file.getSignedUrl({ 
+                    action: 'read', 
+                    expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10 
+                });
+
+                await admin.firestore().collection('reports').add({
+                    title: getTitulo(tipoRelatorio, mes, ano),
+                    month: mes,
+                    year: ano,
+                    totalOrders: snapshot.size, // Reaproveita o campo totalOrders para qtd
+                    generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    generatedBy: 'SISTEMA (AUTO)',
+                    type: dbName, 
+                    fileUrl: url,
+                    storagePath: `reports/${fileName}`
+                });
+                console.log(`PDF ${tipoRelatorio} gerado com sucesso.`);
+                resolve();
+            } catch (e) {
+                console.error(e);
+                reject(e);
+            }
+        });
+    });
+}
+
+// Helpers
+function getTitulo(tipo, mes, ano) {
+    if (tipo === 'orders') return `Relatório Mensal - ${mes}/${ano}`;
+    if (tipo === 'delivery') return `Relatório de Entregas - ${mes}/${ano}`;
+    if (tipo === 'stock') return `Inventário de Stock - ${mes}/${ano}`;
+    return 'Relatório';
+}
+
+function getDbName(tipo) {
+    if (tipo === 'orders') return 'auto_backup'; // Mantém compatibilidade com o teu histórico
+    if (tipo === 'delivery') return 'delivery_report';
+    if (tipo === 'stock') return 'stock_report';
+    return 'unknown';
+}
+
+function getColunas(tipo) {
+    if (tipo === 'orders') return [
+        { text: 'Data', x: 40 }, { text: 'Beneficiário / Avaliação', x: 110 }, { text: 'Itens', x: 300 }
+    ];
+    if (tipo === 'delivery') return [
+        { text: 'Data', x: 40 }, { text: 'Beneficiário', x: 130 }, { text: 'Estado', x: 330 }, { text: 'Avaliado Por', x: 430 }
+    ];
+    if (tipo === 'stock') return [
+        { text: 'Produto', x: 40 }, { text: 'Categoria', x: 250 }, { text: 'Qtd. Válida', x: 380 }, { text: 'Qtd. Expirada', x: 480 }
+    ];
+    return [];
+}
