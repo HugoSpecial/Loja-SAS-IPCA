@@ -212,8 +212,20 @@ fun CollaboratorHomeView(
                     onClick = { navController.navigate("urgent_delivery") }
                 )
             }
+
+            // LINHA 4
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ActionCard(
+                    title = "PDF's",
+                    subtitle = "Relatórios",
+                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
+                    backgroundColor = IpcaBlueGray,
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate("reports_history") }
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(100.dp))
+        Spacer(modifier = Modifier.height(80.dp))
     }
 
     // Popup Logout
