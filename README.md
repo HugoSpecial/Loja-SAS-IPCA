@@ -58,6 +58,7 @@ O foco é a eficiência operacional e o controlo rigoroso de recursos.
 * **✅ Validação de Processos:** Dashboard para aprovar ou rejeitar candidaturas e pedidos de apoio, com acesso rápido ao histórico e perfil de cada beneficiário.
 * **🚚 Logística de Distribuição:** Ferramentas para agendar entregas, registar levantamentos efetuados e gerir faltas.
 * **📢 Campanhas e Doações:** Criação e gestão de campanhas de recolha de alimentos, incluindo o registo de doadores e contabilização de produtos angariados.
+* **📊 Relatórios:** Consulta de relatórios de stock, pedidos e entregas, facilitando o acompanhamento e controlo das operações.
 
 ---
 
