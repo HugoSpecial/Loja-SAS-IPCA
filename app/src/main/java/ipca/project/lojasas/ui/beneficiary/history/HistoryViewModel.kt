@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import ipca.project.lojasas.models.Delivery
 import ipca.project.lojasas.models.Order
 
 data class BeneficiaryHistoryState(
     val orders: List<Order> = emptyList(),
+    val deliveries: List<Delivery> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -34,26 +36,51 @@ class BeneficiaryHistoryViewModel : ViewModel() {
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("BeneficiaryHistoryVM", "Erro ao carregar pedidos", error)
-                    uiState.value = uiState.value.copy(isLoading = false, error = error.message)
+                    uiState.value = uiState.value.copy(
+                        isLoading = false,
+                        error = error.message
+                    )
                     return@addSnapshotListener
                 }
 
-                val orderList = mutableListOf<Order>()
-                for (doc in snapshot?.documents ?: emptyList()) {
-                    try {
-                        val order = doc.toObject(Order::class.java)
-                        order?.docId = doc.id
-                        if (order != null) orderList.add(order)
-                    } catch (e: Exception) {
-                        Log.e("BeneficiaryHistoryVM", "Erro ao converter pedido", e)
+                val orders = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Order::class.java)?.apply {
+                        docId = doc.id
                     }
-                }
+                } ?: emptyList()
 
                 uiState.value = uiState.value.copy(
-                    orders = orderList.sortedByDescending { it.orderDate },
-                    isLoading = false,
-                    error = null
+                    orders = orders.sortedByDescending { it.orderDate },
+                    isLoading = false
+                )
+
+                // 🔥 AQUI: depois de ter orders, buscar deliveries
+                fetchDeliveriesForOrders(orders.mapNotNull { it.docId })
+            }
+    }
+
+    private fun fetchDeliveriesForOrders(orderIds: List<String>) {
+        if (orderIds.isEmpty()) {
+            uiState.value = uiState.value.copy(deliveries = emptyList())
+            return
+        }
+
+        db.collection("delivery")
+            .whereIn("orderId", orderIds.take(10))
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    uiState.value = uiState.value.copy(error = error.message)
+                    return@addSnapshotListener
+                }
+
+                val deliveries = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Delivery::class.java)?.apply {
+                        docId = doc.id
+                    }
+                } ?: emptyList()
+
+                uiState.value = uiState.value.copy(
+                    deliveries = deliveries.sortedByDescending { it.surveyDate }
                 )
             }
     }

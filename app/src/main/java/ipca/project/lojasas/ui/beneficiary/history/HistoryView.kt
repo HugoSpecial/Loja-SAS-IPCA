@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import ipca.project.lojasas.R
+import ipca.project.lojasas.models.Delivery
+import ipca.project.lojasas.models.DeliveryState
 import ipca.project.lojasas.models.Order
 import ipca.project.lojasas.models.OrderState
 import ipca.project.lojasas.ui.components.EmptyState
@@ -37,22 +39,21 @@ fun BeneficiaryHistoryView(
 ) {
     val state = viewModel.uiState.value
     var selectedFilter by remember { mutableStateOf("Todos") }
-    val filters = listOf("Todos", "Pedidos", "Levantamentos", "Justificações de faltas")
+    val filters = listOf("Todos", "Pedidos", "Levantamentos")
 
-    val filteredHistory = remember(state.orders, selectedFilter) {
+    // Filtra o histórico com base no filtro selecionado
+    val filteredHistory = remember(state.orders, state.deliveries, selectedFilter) {
         when (selectedFilter) {
-            "Todos" -> state.orders
             "Pedidos" -> state.orders
-            "Levantamentos" -> emptyList()
-            "Justificações de faltas" -> emptyList()
-            else -> state.orders
+            "Levantamentos" -> state.deliveries
+            else -> state.orders + state.deliveries
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fundo adaptável
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 20.dp)
     ) {
 
@@ -72,13 +73,12 @@ fun BeneficiaryHistoryView(
             text = "Histórico",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary // Verde
+            color = MaterialTheme.colorScheme.primary
         )
 
         Text(
             text = "Aqui consegue ver o histórico de pedidos realizados, histórico de levantamentos e justificações de faltas.",
             fontSize = 14.sp,
-            // Texto cinza que se adapta (fica branco translúcido no escuro)
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
             lineHeight = 20.sp
@@ -124,9 +124,12 @@ fun BeneficiaryHistoryView(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    items(filteredHistory) { order ->
-                        HistoryCard(order) {
-                            navController.navigate("beneficiary_order_details/${order.docId}")
+                    items(filteredHistory) { item ->
+                        when (item) {
+                            is Order -> HistoryCard(item) {
+                                navController.navigate("beneficiary_order_details/${item.docId}")
+                            }
+                            is Delivery -> DeliveryHistoryCard(item)
                         }
                     }
                 }
@@ -146,13 +149,13 @@ fun FilterChipButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            // Se selecionado: Verde. Se não: Branco (Light) ou Preto (Dark)
             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-            // Se selecionado: Branco. Se não: Cinza/Preto
             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         ),
-        // Borda cinza suave apenas se não estiver selecionado
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+        ),
         shape = RoundedCornerShape(50),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         modifier = Modifier.height(36.dp)
@@ -174,11 +177,10 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco (Light) / Preto (Dark)
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Linha superior: Tipo e Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -190,18 +192,55 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
-
                 OrderStatusBadge(order.accept)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Data
             val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("pt", "PT"))
             Text(
                 text = order.orderDate?.let { dateFormat.format(it) } ?: "--/--/----",
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) // Cinza
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
+fun DeliveryHistoryCard(delivery: Delivery) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Levantamento",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                DeliveryStatusBadge(delivery.state)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("pt", "PT"))
+            Text(
+                text = delivery.surveyDate?.let { dateFormat.format(it) } ?: "--/--/----",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }
@@ -209,18 +248,31 @@ fun HistoryCard(order: Order, onClick: () -> Unit) {
 
 @Composable
 private fun OrderStatusBadge(state: OrderState) {
-    // Definimos a cor principal baseada no estado
     val mainColor = when (state) {
-        OrderState.PENDENTE -> Color(0xFFEF6C00)        // Laranja (Fixo pois é padrão de alerta)
-        OrderState.ACEITE -> MaterialTheme.colorScheme.primary // Verde do Tema
-        OrderState.REJEITADA -> MaterialTheme.colorScheme.error // Vermelho do Tema
+        OrderState.PENDENTE -> Color(0xFFEF6C00)
+        OrderState.ACEITE -> MaterialTheme.colorScheme.primary
+        OrderState.REJEITADA -> MaterialTheme.colorScheme.error
     }
 
-    // O fundo usa a mesma cor principal, mas com apenas 10% de opacidade.
-    // Isso funciona perfeitamente tanto no branco quanto no preto.
     StatusBadge(
         label = state.name,
         backgroundColor = mainColor.copy(alpha = 0.1f),
         contentColor = mainColor
+    )
+}
+
+@Composable
+private fun DeliveryStatusBadge(state: DeliveryState) {
+    val (bgColor, contentColor) = when (state) {
+        DeliveryState.PENDENTE -> Color(0xFFFFE0B2) to Color(0xFFEF6C00)
+        DeliveryState.ENTREGUE -> Color(0xFFC8E6C9) to Color(0xFF2E7D32)
+        DeliveryState.CANCELADO -> Color(0xFFFFCDD2) to Color(0xFFC62828)
+        DeliveryState.EM_ANALISE -> Color(0xFFFFEB3B) to Color(0xFFFFC107)
+    }
+
+    StatusBadge(
+        label = state.name,
+        backgroundColor = bgColor,
+        contentColor = contentColor
     )
 }
