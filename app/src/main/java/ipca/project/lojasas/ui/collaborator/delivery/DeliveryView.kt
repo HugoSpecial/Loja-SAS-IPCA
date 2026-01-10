@@ -138,7 +138,7 @@ fun DeliveryListView(
                     onClick = { selectedFilter = DeliveryState.ENTREGUE }
                 )
                 FilterChipButton(
-                    text = "Não entregues",
+                    text = "Canceladas",
                     isSelected = selectedFilter == DeliveryState.CANCELADO,
                     onClick = { selectedFilter = DeliveryState.CANCELADO }
                 )
