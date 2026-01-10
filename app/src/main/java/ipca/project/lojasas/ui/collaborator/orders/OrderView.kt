@@ -1,20 +1,21 @@
 package ipca.project.lojasas.ui.collaborator.orders
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.PictureAsPdf // Ícone do PDF
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -43,8 +45,10 @@ fun OrderListView(
     viewModel: OrderViewModel = viewModel()
 ) {
     val state = viewModel.uiState.value
+    val context = LocalContext.current // Necessário para gerar o PDF e abrir o ficheiro
     var selectedFilter by remember { mutableStateOf<OrderState?>(null) }
 
+    // Filtra a lista localmente conforme o botão selecionado
     val filteredList = remember(state.orders, selectedFilter) {
         if (selectedFilter == null) state.orders
         else state.orders.filter { it.accept == selectedFilter }
@@ -53,18 +57,18 @@ fun OrderListView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Adaptável
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // --- CABEÇALHO ---
+        // --- CABEÇALHO (Back Button | Logo | PDF Button) ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp, bottom = 8.dp),
+                .padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 1. Botão Voltar (Esquerda)
             IconButton(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier.padding(start = 8.dp)
+                onClick = { navController.popBackStack() }
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
@@ -74,21 +78,50 @@ fun OrderListView(
                 )
             }
 
+            // 2. Logo (Centro - Ocupa o espaço disponível)
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 48.dp)
+                    .weight(1f) // Isto empurra o botão PDF para a direita
+                    .heightIn(max = 55.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo_sas),
-                    contentDescription = "Cabeçalho IPCA SAS",
-                    modifier = Modifier
-                        .heightIn(max = 55.dp)
-                        .align(Alignment.Center),
-                    contentScale = ContentScale.Fit
+                    contentDescription = "Logo SAS",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxHeight()
                 )
             }
+
+            // 3. Botão Gerar PDF (Direita)
+            IconButton(
+                onClick = {
+                    if (!state.isGeneratingReport) {
+                        viewModel.generateCurrentMonthReport(context)
+                    }
+                },
+                // Desativa o botão se estiver a gerar (para evitar duplo clique)
+                enabled = !state.isGeneratingReport
+            ) {
+                if (state.isGeneratingReport) {
+                    // Mostra loading giratório
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    // Mostra ícone PDF
+                    Icon(
+                        imageVector = Icons.Outlined.PictureAsPdf,
+                        contentDescription = "Gerar Relatório PDF",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
         }
+        // --- FIM DO CABEÇALHO ---
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
 
@@ -110,7 +143,7 @@ fun OrderListView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- Filtros ---
+            // --- Filtros (Bubbles) ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -125,7 +158,7 @@ fun OrderListView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- Lista ---
+            // --- Lista de Pedidos ---
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -152,6 +185,8 @@ fun OrderListView(
     }
 }
 
+// --- COMPONENTES AUXILIARES ---
+
 @Composable
 fun SoftTicketCard(order: Order, onClick: () -> Unit) {
 
@@ -169,10 +204,9 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface // Branco ou Cinza Escuro
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        // Borda suave adaptável
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
     ) {
         Row(
@@ -250,7 +284,7 @@ fun SoftTicketCard(order: Order, onClick: () -> Unit) {
                         modifier = Modifier
                             .size(50.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)), // Fundo leve
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

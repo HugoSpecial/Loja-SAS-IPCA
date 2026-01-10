@@ -485,3 +485,159 @@ exports.notificarDecisaoJustificacao = functions.firestore
       return null; 
     }
   });
+
+  // ==================================================================
+// 9. BACKUP MENSAL AUTOMÁTICO (Dia 1 de cada mês às 00:05)
+// ==================================================================
+exports.backupRelatorioMensal = functions
+.region('europe-west1')
+.pubsub.schedule('5 0 1 * *') // Executa: Minuto 5, Hora 0, Dia 1
+.timeZone('Europe/Lisbon')
+.onRun(async (context) => {
+    
+    // Calcular o mês anterior (o mês que acabou de fechar)
+    const dataRef = new Date();
+    dataRef.setMonth(dataRef.getMonth() - 1);
+    
+    const mesAlvo = dataRef.getMonth() + 1; // 1 a 12
+    const anoAlvo = dataRef.getFullYear();
+
+    console.log(`>>> A iniciar Backup Automático para ${mesAlvo}/${anoAlvo}`);
+
+    // 1. Apagar relatórios antigos desse mês (Evita duplicados do Manual ou Auto anterior)
+    const reportsAntigos = await admin.firestore().collection('reports')
+        .where('month', '==', mesAlvo)
+        .where('year', '==', anoAlvo)
+        .get();
+
+    if (!reportsAntigos.empty) {
+        const batchDelete = admin.firestore().batch();
+        reportsAntigos.forEach(doc => {
+            console.log(`Apagando relatório antigo: ${doc.id}`);
+            batchDelete.delete(doc.ref);
+        });
+        await batchDelete.commit();
+    }
+
+    // 2. Buscar os dados do Firestore
+    const startDate = new Date(anoAlvo, mesAlvo - 1, 1);
+    const endDate = new Date(anoAlvo, mesAlvo, 0, 23, 59, 59);
+
+    const snapshot = await admin.firestore().collection('orders')
+        .where('orderDate', '>=', startDate)
+        .where('orderDate', '<=', endDate)
+        .orderBy('orderDate', 'desc')
+        .get();
+
+    if (snapshot.empty) {
+        console.log("Sem dados para gerar relatório.");
+        return null;
+    }
+
+    // 3. Preparar Tabela PDF
+    const tableBody = [
+        [
+            { text: 'Data', style: 'tableHeader' }, 
+            { text: 'Beneficiário', style: 'tableHeader' }, 
+            { text: 'Avaliado Por', style: 'tableHeader' },
+            { text: 'Itens', style: 'tableHeader' }
+        ]
+    ];
+
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dataStr = o.orderDate ? o.orderDate.toDate().toLocaleDateString('pt-PT') : '--';
+        
+        // Formatar Itens
+        let itensStr = "";
+        if(o.items && o.items.length) {
+            itensStr = o.items.map(i => `${i.name} (${i.quantity})`).join(', ');
+        }
+
+        // Formatar Avaliador (usando os teus campos novos)
+        let avaliadorStr = "--";
+        if (o.accept === "ACEITE" || o.accept === "REJEITADA") {
+            avaliadorStr = o.evaluatedBy || "Colaborador";
+            if(o.evaluationDate) {
+                const dataEval = o.evaluationDate.toDate().toLocaleDateString('pt-PT');
+                avaliadorStr += ` (${dataEval})`;
+            }
+        }
+
+        tableBody.push([
+            { text: dataStr, style: 'rowStyle' },
+            { text: o.userName || 'Anónimo', style: 'rowStyle' },
+            { text: avaliadorStr, style: 'rowStyle' },
+            { text: itensStr, style: 'rowStyle' }
+        ]);
+    });
+
+    const printer = new PdfPrinter({
+        Roboto: {
+            normal: 'Helvetica',
+            bold: 'Helvetica-Bold',
+            italics: 'Helvetica-Oblique',
+            bolditalics: 'Helvetica-BoldOblique'
+        }
+    });
+
+    const docDefinition = {
+        content: [
+            { text: `Relatório Mensal (Backup) - ${mesAlvo}/${anoAlvo}`, style: 'header' },
+            { text: `Total de Pedidos: ${snapshot.size}`, margin: [0, 0, 0, 10] },
+            {
+                table: {
+                    headerRows: 1,
+                    widths: ['auto', 'auto', 'auto', '*'],
+                    body: tableBody
+                },
+                layout: 'lightHorizontalLines'
+            }
+        ],
+        styles: {
+            header: { fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
+            tableHeader: { bold: true, fontSize: 10, fillColor: '#eeeeee' },
+            rowStyle: { fontSize: 9 }
+        },
+        defaultStyle: { font: 'Roboto' }
+    };
+
+    // 4. Gerar PDF e Upload
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    const chunks = [];
+    
+    return new Promise((resolve, reject) => {
+        pdfDoc.on('data', chunk => chunks.push(chunk));
+        pdfDoc.on('end', async () => {
+            const buffer = Buffer.concat(chunks);
+            const fileName = `Backup_${anoAlvo}_${mesAlvo}_${Date.now()}.pdf`;
+            const file = admin.storage().bucket().file(`reports/${fileName}`);
+
+            await file.save(buffer, { metadata: { contentType: 'application/pdf' } });
+            
+            // URL válido por 10 anos
+            const [url] = await file.getSignedUrl({ 
+                action: 'read', 
+                expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10 
+            });
+
+            // 5. Gravar Registo na Coleção
+            await admin.firestore().collection('reports').add({
+                title: `Relatório Mensal - ${mesAlvo}/${anoAlvo}`,
+                month: mesAlvo,
+                year: anoAlvo,
+                totalOrders: snapshot.size,
+                generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                generatedBy: 'SISTEMA (AUTO)',
+                type: 'auto_backup',
+                fileUrl: url,
+                storagePath: `reports/${fileName}`
+            });
+            
+            console.log("Relatório automático gerado com sucesso.");
+            resolve();
+        });
+        pdfDoc.on('error', reject);
+        pdfDoc.end();
+    });
+});
