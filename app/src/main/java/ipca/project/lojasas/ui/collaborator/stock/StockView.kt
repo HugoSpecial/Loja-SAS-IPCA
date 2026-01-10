@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.PictureAsPdf // Icon PDF
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +54,7 @@ fun StockView(
     val filteredItems = viewModel.getFilteredItems()
     var selectedItem by remember { mutableStateOf<Product?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val context = LocalContext.current // Necessário para PDF
 
     val categories = listOf("Todos", "Fora de validade", "Alimentos", "Higiene", "Limpeza")
 
@@ -121,37 +123,68 @@ fun StockView(
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
 
-            // 1. CABEÇALHO
+            // 1. CABEÇALHO COM BOTÃO PDF
             item {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_sas),
-                        contentDescription = "Logo IPCA SAS",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        contentScale = ContentScale.Fit
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_sas),
+                            contentDescription = "Logo IPCA SAS",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp),
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.CenterStart
+                        )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = "Stock",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                        Text(
+                            text = "Stock",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                    Text(
-                        text = "Gerencie os produtos e validades.",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
-                    )
+                        Text(
+                            text = "Gerencie os produtos e validades.",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+                        )
+                    }
+
+                    // Botão PDF
+                    IconButton(
+                        onClick = {
+                            if (!state.isGeneratingReport) {
+                                viewModel.generateCurrentMonthReport(context)
+                            }
+                        },
+                        modifier = Modifier.padding(top = 24.dp),
+                        enabled = !state.isGeneratingReport
+                    ) {
+                        if (state.isGeneratingReport) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.PictureAsPdf,
+                                contentDescription = "Gerar PDF",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -232,8 +265,6 @@ fun StockView(
                 }
             } else if (filteredItems.isEmpty()) {
                 item {
-                    // --- AQUI ESTÁ A ALTERAÇÃO ---
-                    // Substituí o EmptyState por um Box com Text simples
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -280,7 +311,9 @@ fun StockView(
     }
 }
 
-// --- PRODUCT CARD ---
+// ... (ProductCard, ProductBatchesDialog, BatchCard e isDateValid mantêm-se iguais) ...
+// Vou incluir tudo para garantir a integridade do copy-paste
+
 @Composable
 fun ProductCard(
     item: Product,
@@ -384,7 +417,6 @@ fun ProductCard(
     }
 }
 
-// --- DIÁLOGO DE DETALHES ---
 @Composable
 fun ProductBatchesDialog(
     item: Product,

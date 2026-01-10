@@ -52,6 +52,7 @@ import ipca.project.lojasas.ui.collaborator.notifications.CollaboratorNotificati
 import ipca.project.lojasas.ui.collaborator.notifications.NotificationsCollaboratorViewModel
 import ipca.project.lojasas.ui.collaborator.orders.OrderDetailView
 import ipca.project.lojasas.ui.collaborator.orders.OrderListView
+import ipca.project.lojasas.ui.collaborator.reports.ReportsView
 import ipca.project.lojasas.ui.collaborator.stock.StockView
 import ipca.project.lojasas.ui.components.BeneficiaryBottomBar
 import ipca.project.lojasas.ui.components.CollaboratorBottomBar
@@ -145,6 +146,10 @@ class MainActivity : ComponentActivity() {
                                 OrderDetailView(navController = navController, orderId = orderId)
                             }
                         }
+
+                        composable("reports_history") { ReportsView(navController = navController) }
+
+
                         composable("deliveries") { DeliveryListView(navController = navController) }
                         composable(
                             route = "delivery_details/{deliveryId}",

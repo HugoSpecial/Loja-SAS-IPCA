@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -39,6 +40,7 @@ val IpcaOlive = Color(0xFF689F38)
 val IpcaBlueGray = Color(0xFF455A64)
 val IpcaBlackGreen = Color(0xFF1B2E25)
 val IpcaRed = Color(0xFFB71C1C)
+val IpcaDeepCyan = Color(0xFF006064)
 
 @Composable
 fun CollaboratorHomeView(
@@ -62,7 +64,9 @@ fun CollaboratorHomeView(
         Image(
             painter = painterResource(id = R.drawable.logo_sas),
             contentDescription = "Logótipo",
-            modifier = Modifier.fillMaxWidth().height(80.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp),
             contentScale = ContentScale.Fit
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -121,8 +125,8 @@ fun CollaboratorHomeView(
                 SummaryCard(
                     title = "Candidaturas",
                     count = state.pendingCount.toString(),
-                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
-                    iconColor = IpcaDarkTeal,
+                    icon = Icons.Default.AssignmentInd,
+                    iconColor = IpcaGreen,
                     modifier = Modifier.weight(1f)
                 )
                 SummaryCard(
@@ -148,7 +152,7 @@ fun CollaboratorHomeView(
         Text(
             text = "(Pressione longo para ver texto completo)",
             fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), // Cor adaptável
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -198,7 +202,7 @@ fun CollaboratorHomeView(
                 ActionCard(
                     title = "Candidaturas",
                     subtitle = "Processos",
-                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
+                    icon = Icons.Default.AssignmentInd,
                     backgroundColor = IpcaGreen,
                     modifier = Modifier.weight(1f),
                     onClick = { navController.navigate("candidature_list") }
@@ -212,8 +216,21 @@ fun CollaboratorHomeView(
                     onClick = { navController.navigate("urgent_delivery") }
                 )
             }
+
+            // LINHA 4 - PDF's
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ActionCard(
+                    title = "PDF's",
+                    subtitle = "Relatórios",
+                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
+                    backgroundColor = IpcaDeepCyan,
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate("reports_history") }
+                )
+                Spacer(modifier = Modifier.weight(1f))
+            }
         }
-        Spacer(modifier = Modifier.height(100.dp))
+        Spacer(modifier = Modifier.height(80.dp))
     }
 
     // Popup Logout
@@ -269,7 +286,7 @@ fun SummaryCard(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -308,7 +325,7 @@ fun SummaryCard(
             }
         }
 
-        // --- POPUP PARA TEXTO CORTADO (Adaptado para Modo Escuro) ---
+        // --- POPUP ---
         if (showFullText) {
             Popup(
                 alignment = Alignment.Center,
@@ -316,7 +333,6 @@ fun SummaryCard(
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    // CORRIGIDO: Usa a cor da superfície do tema (Branco no claro, Cinza no escuro)
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(8.dp),
                     modifier = Modifier
@@ -339,13 +355,13 @@ fun SummaryCard(
                             text = count,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface // CORRIGIDO
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = title,
                             fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, // CORRIGIDO: Cor de texto secundário adaptável
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold
                         )
@@ -380,11 +396,11 @@ fun ActionCard(
             colors = CardDefaults.cardColors(containerColor = backgroundColor),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
+            // AJUSTE PRINCIPAL: Removemos o padding global do Box principal
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
+                // Ícone: Alinhado ao TopEnd com padding de 8dp (os "2mm")
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -392,13 +408,15 @@ fun ActionCard(
                     modifier = Modifier
                         .size(90.dp)
                         .align(Alignment.TopEnd)
-                        .offset(x = 20.dp, y = (-20).dp)
+                        // ESTE É O ESPAÇO DE "2mm" NO CANTO SUPERIOR DIREITO
+                        .padding(top = 8.dp, end = 8.dp)
                 )
 
+                // Texto: Alinhado abaixo e à esquerda, COM o padding original de 16dp
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(end = 4.dp)
+                        .padding(start = 16.dp, bottom = 16.dp, end = 16.dp)
                 ) {
                     Text(
                         text = title,
@@ -423,7 +441,7 @@ fun ActionCard(
             }
         }
 
-        // --- POPUP DE ACTION CARD (Adaptado para Modo Escuro) ---
+        // --- POPUP ---
         if (showFullText) {
             Popup(
                 alignment = Alignment.Center,
@@ -431,7 +449,6 @@ fun ActionCard(
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    // CORRIGIDO: Usa a cor da superfície do tema
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(8.dp),
                     modifier = Modifier
@@ -446,14 +463,14 @@ fun ActionCard(
                             text = title,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = IpcaGreen, // Mantém a cor da marca, mas o fundo muda
+                            color = if(backgroundColor == IpcaBlueGray || backgroundColor == IpcaDeepCyan) MaterialTheme.colorScheme.primary else backgroundColor,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = subtitle,
                             fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, // CORRIGIDO: Cor adaptável para subtítulo
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }

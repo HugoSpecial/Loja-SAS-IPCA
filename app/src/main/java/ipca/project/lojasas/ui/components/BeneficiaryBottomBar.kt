@@ -37,51 +37,41 @@ fun BeneficiaryBottomBar(
         BottomBarItem.Profile
     )
 
-    var selectedItem by remember { mutableStateOf(items[0]) }
-
-    // Atualiza o item selecionado com base na rota atual (se houver navegação externa)
-    LaunchedEffect(currentRoute) {
-        if (currentRoute != null) {
-            items.find { it.route == currentRoute }?.let {
-                if (it != selectedItem) selectedItem = it
-            }
-        }
-    }
-
     val cartCount = CartManager.cartItems.count()
     val barBackgroundColor = MaterialTheme.colorScheme.surface
     val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.BottomCenter
     ) {
         // --- BARRA DE NAVEGAÇÃO ---
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
-                // REMOVIDO: navigationBarsPadding (para a cor ir até ao fundo)
-                // REMOVIDO: height(80.dp) (para a altura ser dinâmica com o sistema)
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
             containerColor = barBackgroundColor,
             tonalElevation = 10.dp,
-            // Garante que o conteúdo (ícones) respeita a área segura, mas o fundo pinta tudo
             windowInsets = NavigationBarDefaults.windowInsets
         ) {
-            // Lado Esquerdo
+            // 1. ITENS DA ESQUERDA
             items.take(2).forEach { item ->
+                // AQUI ESTÁ A LÓGICA: Verifica se a rota atual bate certo
+                val isSelected = currentRoute == item.route
+
                 NavigationBarItem(
-                    selected = selectedItem == item,
+                    selected = isSelected,
                     onClick = {
-                        selectedItem = item
-                        navController.navigate(item.route) {
-                            launchSingleTop = true
-                            restoreState = true
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                // Opcional: popUpTo para evitar empilhar navegação
+                                popUpTo("home") { saveState = true }
+                            }
                         }
                     },
                     icon = {
-                        // Lógica específica para notificações com Badge
                         if (item == BottomBarItem.Notification && unreadCount > 0) {
                             BadgedBox(badge = { Badge(containerColor = MaterialTheme.colorScheme.error) { Text("$unreadCount") } }) {
                                 Icon(
@@ -107,15 +97,19 @@ fun BeneficiaryBottomBar(
             // --- ESPAÇO CENTRAL ---
             Spacer(modifier = Modifier.weight(1f))
 
-            // Lado Direito
+            // 2. ITENS DA DIREITA
             items.takeLast(2).forEach { item ->
+                val isSelected = currentRoute == item.route
+
                 NavigationBarItem(
-                    selected = selectedItem == item,
+                    selected = isSelected,
                     onClick = {
-                        selectedItem = item
-                        navController.navigate(item.route) {
-                            launchSingleTop = true
-                            restoreState = true
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo("home") { saveState = true }
+                            }
                         }
                     },
                     icon = {
@@ -133,15 +127,25 @@ fun BeneficiaryBottomBar(
         }
 
         // --- BOTÃO FLUTUANTE (CARRINHO) ---
+        // Verifica se estamos na rota do carrinho
+        val isBasketActive = currentRoute == "newbasket"
+
         Box(
             modifier = Modifier
-                .navigationBarsPadding() // MANTIDO: O botão deve respeitar a barra para não ficar muito em baixo
-                .offset(y = (-28).dp) // Ajuste vertical
+                .navigationBarsPadding()
+                .offset(y = (-28).dp)
                 .align(Alignment.BottomCenter)
         ) {
             val cartButtonContent = @Composable {
                 Surface(
-                    onClick = { navController.navigate("newbasket") },
+                    onClick = {
+                        if (currentRoute != "newbasket") {
+                            navController.navigate("newbasket") {
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
                     shape = CircleShape,
                     color = primaryColor,
                     border = BorderStroke(4.dp, barBackgroundColor),
@@ -152,7 +156,8 @@ fun BeneficiaryBottomBar(
                         Icon(
                             painter = painterResource(id = R.drawable.shopping_cart),
                             contentDescription = "Carrinho",
-                            tint = Color.White,
+                            // Se estivermos no carrinho fica Branco Brilhante, senão ligeiramente transparente
+                            tint = if (isBasketActive) Color.White else Color.White.copy(alpha = 0.8f),
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -180,7 +185,7 @@ fun BeneficiaryBottomBar(
     }
 }
 
-// Função para limpar o código principal e obter os ícones
+// Função auxiliar
 @Composable
 fun getIconRes(item: BottomBarItem): Int {
     return when (item) {
