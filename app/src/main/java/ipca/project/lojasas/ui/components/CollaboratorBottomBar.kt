@@ -14,6 +14,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import ipca.project.lojasas.R
 
 sealed class BottomBarItemCollaborator(val title: String, val route: String) {
@@ -55,8 +56,6 @@ fun CollaboratorBottomBar(
         ) {
             // 1. ITENS DA ESQUERDA
             items.take(2).forEach { item ->
-                // LÓGICA MÁGICA: Só é true se a rota bater certo.
-                // Se a rota for "stock", isto dá false e o ícone fica cinzento.
                 val isSelected = currentRoute == item.route
 
                 NavigationBarItem(
@@ -64,10 +63,12 @@ fun CollaboratorBottomBar(
                     onClick = {
                         if (currentRoute != item.route) {
                             navController.navigate(item.route) {
+                                // CORREÇÃO AQUI: Usar findStartDestination().id
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
                                 restoreState = true
-                                // O popUpTo ajuda a não criar pilhas infinitas ao voltar para a home
-                                popUpTo("collaborator") { saveState = true }
                             }
                         }
                     },
@@ -99,7 +100,7 @@ fun CollaboratorBottomBar(
                 )
             }
 
-            // 2. ESPAÇO CENTRAL (Para o botão flutuante)
+            // 2. ESPAÇO CENTRAL
             Spacer(modifier = Modifier.weight(1f))
 
             // 3. ITENS DA DIREITA
@@ -111,9 +112,12 @@ fun CollaboratorBottomBar(
                     onClick = {
                         if (currentRoute != item.route) {
                             navController.navigate(item.route) {
+                                // CORREÇÃO AQUI TAMBÉM
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
                                 restoreState = true
-                                popUpTo("collaborator") { saveState = true }
                             }
                         }
                     },
@@ -132,19 +136,20 @@ fun CollaboratorBottomBar(
         }
 
         // --- BOTÃO CENTRAL (STOCK) ---
-        // Verifica se estamos no ecrã de stock para pintar o ícone de forma diferente (opcional)
         val isStockActive = currentRoute == "stock"
 
         Box(
             modifier = Modifier
-                .navigationBarsPadding() // Mantém padding do sistema
-                .offset(y = (-28).dp)    // Sobe para ficar a meio da barra
+                .navigationBarsPadding()
+                .offset(y = (-28).dp)
                 .align(Alignment.BottomCenter)
         ) {
             Surface(
                 onClick = {
                     if (currentRoute != "stock") {
                         navController.navigate("stock") {
+                            // O Stock não precisa de popUpTo da mesma forma, pois é uma "folha"
+                            // mas usamos launchSingleTop para evitar duplicações
                             launchSingleTop = true
                             restoreState = true
                         }
@@ -152,7 +157,6 @@ fun CollaboratorBottomBar(
                 },
                 shape = CircleShape,
                 color = primaryColor,
-                // A borda cria o efeito de "corte" na barra de baixo
                 border = BorderStroke(4.dp, barBackgroundColor),
                 shadowElevation = 4.dp,
                 modifier = Modifier.size(64.dp)
@@ -161,7 +165,6 @@ fun CollaboratorBottomBar(
                     Icon(
                         painter = painterResource(id = R.drawable.box_storage),
                         contentDescription = "Stock",
-                        // Se estivermos no Stock fica Branco Brilhante, senão fica ligeiramente transparente
                         tint = if (isStockActive) Color.White else Color.White.copy(alpha = 0.8f),
                         modifier = Modifier.size(28.dp)
                     )
@@ -189,6 +192,5 @@ fun navItemsColorsCollaborator() = NavigationBarItemDefaults.colors(
     selectedTextColor = MaterialTheme.colorScheme.primary,
     unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-    // Define transparente para não aparecer a "bolha" de seleção por trás do ícone
     indicatorColor = Color.Transparent
 )

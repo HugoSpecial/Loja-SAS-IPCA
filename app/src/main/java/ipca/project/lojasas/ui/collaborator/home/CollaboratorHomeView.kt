@@ -217,18 +217,16 @@ fun CollaboratorHomeView(
                 )
             }
 
-            // LINHA 4 - PDF's
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ActionCard(
-                    title = "PDF's",
-                    subtitle = "Relatórios",
-                    icon = ImageVector.vectorResource(id = R.drawable.file_dock),
-                    backgroundColor = IpcaDeepCyan,
-                    modifier = Modifier.weight(1f),
-                    onClick = { navController.navigate("reports_history") }
-                )
-                Spacer(modifier = Modifier.weight(1f))
-            }
+            // LINHA 4 - PDF's (AGORA OCUPA TUDO)
+            // Removemos o 'Row' e usamos 'fillMaxWidth'
+            ActionCard(
+                title = "PDF's",
+                subtitle = "Relatórios",
+                icon = ImageVector.vectorResource(id = R.drawable.file_dock),
+                backgroundColor = IpcaDeepCyan,
+                modifier = Modifier.fillMaxWidth(), // <-- Ocupa a largura total
+                onClick = { navController.navigate("reports_history") }
+            )
         }
         Spacer(modifier = Modifier.height(80.dp))
     }
@@ -325,7 +323,6 @@ fun SummaryCard(
             }
         }
 
-        // --- POPUP ---
         if (showFullText) {
             Popup(
                 alignment = Alignment.Center,
@@ -396,11 +393,10 @@ fun ActionCard(
             colors = CardDefaults.cardColors(containerColor = backgroundColor),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
-            // AJUSTE PRINCIPAL: Removemos o padding global do Box principal
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Ícone: Alinhado ao TopEnd com padding de 8dp (os "2mm")
+                // Ícone: Alinhado ao TopEnd com padding de 8dp
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -408,11 +404,10 @@ fun ActionCard(
                     modifier = Modifier
                         .size(90.dp)
                         .align(Alignment.TopEnd)
-                        // ESTE É O ESPAÇO DE "2mm" NO CANTO SUPERIOR DIREITO
                         .padding(top = 8.dp, end = 8.dp)
                 )
 
-                // Texto: Alinhado abaixo e à esquerda, COM o padding original de 16dp
+                // Texto: Alinhado abaixo e à esquerda, com padding de 16dp
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -441,7 +436,6 @@ fun ActionCard(
             }
         }
 
-        // --- POPUP ---
         if (showFullText) {
             Popup(
                 alignment = Alignment.Center,
